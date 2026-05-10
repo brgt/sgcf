@@ -22,3 +22,30 @@ __pycache__/
 
 # Logs
 *.log
+
+# .NET build outputs
+bin/
+obj/
+*.user
+*.suo
+*.dll
+*.pdb
+*.exe
+*.cache
+*.AssemblyInfo.cs
+*.editorconfig
+*.sourcelink.json
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.assets.json
+project.nuget.cache
+*.nuget.g.props
+*.nuget.g.targets
+
+# Rider / VS
+.idea/
+.vs/
+*.DotSettings.user
