@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sgcf.Api.IntegrationTests — End-to-end HTTP integration tests.
+    Uses WebApplicationFactory to boot the full API in-process.
+    Uses Testcontainers for a real PostgreSQL and Redis.
+    Tag slow tests with [Trait("Category", "Slow")] to exclude from fast feedback loop.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Sgcf.Api.IntegrationTests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sgcf.Api\Sgcf.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test Framework">
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Label="WebApplicationFactory">
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+
+  <ItemGroup Label="Assertions &amp; Fakes">
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Bogus" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testcontainers">
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Redis" />
+  </ItemGroup>
+
+</Project>

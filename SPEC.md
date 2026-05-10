@@ -85,8 +85,8 @@ O MVP é considerado bem-sucedido quando, **30 dias após go-live**:
 
 | Camada | Tecnologia | Versão | Origem |
 |---|---|---|---|
-| Backend | .NET + ASP.NET Core | **11** (fallback **.NET 10 LTS**) | ADR-003 v1.1 |
-| ORM | Entity Framework Core | atual da .NET 11 (ou EF 10 com .NET 10 LTS) | ADR-003 |
+| Backend | .NET + ASP.NET Core | **11** | ADR-003 v1.2 |
+| ORM | Entity Framework Core | **11** (EF Core 11) | ADR-003 |
 | Banco | PostgreSQL (Cloud SQL) | 16 | ADR-003 |
 | Cache | Memorystore Redis | 7+ | ADR-003 |
 | Auth | OAuth 2.1 + OIDC (Identity Platform GCP) | — | ADR-006 |
@@ -476,7 +476,7 @@ public void CalcularJurosProRata_4131BB_60DiasAposDesembolso_RetornaUsd10000()
 | **Strike** | Preço de exercício de um derivativo |
 | **Tabela completa** | Visão consolidada do contrato em 8 blocos (Anexo B §7) |
 | **Teto mensal** | Limite operacional de R$ 4MM em concentração de pagamentos por mês (Plano FINIMP §1) |
-| **TFM** | Target Framework Moniker (`net11.0`, `net10.0`) |
+| **TFM** | Target Framework Moniker (`net11.0`) |
 | **YAGNI** | You Aren't Gonna Need It — não construir abstração antes da necessidade real |
 
 ---
@@ -1112,7 +1112,7 @@ Cada log é JSON com no mínimo:
 - ⚠️ Mudar SLA, retenção, classificação de dados — exige nova ADR
 - ⚠️ Habilitar feature flag em prod
 - ⚠️ Rodar migration que não seja aditiva (drop column, type change destrutivo)
-- ⚠️ Trocar versão do .NET (10 LTS ↔ 11) — recompilar e re-testar tudo
+- ⚠️ Trocar versão do .NET — recompilar e re-testar tudo
 
 ### 17.3 Nunca fazer
 
@@ -1165,7 +1165,7 @@ Cada log é JSON com no mínimo:
 - Perfil do dev sênior (.NET generalista vs especialista financeiro)
 - Reforço pontual de dev em picos
 - Política de retenção LGPD detalhada (Fase B.4 com Compliance)
-- Versão definitiva do .NET (.NET 11 GA vs .NET 10 LTS) — final Fase B
+- ~~Versão definitiva do .NET~~ — **decidido: .NET 11** (10/maio/2026, sponsor)
 - SDK MCP escolhido (Anthropic oficial vs próprio)
 - Versão da spec A2A
 - Inclusão do Agente Migrador na Fase 1

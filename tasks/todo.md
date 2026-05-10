@@ -1,6 +1,23 @@
-# Todo List — SGCF MVP (v1.1)
+# Todo List — SGCF MVP (v1.5)
 
-> Plano detalhado em `plan.md`. Marque cada item ao concluir.
+> Plano estratégico: `plan.md` v1.5
+> **Plano tático dia a dia: `execucao_tatica.md` v1.0** (Fase B + Sprint 0 + Sprint 1)
+> Calendário absoluto: kickoff **11/maio/2026** → go-live **20/novembro/2026**
+> Marque cada item ao concluir.
+
+## 🎯 Milestones executivos
+
+| # | Marco | Data | Status |
+|---|---|---|---|
+| M0 | Kickoff | seg 11/mai/2026 | ⏳ |
+| M1 | Doc Arquitetura aprovado | sex 5/jun/2026 | ⏳ |
+| M2 | Hello World em produção | sex 19/jun/2026 | ⏳ |
+| M3 | FINIMP USD bullet end-to-end (gate crítico) | sex 17/jul/2026 | ⏳ |
+| M4 | 6 modalidades + motor antecipação | sex 28/ago/2026 | ⏳ |
+| M5 | NDFs + MTM em produção | sex 25/set/2026 | ⏳ |
+| M6 | Painéis + MCP/A2A/RAG (11 tools) | sex 23/out/2026 | ⏳ |
+| M7 | 1.200 contratos migrados | sex 6/nov/2026 | ⏳ |
+| M8 | **MVP em produção (go-live)** | **sex 20/nov/2026** | ⏳ |
 > Stack: **.NET 11** (fallback .NET 10 LTS) + ASP.NET Core + EF Core + PostgreSQL + Cloud Run + GCP.
 > Interfaces de consumo: REST + **MCP** (ADR-012) + **A2A baseline** (ADR-013).
 > **Agentes funcionais (Comparador/Gravador/Parecerista) = Fase 2** (fora do escopo MVP).
@@ -9,11 +26,28 @@
 
 ---
 
-## Fase B — Arquitetura técnica detalhada (4 semanas)
-- [ ] **B.1a** Atualizar `Prompt_Agente_Arquiteto_SGCF.md` para v1.1 (incluir SPEC.md, .NET 11, MCP, A2A, padrões de precisão)
-- [ ] **B.1b** Executar agente Arquiteto com 5 inputs (SPEC + Business Case + Anexos A/B + ADR v1.1) e produzir Documento de Arquitetura v1.0 com 18 seções (15 originais + Camada MCP + Camada A2A + Aderência ao SPEC)
-- [ ] **B.2** Revisão por 6 agentes críticos → v1.1
-- [ ] **B.3** Backlog inicial (30-50 user stories) priorizado
+## Pré-kickoff — esta semana (até seg 11/mai 09h)
+- [ ] GCP billing account ativa + permissões Owner para sponsor e dev
+- [ ] Repositório git `proxys/sgcf-backend` criado com permissões
+- [ ] Slack `#sgcf-build` criado
+- [ ] Drive compartilhado configurado
+- [ ] 4 cerimônias semanais agendadas no calendário
+- [ ] Patrocínio executivo formal (email da Diretoria)
+- [ ] Orçamento aprovado para Ano 1
+- [ ] 30-40% do tempo do sponsor reservado durante todo o build
+- [ ] Acesso a Claude Opus / Gemini Pro para rodar agentes
+- [ ] 2º controladoria com brief do Stream M
+- [ ] Cópia da planilha de dívida disponível para análise
+- [ ] **🚦 Gate "go" para Fase B**
+
+## Fase B — Arquitetura técnica detalhada (11/mai → 5/jun, 4 semanas)
+- [ ] **Day 1 — seg 11/mai** Kickoff meeting + **B.1a** Atualizar `Prompt_Agente_Arquiteto_SGCF.md` para v1.1
+- [ ] **Day 2-3 — ter-qua 12-13/mai** **B.1b** Executar agente Arquiteto + Doc Arquitetura v1.0
+- [ ] **Day 4-5 — qui-sex 14-15/mai** **B.5** Spike POC MCP/A2A + Stream M arranca
+- [ ] **Day 6-10 — sem 18-22/mai** **B.2** 6 agentes críticos em paralelo + consolidação Doc v1.1
+- [ ] **Day 11-15 — sem 25-29/mai** **B.3** Backlog 30-50 stories + **B.4** Decisões pendentes (D1-D5)
+- [ ] **Day 16-19 — sem 1-5/jun** Aprovação final + setup Sprint 0 + Sprint Planning *(qui 4/jun feriado Corpus Christi)*
+- [ ] **🚦 M1 — sex 5/jun:** Doc Arquitetura aprovado + backlog priorizado + decisões fechadas
 - [ ] **B.4** Travar decisões pendentes:
   - Front-end stack
   - Perfil dev
@@ -27,21 +61,27 @@
 - [ ] **B.5** Spike POC MCP + A2A (2-3 dias) — validar SDK, transport, autenticação
 - [ ] **🚦 Checkpoint B → Sprint 0** (gate sponsor)
 
-## Sprint 0 — Infra e fundações (2 semanas)
-- [ ] **0.1** Provisionar projetos GCP (dev/staging/prod) + IAM + redes (Terraform)
-- [ ] **0.2** Cloud SQL PostgreSQL 16 (CMEK) + **pgvector extension** + Memorystore + Cloud Storage
-- [ ] **0.3** Solution **.NET 11** Clean Architecture + EF Core + health checks + analyzers + métricas de qualidade no CI (complexidade, tamanho, duplicação)
-- [ ] **0.4** Auth OAuth 2.0/OIDC + RBAC com 6 papéis
-- [ ] **0.5** Audit trail via interceptor EF Core (campo `source` para discriminar `rest`/`mcp`/`a2a`)
-- [ ] **0.6** Pipeline Cloud Build → Cloud Run + rollback
-- [ ] **0.7** Observabilidade: Serilog + OpenTelemetry + dashboard + 3 alertas
-- [ ] **🚦 Checkpoint Sprint 0** (Hello world autenticado em prod)
+## Sprint 0 — Infra e fundações (8/jun → 19/jun, 10 dias úteis)
+- [ ] **Day 1 — seg 8/jun** **0.1** Provisão GCP (3 projetos dev/staging/prod) + IAM básico + billing alerts
+- [ ] **Day 2 — ter 9/jun** **0.1** Service accounts + redes + cross-project deny
+- [ ] **Day 3 — qua 10/jun** **0.2** Cloud SQL Postgres 16 com CMEK + **pgvector extension habilitada**
+- [ ] **Day 4 — qui 11/jun** **0.2** Memorystore Redis + Cloud Storage com retenção 5 anos
+- [ ] **Day 5 — sex 12/jun** **0.3** Solution .NET (10 LTS ou 11 conforme decisão) + 7 projetos + Directory.Build.props
+- [ ] **Day 6 — seg 15/jun** **0.3** EF Core + health endpoints + migration inicial
+- [ ] **Day 7 — ter 16/jun** **0.4** Auth OAuth 2.1/OIDC + 6 policies RBAC
+- [ ] **Day 8 — qua 17/jun** **0.5** Audit interceptor EF Core + tabela `audit_log` com `source`
+- [ ] **Day 9 — qui 18/jun** **0.6** Pipeline Cloud Build → Cloud Run com 12 steps + rollback
+- [ ] **Day 10 — sex 19/jun** **0.7** Observabilidade Serilog + OTel + dashboard + 3 alertas + **Sprint Demo**
+- [ ] **🚦 M2 — sex 19/jun:** Hello World autenticado em prod via pipeline
 
-## Fase 1 — Cadastros base (1 semana)
-- [ ] **1.1** `BANCO` + `BANCO_CONFIG` + seed
-- [ ] **1.2** `PLANO_CONTAS_GERENCIAL` + seed Anexo A
-- [ ] **1.3** `PARAMETRO_COTACAO` + função `ResolveTipoCotacao`
-- [ ] **🚦 Checkpoint Fase 1**
+## Sprint 1 — Cadastros base + start FINIMP (22/jun → 3/jul, 10 dias úteis)
+- [ ] **1.1** `BANCO` + `BANCO_CONFIG` (11 campos antecipação Anexo C) + seed dos 10 bancos
+- [ ] **1.2** `PLANO_CONTAS_GERENCIAL` + seed Anexo A (~30 contas)
+- [ ] **1.3** `PARAMETRO_COTACAO` + função `ResolveTipoCotacao` + testes
+- [ ] **1.4** Schema `CONTRATO` master + `FINIMP_DETAIL` polimórfico
+- [ ] **1.5** API CRUD `/api/v1/contratos` com idempotência + OpenAPI 3.1
+- [ ] **1.6** Erro padronizado RFC 7807 + FluentValidation
+- [ ] **🚦 Checkpoint Sprint 1 — sex 3/jul** (1 contrato FINIMP cadastrável end-to-end)
 
 ## Fase 2 — Vertical slice "FINIMP USD bullet" (3 semanas) — TRILHO DE OURO
 - [ ] **2.1** Schema `CONTRATO` + `FINIMP_DETAIL` polimórfico

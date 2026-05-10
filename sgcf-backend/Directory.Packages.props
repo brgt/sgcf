@@ -1,0 +1,113 @@
+<Project>
+  <PropertyGroup>
+    <!-- Enable Central Package Management -->
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup Label="Domain">
+    <!-- NodaTime: replacement for DateTime/DateTimeOffset in domain layer -->
+    <PackageVersion Include="NodaTime" Version="3.2.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Application">
+    <!-- MediatR: in-process messaging (Commands, Queries, Events) -->
+    <PackageVersion Include="MediatR" Version="12.4.1" />
+    <PackageVersion Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
+    <!-- FluentValidation: validation pipeline -->
+    <PackageVersion Include="FluentValidation" Version="11.11.0" />
+    <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Infrastructure EF Core">
+    <!--
+      NOTE: Microsoft.EntityFrameworkCore 11.x is not yet published on NuGet (as of 2026-05-10).
+      Pinned to 9.0.x; update to 11.x once the package is available.
+    -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.5" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Analyzers" Version="9.0.5" />
+    <!-- Npgsql provider; must match EF Core major version -->
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="9.0.4" />
+  </ItemGroup>
+
+  <ItemGroup Label="Infrastructure Caching">
+    <PackageVersion Include="StackExchange.Redis" Version="2.8.22" />
+    <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup Label="Logging Serilog">
+    <!-- Serilog 4.x core -->
+    <PackageVersion Include="Serilog" Version="4.2.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="8.0.3" />
+    <PackageVersion Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <!-- Enrichers -->
+    <PackageVersion Include="Serilog.Enrichers.Environment" Version="3.0.1" />
+    <PackageVersion Include="Serilog.Enrichers.Process" Version="3.0.0" />
+    <PackageVersion Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <!-- Sinks -->
+    <PackageVersion Include="Serilog.Sinks.Console" Version="6.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="6.0.0" />
+    <!-- GCP sink (Cloud Logging). Latest available on nuget.org: 5.0.0 -->
+    <PackageVersion Include="Serilog.Sinks.GoogleCloudLogging" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Observability OpenTelemetry">
+    <!--
+      OpenTelemetry 1.15.x stable (as of 2026-05-10).
+      All packages pinned to the same major.minor to avoid transitive version conflicts.
+    -->
+    <PackageVersion Include="OpenTelemetry" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
+    <!-- EF Core instrumentation is still pre-release; using latest beta -->
+    <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.12.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.15.3" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <!--
+      NOTE: There is no standalone NuGet package for GCP Cloud Trace export.
+      GCP trace export is handled via an OTLP collector forwarding to GCP, or via
+      Google.Cloud.Diagnostics.AspNetCore. Add the appropriate package once your
+      GCP integration approach is decided.
+    -->
+  </ItemGroup>
+
+  <ItemGroup Label="Hosting">
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup Label="API">
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.3.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing Core">
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing Assertions and Fakes">
+    <PackageVersion Include="FluentAssertions" Version="8.2.0" />
+    <!-- FsCheck: property-based testing -->
+    <PackageVersion Include="FsCheck" Version="2.16.6" />
+    <PackageVersion Include="FsCheck.Xunit" Version="2.16.6" />
+    <!-- Bogus: realistic fake data generator -->
+    <PackageVersion Include="Bogus" Version="35.6.1" />
+    <!-- NSubstitute: mocking -->
+    <PackageVersion Include="NSubstitute" Version="5.3.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing Integration">
+    <!-- Testcontainers for spinning up real Docker containers in tests -->
+    <PackageVersion Include="Testcontainers" Version="4.3.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.3.0" />
+    <PackageVersion Include="Testcontainers.Redis" Version="4.3.0" />
+    <!-- WebApplicationFactory support -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.5" />
+  </ItemGroup>
+</Project>

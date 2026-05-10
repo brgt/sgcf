@@ -1,0 +1,41 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "Sgcf.Domain/1.0.0": {
+        "dependencies": {
+          "NodaTime": "3.2.0"
+        },
+        "runtime": {
+          "Sgcf.Domain.dll": {}
+        }
+      },
+      "NodaTime/3.2.0": {
+        "runtime": {
+          "lib/net8.0/NodaTime.dll": {
+            "assemblyVersion": "3.2.0.0",
+            "fileVersion": "3.2.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "Sgcf.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "NodaTime/3.2.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-yoRA3jEJn8NM0/rQm78zuDNPA3DonNSZdsorMUj+dltc1D+/Lc5h9YXGqbEEZozMGr37lAoYkcSM/KjTVqD0ow==",
+      "path": "nodatime/3.2.0",
+      "hashPath": "nodatime.3.2.0.nupkg.sha512"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sgcf.Domain — Pure domain layer.
+    Rules:
+    - ZERO infrastructure dependencies (no EF, no HTTP, no logging frameworks).
+    - The only allowed NuGet package is NodaTime (for temporal domain types).
+    - All financial calculations must be pure functions (no I/O, no side effects).
+    - Money amounts must use the Money value object — never raw decimal.
+    - Use NodaTime LocalDate/Instant instead of DateTime/DateTimeOffset.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Sgcf.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- NodaTime: domain-safe temporal types (LocalDate, Instant, Period, etc.) -->
+    <PackageReference Include="NodaTime" />
+  </ItemGroup>
+
+</Project>

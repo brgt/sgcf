@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Sgcf.A2a/Sgcf.A2a.csproj" />
+    <Project Path="src/Sgcf.Api/Sgcf.Api.csproj" />
+    <Project Path="src/Sgcf.Application/Sgcf.Application.csproj" />
+    <Project Path="src/Sgcf.Domain/Sgcf.Domain.csproj" />
+    <Project Path="src/Sgcf.Infrastructure/Sgcf.Infrastructure.csproj" />
+    <Project Path="src/Sgcf.Jobs/Sgcf.Jobs.csproj" />
+    <Project Path="src/Sgcf.Mcp/Sgcf.Mcp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Sgcf.Api.IntegrationTests/Sgcf.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Sgcf.Application.Tests/Sgcf.Application.Tests.csproj" />
+    <Project Path="tests/Sgcf.Domain.Tests/Sgcf.Domain.Tests.csproj" />
+    <Project Path="tests/Sgcf.GoldenDataset/Sgcf.GoldenDataset.csproj" />
+    <Project Path="tests/Sgcf.Mcp.Tests/Sgcf.Mcp.Tests.csproj" />
+  </Folder>
+</Solution>

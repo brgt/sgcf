@@ -81,9 +81,9 @@ Este documento alimenta a próxima fase: o desenho técnico detalhado pelo agent
 
 | Camada                      | Tecnologia                                                      | Justificativa                                                                   |
 | --------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| **Backend (API)**           | **.NET 11** + ASP.NET Core Web API (revisado em v1.1; ver nota) | Performance, tipagem forte, maturidade em domínio financeiro                    |
+| **Backend (API)**           | **.NET 11** + ASP.NET Core Web API | Performance, tipagem forte, maturidade em domínio financeiro                    |
 | **Banco de dados primário** | Cloud SQL PostgreSQL 16                                         | Relacional, ACID, suporte a JSONB para campos polimórficos, gerenciado pelo GCP |
-| **ORM**                     | Entity Framework Core 8                                         | Produtividade, integração nativa .NET                                           |
+| **ORM**                     | Entity Framework Core 11                                        | Produtividade, integração nativa .NET 11                                        |
 | **Auth**                    | GCP IAM + JWT (OAuth 2.0 / OIDC)                                | Padrão de mercado, integra com Identity Platform do GCP                         |
 | **Storage**                 | Cloud Storage                                                   | PDFs de contratos, documentos, anexos                                           |
 | **Cache**                   | Memorystore (Redis)                                             | Cotações intraday, sessões, dados quentes                                       |
@@ -108,12 +108,8 @@ Este documento alimenta a próxima fase: o desenho técnico detalhado pelo agent
 - ✅ Integração nativa com GCP simplifica deploy/operação
 - ⚠️ Dev precisa ter expertise em .NET 11
 
-**Nota (v1.1) sobre versão do .NET:**
-Na data desta revisão (08/maio/2026), **.NET 11 está em fase de preview** (GA prevista para nov/2026). Por se tratar de sistema financeiro de produção, mantém-se .NET 11 como direção, mas:
-
-- **Fallback definido**: se Sprint 0 iniciar antes do GA estável de .NET 11, adotar **.NET 10 LTS** (GA em nov/2025, suporte até nov/2028) — migrar para .NET 11 quando este virar LTS (nov/2027).
-- **Critério objetivo de decisão**: avaliar status do .NET 11 no final da Fase B (semana −2 da Sprint 0). Se ainda em preview ou release candidate sem patch de produção, usar .NET 10 LTS.
-- **Implicação no plano**: trocar entre .NET 10 e .NET 11 não é refatoração — é apenas atualização de TFM no `.csproj` quando .NET 11 GA estiver disponível.
+**Nota (v1.2) sobre versão do .NET — decisão encerrada:**
+**Decisão confirmada em 10/maio/2026 pelo sponsor: usar .NET 11.** TFM = `net11.0`. Stack: .NET 11 + EF Core 11 + NodaTime. A questão de fallback para .NET 10 LTS não se aplica mais — código novo iniciado diretamente em .NET 11.
 
 ---
 

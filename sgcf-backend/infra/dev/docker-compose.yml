@@ -1,0 +1,39 @@
+version: "3.9"
+
+# Local development environment for SGCF backend.
+# Start with: docker compose -f infra/dev/docker-compose.yml up -d
+# Stop with:  docker compose -f infra/dev/docker-compose.yml down
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sgcf-postgres
+    environment:
+      POSTGRES_DB: sgcf_dev
+      POSTGRES_USER: sgcf
+      POSTGRES_PASSWORD: sgcf_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sgcf -d sgcf_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: sgcf-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+    driver: local

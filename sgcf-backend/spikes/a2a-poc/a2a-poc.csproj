@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <!--
+      SPIKE: Override root Directory.Build.props.
+      Targets net10.0 because the SDK installed is 10.0.103.
+      NOTE: net11.0 was requested but is not yet released. Update to net11.0
+            once .NET 11 SDK GA ships (expected Nov 2026).
+    -->
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>SgcfA2aPoc</RootNamespace>
+    <!-- Spikes are exploratory — relax production-quality gates -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Opt out of Central Package Management so spikes can pin their own versions -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <!--
+    No official Google A2A .NET SDK exists as of 2026-05-10.
+    The A2A spec is implemented manually below using plain ASP.NET Core
+    and System.Text.Json. Effort: ~3-4 days for a production-quality adapter.
+    Watch: https://github.com/google-a2a/a2a-samples (no .NET SDK yet)
+  -->
+</Project>

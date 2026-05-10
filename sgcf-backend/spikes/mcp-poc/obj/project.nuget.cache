@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "SvwWyRAwGXY=",
+  "success": true,
+  "projectFilePath": "/Users/welysson/Library/CloudStorage/GoogleDrive-w.soares@proxysgroup.com/Meu Drive/Governança/Projetos/Agentes de Finanças/sgcf-backend/spikes/mcp-poc/mcp-poc.csproj",
+  "expectedPackageFiles": [
+    "/Users/welysson/.nuget/packages/microsoft.extensions.ai.abstractions/10.5.2/microsoft.extensions.ai.abstractions.10.5.2.nupkg.sha512",
+    "/Users/welysson/.nuget/packages/modelcontextprotocol/1.3.0/modelcontextprotocol.1.3.0.nupkg.sha512",
+    "/Users/welysson/.nuget/packages/modelcontextprotocol.aspnetcore/1.3.0/modelcontextprotocol.aspnetcore.1.3.0.nupkg.sha512",
+    "/Users/welysson/.nuget/packages/modelcontextprotocol.core/1.3.0/modelcontextprotocol.core.1.3.0.nupkg.sha512"
+  ],
+  "logs": []
+}
