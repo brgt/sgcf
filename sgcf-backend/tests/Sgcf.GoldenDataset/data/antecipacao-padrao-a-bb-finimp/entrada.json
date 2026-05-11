@@ -1,0 +1,10 @@
+{
+  "padrao": "A",
+  "principalAQuitarValor": 200000.00,
+  "principalAQuitarMoeda": "Usd",
+  "jurosProRataValor": 4900.00,
+  "jurosProRataMoeda": "Usd",
+  "breakFundingFeePct": 0.01,
+  "exigeAnuenciaExpressa": false,
+  "indenizacaoBancoValor": null
+}

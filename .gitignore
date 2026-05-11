@@ -49,3 +49,10 @@ project.nuget.cache
 .idea/
 .vs/
 *.DotSettings.user
+
+# Coverage reports
+coverage-output*/
+coverage-output/
+*.cobertura.xml
+*.opencover.xml
+TestResults/

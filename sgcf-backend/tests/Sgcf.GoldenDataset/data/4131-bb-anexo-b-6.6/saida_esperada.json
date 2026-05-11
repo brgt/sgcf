@@ -1,0 +1,67 @@
+{
+  "descricao": "Cronograma SAC + saldo provisionado na data de consulta (60 dias corridos = 2026-03-02). Datas calculadas por divisao inteira: DataDesembolso.PlusDays(730 * i / 4).",
+  "cronograma": [
+    {
+      "numero_parcela": 1,
+      "tipo": "Juros",
+      "data_prevista": "2026-07-02",
+      "valor_usd": 30333.33,
+      "saldo_devedor_apos": null
+    },
+    {
+      "numero_parcela": 1,
+      "tipo": "Principal",
+      "data_prevista": "2026-07-02",
+      "valor_usd": 250000.00,
+      "saldo_devedor_apos": 750000.00
+    },
+    {
+      "numero_parcela": 2,
+      "tipo": "Juros",
+      "data_prevista": "2027-01-01",
+      "valor_usd": 22875.00,
+      "saldo_devedor_apos": null
+    },
+    {
+      "numero_parcela": 2,
+      "tipo": "Principal",
+      "data_prevista": "2027-01-01",
+      "valor_usd": 250000.00,
+      "saldo_devedor_apos": 500000.00
+    },
+    {
+      "numero_parcela": 3,
+      "tipo": "Juros",
+      "data_prevista": "2027-07-02",
+      "valor_usd": 15166.67,
+      "saldo_devedor_apos": null
+    },
+    {
+      "numero_parcela": 3,
+      "tipo": "Principal",
+      "data_prevista": "2027-07-02",
+      "valor_usd": 250000.00,
+      "saldo_devedor_apos": 250000.00
+    },
+    {
+      "numero_parcela": 4,
+      "tipo": "Juros",
+      "data_prevista": "2028-01-01",
+      "valor_usd": 7625.00,
+      "saldo_devedor_apos": null
+    },
+    {
+      "numero_parcela": 4,
+      "tipo": "Principal",
+      "data_prevista": "2028-01-01",
+      "valor_usd": 250000.00,
+      "saldo_devedor_apos": 0.00
+    }
+  ],
+  "saldo_em_consulta": {
+    "data_referencia": "2026-03-02",
+    "saldo_principal_aberto_usd": 1000000.00,
+    "juros_provisionados_usd": 10000.00,
+    "nota": "1000000 x 0.06 x 60 / 360 = 10000.00 (60 dias corridos de 2026-01-01 a 2026-03-02)"
+  }
+}

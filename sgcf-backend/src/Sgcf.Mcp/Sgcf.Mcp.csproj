@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    Sgcf.Mcp — MCP (Model Context Protocol) adapter.
+    Uses Microsoft.NET.Sdk.Web (not .Worker) because WithHttpTransport() requires ASP.NET Core.
+    Composition root: references both Application (use cases) and Infrastructure (DI wiring).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Sgcf.Mcp</RootNamespace>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sgcf.Application\Sgcf.Application.csproj" />
+    <ProjectReference Include="..\Sgcf.Infrastructure\Sgcf.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="MCP">
+    <PackageReference Include="ModelContextProtocol.AspNetCore" />
+  </ItemGroup>
+
+  <ItemGroup Label="Auth">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
+  <ItemGroup Label="Logging">
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+  </ItemGroup>
+
+</Project>

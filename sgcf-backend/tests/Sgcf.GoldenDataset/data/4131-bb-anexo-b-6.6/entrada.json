@@ -1,0 +1,15 @@
+{
+  "descricao": "Lei 4131 BB – Annex B §6.6 – USD 1MM, 6% a.a., base 360, 4 semestrais, 2026-01-01 a 2028-01-01",
+  "valor_principal_usd": 1000000.00,
+  "taxa_aa_pct": 6.0,
+  "base_calculo": "Dias360",
+  "data_desembolso": "2026-01-01",
+  "data_vencimento": "2028-01-01",
+  "numero_parcelas": 4,
+  "aliq_irrf": null,
+  "consulta": {
+    "data_referencia": "2026-03-02",
+    "dias_decorridos": 60,
+    "nota": "2026-01-01 + 60 dias = 2026-03-02 (janeiro tem 31 dias, fevereiro tem 28 dias em 2026)"
+  }
+}

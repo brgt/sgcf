@@ -75,21 +75,21 @@
 - [ ] **🚦 M2 — sex 19/jun:** Hello World autenticado em prod via pipeline
 
 ## Sprint 1 — Cadastros base + start FINIMP (22/jun → 3/jul, 10 dias úteis)
-- [ ] **1.1** `BANCO` + `BANCO_CONFIG` (11 campos antecipação Anexo C) + seed dos 10 bancos
-- [ ] **1.2** `PLANO_CONTAS_GERENCIAL` + seed Anexo A (~30 contas)
-- [ ] **1.3** `PARAMETRO_COTACAO` + função `ResolveTipoCotacao` + testes
-- [ ] **1.4** Schema `CONTRATO` master + `FINIMP_DETAIL` polimórfico
-- [ ] **1.5** API CRUD `/api/v1/contratos` com idempotência + OpenAPI 3.1
-- [ ] **1.6** Erro padronizado RFC 7807 + FluentValidation
+- [x] **1.1** `BANCO` + `BANCO_CONFIG` (11 campos antecipação Anexo C) + seed dos 10 bancos
+- [x] **1.2** `PLANO_CONTAS_GERENCIAL` + seed Anexo A (~30 contas)
+- [x] **1.3** `PARAMETRO_COTACAO` + função `ResolveTipoCotacao` + testes
+- [x] **1.4** Schema `CONTRATO` master + `FINIMP_DETAIL` polimórfico
+- [x] **1.5** API CRUD `/api/v1/contratos` com idempotência + OpenAPI 3.1
+- [x] **1.6** Erro padronizado RFC 7807 + FluentValidation
 - [ ] **🚦 Checkpoint Sprint 1 — sex 3/jul** (1 contrato FINIMP cadastrável end-to-end)
 
 ## Fase 2 — Vertical slice "FINIMP USD bullet" (3 semanas) — TRILHO DE OURO
-- [ ] **2.1** Schema `CONTRATO` + `FINIMP_DETAIL` polimórfico
-- [ ] **2.2** API CRUD + idempotência + OpenAPI
-- [ ] **2.3** Schema `CRONOGRAMA_PAGAMENTO` + 12 tipos de evento
-- [ ] **2.4** `BulletStrategy` + golden tests (funções puras, ADR-014)
-- [ ] **2.5** `CalculadorSaldo` (golden tests Anexo B 6.6)
-- [ ] **2.6** Endpoint `tabela-completa` (8 blocos)
+- [x] **2.1** Schema `CONTRATO` + `FINIMP_DETAIL` polimórfico
+- [x] **2.2** API CRUD + idempotência + OpenAPI
+- [x] **2.3** Schema `CRONOGRAMA_PAGAMENTO` + 12 tipos de evento
+- [x] **2.4** `BulletStrategy` + golden tests (funções puras, ADR-014)
+- [x] **2.5** `CalculadorSaldo` (golden tests Anexo B 6.6)
+- [x] **2.6** Endpoint `tabela-completa` (8 blocos)
 - [ ] **🚦 Checkpoint Fase 2** (cobertura motor ≥ 95%, gate crítico do sponsor)
 
 ## Fase 3 — Multi-moeda + ingestão PTAX (2 semanas)

@@ -1,0 +1,7 @@
+{
+  "padrao": "E",
+  "principalAQuitarValor": 1000000.00,
+  "principalAQuitarMoeda": "Brl",
+  "jurosEmbebidosFuturosValor": 50000.00,
+  "jurosEmbebidosFuturosMoeda": "Brl"
+}

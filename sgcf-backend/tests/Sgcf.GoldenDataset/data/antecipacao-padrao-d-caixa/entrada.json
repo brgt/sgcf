@@ -1,0 +1,12 @@
+{
+  "padrao": "D",
+  "principalAQuitarValor": 3500000.00,
+  "principalAQuitarMoeda": "Brl",
+  "jurosProRataValor": 21000.00,
+  "jurosProRataMoeda": "Brl",
+  "prazoRemanescenteMeses": 18,
+  "tipoAntecipacao": "LiquidacaoTotalAntecipada",
+  "origemRefinanciamentoInterno": false,
+  "tlaPctSobreSaldo": 0.02,
+  "tlaPctPorMesRemanescente": 0.001
+}

@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sgcf.Application.Tests — Unit + integration tests for the Application layer.
+    Uses Testcontainers to spin up a real PostgreSQL instance for persistence tests.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Sgcf.Application.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sgcf.Application\Sgcf.Application.csproj" />
+    <ProjectReference Include="..\..\src\Sgcf.Infrastructure\Sgcf.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test Framework">
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Label="Assertions &amp; Fakes">
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Bogus" />
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testcontainers">
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Redis" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,6 @@
+{
+  "tipo": "NdfCollar",
+  "notional": 200000,
+  "strikePut": 5.10,
+  "strikeCall": 5.40
+}

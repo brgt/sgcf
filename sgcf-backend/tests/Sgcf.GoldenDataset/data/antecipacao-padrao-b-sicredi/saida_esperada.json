@@ -1,0 +1,10 @@
+{
+  "padrao": "B",
+  "permitido": true,
+  "exigeAnuenciaExpressa": true,
+  "totalAQuitarValor": 219216.37875,
+  "totalAQuitarMoeda": "Usd",
+  "componenteC1ValorMoedaOriginal": 210279.50,
+  "componenteC3ValorMoedaOriginal": 8936.87875,
+  "alertaContains": "período total"
+}

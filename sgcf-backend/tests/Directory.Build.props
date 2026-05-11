@@ -1,0 +1,12 @@
+<Project>
+  <!-- Inherit root configuration first, then apply test-specific overrides -->
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <!--
+      CA1707 (underscores in member names): suppressed because Method_Scenario_Expected
+      is the standard xUnit naming convention for test methods.
+    -->
+    <NoWarn>$(NoWarn);CA1707</NoWarn>
+  </PropertyGroup>
+</Project>

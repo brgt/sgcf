@@ -1,0 +1,9 @@
+{
+  "padrao": "C",
+  "principalAQuitarValor": 500000.00,
+  "taxaContratadaAaPct": 16.24,
+  "taxaMercadoAtualAaPct": 14.0,
+  "prazoRemanescenteDias": 365,
+  "baseCalculo": 360,
+  "totalAQuitarTolerancia": 0.01
+}

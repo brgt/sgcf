@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sgcf.Application — Application/use-case layer.
+    Rules:
+    - Depends on Sgcf.Domain only (no Infrastructure, no HTTP).
+    - Orchestrates use cases via MediatR Commands and Queries.
+    - Validation handled by FluentValidation pipeline behaviours.
+    - No persistence logic here — only interfaces (ports).
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Sgcf.Application</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sgcf.Domain\Sgcf.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+  </ItemGroup>
+
+</Project>

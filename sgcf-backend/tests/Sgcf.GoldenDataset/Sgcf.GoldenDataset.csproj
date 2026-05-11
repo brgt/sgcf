@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sgcf.GoldenDataset — Golden dataset tests.
+    Loads JSON files from the data/ directory and verifies that financial calculations
+    produce the exact expected results (amortization tables, IOF, juros compostos, etc.).
+    These are regression guards: if a formula changes, golden tests break loudly.
+
+    To add a new golden case:
+      1. Create a JSON file in data/<feature>/<scenario>.json
+      2. Include both the input and the expected output.
+      3. The test harness will pick it up automatically.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Sgcf.GoldenDataset</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sgcf.Domain\Sgcf.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Sgcf.Application\Sgcf.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test Framework">
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Label="Assertions">
+    <PackageReference Include="FluentAssertions" />
+  </ItemGroup>
+
+  <!-- Copy all JSON golden files to the output directory -->
+  <ItemGroup>
+    <None Update="data\**\*.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

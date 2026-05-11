@@ -75,6 +75,11 @@
     -->
   </ItemGroup>
 
+  <ItemGroup Label="HTTP">
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.5" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.1.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Hosting">
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
   </ItemGroup>
@@ -82,6 +87,16 @@
   <ItemGroup Label="API">
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.3.1" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
+  </ItemGroup>
+
+  <ItemGroup Label="MCP">
+    <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.3.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Export">
+    <PackageVersion Include="QuestPDF" Version="2024.3.5" />
+    <PackageVersion Include="ClosedXML" Version="0.104.2" />
   </ItemGroup>
 
   <ItemGroup Label="Testing Core">

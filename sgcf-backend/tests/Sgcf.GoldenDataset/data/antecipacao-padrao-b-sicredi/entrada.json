@@ -1,0 +1,13 @@
+{
+  "padrao": "B",
+  "principalAQuitarValor": 210279.50,
+  "principalAQuitarMoeda": "Usd",
+  "taxaAaPct": 8.5,
+  "baseCalculo": 360,
+  "prazoTotalOriginalDias": 180,
+  "prazoRemanescenteDias": 120,
+  "prazoRemanescenteMeses": 4,
+  "tipoAntecipacao": "LiquidacaoTotalAntecipada",
+  "origemRefinanciamentoInterno": false,
+  "exigeAnuenciaExpressa": true
+}
