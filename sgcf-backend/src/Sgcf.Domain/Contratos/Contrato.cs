@@ -26,6 +26,14 @@ public sealed class Contrato : Entity
     public Guid? ContratoPaiId { get; private set; }
     public string? Observacoes { get; private set; }
 
+    public Periodicidade Periodicidade { get; private set; }
+    public EstruturaAmortizacao EstruturaAmortizacao { get; private set; }
+    public LocalDate DataPrimeiroVencimento { get; private set; }
+    public int QuantidadeParcelas { get; private set; }
+    public AnchorDiaMes AnchorDiaMes { get; private set; }
+    public int? AnchorDiaFixo { get; private set; }
+    public Periodicidade? PeriodicidadeJuros { get; private set; }
+
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
     public Instant? DeletedAt { get; private set; }
@@ -50,6 +58,13 @@ public sealed class Contrato : Entity
         Percentual taxaAa,
         BaseCalculo baseCalculo,
         IClock clock,
+        Periodicidade periodicidade = Periodicidade.Bullet,
+        EstruturaAmortizacao estruturaAmortizacao = EstruturaAmortizacao.Bullet,
+        int quantidadeParcelas = 1,
+        LocalDate? dataPrimeiroVencimento = null,
+        AnchorDiaMes anchorDiaMes = AnchorDiaMes.DiaContratacao,
+        int? anchorDiaFixo = null,
+        Periodicidade? periodicidadeJuros = null,
         Guid? contratoPaiId = null,
         string? observacoes = null)
     {
@@ -61,6 +76,33 @@ public sealed class Contrato : Entity
         if (dataVencimento <= dataContratacao)
         {
             throw new ArgumentException("DataVencimento deve ser posterior a DataContratacao.", nameof(dataVencimento));
+        }
+
+        if (quantidadeParcelas < 1)
+        {
+            throw new ArgumentException("QuantidadeParcelas deve ser maior ou igual a 1.", nameof(quantidadeParcelas));
+        }
+
+        LocalDate primeiroVencimento = dataPrimeiroVencimento ?? dataVencimento;
+
+        if (primeiroVencimento <= dataContratacao)
+        {
+            throw new ArgumentException("DataPrimeiroVencimento deve ser posterior a DataContratacao.", nameof(dataPrimeiroVencimento));
+        }
+
+        if (anchorDiaMes == AnchorDiaMes.DiaFixo && anchorDiaFixo is null)
+        {
+            throw new ArgumentException("AnchorDiaFixo é obrigatório quando AnchorDiaMes é DiaFixo.", nameof(anchorDiaFixo));
+        }
+
+        if (anchorDiaMes == AnchorDiaMes.DiaFixo && anchorDiaFixo is < 1 or > 31)
+        {
+            throw new ArgumentException("AnchorDiaFixo deve estar entre 1 e 31.", nameof(anchorDiaFixo));
+        }
+
+        if (anchorDiaMes != AnchorDiaMes.DiaFixo && anchorDiaFixo is not null)
+        {
+            throw new ArgumentException("AnchorDiaFixo só pode ser informado quando AnchorDiaMes é DiaFixo.", nameof(anchorDiaFixo));
         }
 
         var now = clock.GetCurrentInstant();
@@ -76,6 +118,13 @@ public sealed class Contrato : Entity
             TaxaAaDecimal = taxaAa.AsDecimal,
             BaseCalculo = baseCalculo,
             Status = StatusContrato.Ativo,
+            Periodicidade = periodicidade,
+            EstruturaAmortizacao = estruturaAmortizacao,
+            DataPrimeiroVencimento = primeiroVencimento,
+            QuantidadeParcelas = quantidadeParcelas,
+            AnchorDiaMes = anchorDiaMes,
+            AnchorDiaFixo = anchorDiaFixo,
+            PeriodicidadeJuros = periodicidadeJuros,
             ContratoPaiId = contratoPaiId,
             Observacoes = observacoes,
             CreatedAt = now,

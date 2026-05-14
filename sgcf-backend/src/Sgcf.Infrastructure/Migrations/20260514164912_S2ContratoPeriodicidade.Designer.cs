@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -12,9 +13,11 @@ using Sgcf.Infrastructure.Persistence;
 namespace Sgcf.Infrastructure.Migrations
 {
     [DbContext(typeof(SgcfDbContext))]
-    partial class SgcfDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260514164912_S2ContratoPeriodicidade")]
+    partial class S2ContratoPeriodicidade
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
