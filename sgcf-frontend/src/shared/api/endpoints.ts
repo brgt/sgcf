@@ -10,6 +10,7 @@ export const API = {
     list:               '/api/v1/contratos',
     get:                (id: string) => `/api/v1/contratos/${id}`,
     create:             '/api/v1/contratos',
+    update:             (id: string) => `/api/v1/contratos/${id}`,
     delete:             (id: string) => `/api/v1/contratos/${id}`,
     tabelaCompleta:     (id: string) => `/api/v1/contratos/${id}/tabela-completa`,
     gerarCronograma:    (id: string) => `/api/v1/contratos/${id}/gerar-cronograma`,
@@ -24,6 +25,11 @@ export const API = {
     get:    (id: string) => `/api/v1/hedges/${id}`,
     mtm:    (id: string) => `/api/v1/hedges/${id}/mtm`,
     delete: (id: string) => `/api/v1/hedges/${id}`,
+  },
+  feriados: {
+    list:   '/api/v1/feriados',
+    create: '/api/v1/feriados',
+    delete: (id: string) => `/api/v1/feriados/${id}`,
   },
   painel: {
     divida:      '/api/v1/painel/divida',
@@ -40,14 +46,18 @@ export const API = {
     resolve: '/api/v1/parametros-cotacao/resolve',
   },
   planoContas: {
-    list:   '/api/v1/plano-contas',
-    get:    (id: string) => `/api/v1/plano-contas/${id}`,
-    create: '/api/v1/plano-contas',
-    update: (id: string) => `/api/v1/plano-contas/${id}`,
+    list:       '/api/v1/plano-contas',
+    get:        (id: string) => `/api/v1/plano-contas/${id}`,
+    create:     '/api/v1/plano-contas',
+    update:     (id: string) => `/api/v1/plano-contas/${id}`,
+    lancamentos: (contaId: string) => `/api/v1/plano-contas/${contaId}/lancamentos`,
   },
   simulador: {
     cenarioCambial:       '/api/v1/simulador/cenario-cambial',
     antecipacaoPortfolio: '/api/v1/simulador/antecipacao-portfolio',
+  },
+  auditoria: {
+    eventos: '/audit/eventos',
   },
   health: '/health',
 } as const
