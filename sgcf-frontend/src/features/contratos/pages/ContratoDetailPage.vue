@@ -21,6 +21,12 @@ import RoleGate from '@/shared/auth/RoleGate.vue'
 import { getContrato } from '@/features/contratos/api/useContratos'
 import { apiClient, postIdempotent, extractApiError } from '@/shared/api/client'
 import { API } from '@/shared/api/endpoints'
+import {
+  Periodicidade,
+  EstruturaAmortizacao,
+  AnchorDiaMes,
+  ConvencaoDataNaoUtil,
+} from '@/shared/api/enums'
 import { formatMoney } from '@/shared/money/formatMoney'
 import { formatLocalDate } from '@/shared/dates/formatDate'
 import { toast } from '@/shared/ui/toast'
@@ -314,6 +320,90 @@ async function handleDelete(): Promise<void> {
 }
 
 // ============================================================================
+// Edit Amortization Modal
+// ============================================================================
+
+interface SelectOption {
+  label: string
+  value: string
+}
+
+const showEditAmortizacaoModal = ref(false)
+const editAmortizacaoLoading = ref(false)
+const editAmortizacaoForm = ref({
+  periodicidade: '',
+  estruturaAmortizacao: '',
+  quantidadeParcelas: null as number | null,
+  dataPrimeiroVencimento: '',
+  anchorDiaMes: '',
+  anchorDiaFixo: null as number | null,
+  periodicidadeJuros: '',
+  convencaoDataNaoUtil: '',
+})
+
+const periodicidadeOptions: SelectOption[] = Object.values(Periodicidade).map((v) => ({
+  label: v,
+  value: v,
+}))
+
+const estruturaAmortizacaoOptions: SelectOption[] = Object.values(EstruturaAmortizacao).map(
+  (v) => ({
+    label: v,
+    value: v,
+  }),
+)
+
+const anchorDiaMesOptions: SelectOption[] = Object.values(AnchorDiaMes).map((v) => ({
+  label: v,
+  value: v,
+}))
+
+const convencaoDataNaoUtilOptions: SelectOption[] = Object.values(ConvencaoDataNaoUtil).map(
+  (v) => ({
+    label: v,
+    value: v,
+  }),
+)
+
+function openEditAmortizacaoModal(): void {
+  if (!contrato.value) return
+  editAmortizacaoForm.value = {
+    periodicidade: contrato.value.periodicidade,
+    estruturaAmortizacao: contrato.value.estruturaAmortizacao,
+    quantidadeParcelas: contrato.value.quantidadeParcelas,
+    dataPrimeiroVencimento: contrato.value.dataPrimeiroVencimento,
+    anchorDiaMes: contrato.value.anchorDiaMes,
+    anchorDiaFixo: contrato.value.anchorDiaFixo,
+    periodicidadeJuros: contrato.value.periodicidadeJuros || '',
+    convencaoDataNaoUtil: contrato.value.convencaoDataNaoUtil,
+  }
+  showEditAmortizacaoModal.value = true
+}
+
+async function submitEditAmortizacao(): Promise<void> {
+  editAmortizacaoLoading.value = true
+  try {
+    await apiClient.patch(API.contratos.update(id.value), {
+      periodicidade: editAmortizacaoForm.value.periodicidade,
+      estruturaAmortizacao: editAmortizacaoForm.value.estruturaAmortizacao,
+      quantidadeParcelas: editAmortizacaoForm.value.quantidadeParcelas,
+      dataPrimeiroVencimento: editAmortizacaoForm.value.dataPrimeiroVencimento,
+      anchorDiaMes: editAmortizacaoForm.value.anchorDiaMes,
+      anchorDiaFixo: editAmortizacaoForm.value.anchorDiaFixo,
+      periodicidadeJuros: editAmortizacaoForm.value.periodicidadeJuros || null,
+      convencaoDataNaoUtil: editAmortizacaoForm.value.convencaoDataNaoUtil,
+    })
+    await queryClient.invalidateQueries({ queryKey: ['contratos', id.value] })
+    toast.success('Amortização atualizada com sucesso.')
+    showEditAmortizacaoModal.value = false
+  } catch (err) {
+    toast.error(extractApiError(err))
+  } finally {
+    editAmortizacaoLoading.value = false
+  }
+}
+
+// ============================================================================
 // Page header title
 // ============================================================================
 
@@ -377,6 +467,18 @@ function modalidadeLabel(m: string): string {
                 </Button>
               </template>
             </Dropdown>
+
+            <!-- Edit Amortização (Escrita policy) -->
+            <RoleGate policy="Escrita">
+              <Button
+                variant="secondary"
+                size="md"
+                icon-left="i-carbon-edit"
+                @click="openEditAmortizacaoModal"
+              >
+                Editar Amortização
+              </Button>
+            </RoleGate>
 
             <!-- Delete (Gerencial policy) -->
             <RoleGate policy="Gerencial">
@@ -482,6 +584,40 @@ function modalidadeLabel(m: string): string {
               <span class="info-field__label">Base de Cálculo</span>
               <span class="info-field__value">{{ contrato.baseCalculo }}</span>
             </div>
+            <!-- Sprint 3 Amortization fields -->
+            <div class="info-field">
+              <span class="info-field__label">Periodicidade</span>
+              <span class="info-field__value">{{ contrato.periodicidade }}</span>
+            </div>
+            <div class="info-field">
+              <span class="info-field__label">Estrutura Amortização</span>
+              <span class="info-field__value">{{ contrato.estruturaAmortizacao }}</span>
+            </div>
+            <div class="info-field">
+              <span class="info-field__label">Quantidade de Parcelas</span>
+              <span class="info-field__value">{{ contrato.quantidadeParcelas }}</span>
+            </div>
+            <div class="info-field">
+              <span class="info-field__label">Data Primeiro Vencimento</span>
+              <span class="info-field__value">{{ formatLocalDate(contrato.dataPrimeiroVencimento) }}</span>
+            </div>
+            <div class="info-field">
+              <span class="info-field__label">Âncora Dia Mês</span>
+              <span class="info-field__value">{{ contrato.anchorDiaMes }}</span>
+            </div>
+            <div v-if="contrato.anchorDiaFixo !== null" class="info-field">
+              <span class="info-field__label">Dia Fixo (Âncora)</span>
+              <span class="info-field__value">{{ contrato.anchorDiaFixo }}</span>
+            </div>
+            <div v-if="contrato.periodicidadeJuros" class="info-field">
+              <span class="info-field__label">Periodicidade Juros</span>
+              <span class="info-field__value">{{ contrato.periodicidadeJuros }}</span>
+            </div>
+            <div class="info-field">
+              <span class="info-field__label">Convenção Data Não Útil</span>
+              <span class="info-field__value">{{ contrato.convencaoDataNaoUtil }}</span>
+            </div>
+            <!-- End Sprint 3 -->
             <div v-if="contrato.observacoes" class="info-field info-field--full">
               <span class="info-field__label">Observações</span>
               <span class="info-field__value">{{ contrato.observacoes }}</span>
@@ -855,6 +991,113 @@ function modalidadeLabel(m: string): string {
 
     <template #footer>
       <Button variant="primary" size="md" @click="showHedgeModal = false">Fechar</Button>
+    </template>
+  </Modal>
+
+  <!-- ========================================================================
+       Modal — Editar Amortização (Sprint 3)
+  ======================================================================== -->
+  <Modal
+    v-model="showEditAmortizacaoModal"
+    title="Editar Amortização"
+    size="md"
+  >
+    <form class="form">
+      <div class="form-grid">
+        <label class="form-field">
+          <span class="form-field__label">Periodicidade</span>
+          <select v-model="editAmortizacaoForm.periodicidade" class="form-field__input">
+            <option value="">Selecione</option>
+            <option v-for="opt in periodicidadeOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </label>
+
+        <label class="form-field">
+          <span class="form-field__label">Estrutura Amortização</span>
+          <select v-model="editAmortizacaoForm.estruturaAmortizacao" class="form-field__input">
+            <option value="">Selecione</option>
+            <option v-for="opt in estruturaAmortizacaoOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </label>
+
+        <label class="form-field">
+          <span class="form-field__label">Quantidade Parcelas</span>
+          <input
+            v-model.number="editAmortizacaoForm.quantidadeParcelas"
+            type="number"
+            min="1"
+            class="form-field__input"
+            placeholder="0"
+          />
+        </label>
+
+        <label class="form-field">
+          <span class="form-field__label">Data Primeiro Vencimento</span>
+          <input
+            v-model="editAmortizacaoForm.dataPrimeiroVencimento"
+            type="date"
+            class="form-field__input"
+          />
+        </label>
+
+        <label class="form-field">
+          <span class="form-field__label">Âncora Dia Mês</span>
+          <select v-model="editAmortizacaoForm.anchorDiaMes" class="form-field__input">
+            <option value="">Selecione</option>
+            <option v-for="opt in anchorDiaMesOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </label>
+
+        <label v-if="editAmortizacaoForm.anchorDiaMes === 'DiaFixo'" class="form-field">
+          <span class="form-field__label">Dia Fixo (1-31)</span>
+          <input
+            v-model.number="editAmortizacaoForm.anchorDiaFixo"
+            type="number"
+            min="1"
+            max="31"
+            class="form-field__input"
+            placeholder="1"
+          />
+        </label>
+
+        <label class="form-field">
+          <span class="form-field__label">Periodicidade Juros (opcional)</span>
+          <select v-model="editAmortizacaoForm.periodicidadeJuros" class="form-field__input">
+            <option value="">Deixar em branco</option>
+            <option v-for="opt in periodicidadeOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </label>
+
+        <label class="form-field">
+          <span class="form-field__label">Convenção Data Não Útil</span>
+          <select v-model="editAmortizacaoForm.convencaoDataNaoUtil" class="form-field__input">
+            <option value="">Selecione</option>
+            <option v-for="opt in convencaoDataNaoUtilOptions" :key="opt.value" :value="opt.value">
+              {{ opt.label }}
+            </option>
+          </select>
+        </label>
+      </div>
+    </form>
+
+    <template #footer>
+      <Button variant="ghost" size="md" @click="showEditAmortizacaoModal = false">Cancelar</Button>
+      <Button
+        variant="primary"
+        size="md"
+        :loading="editAmortizacaoLoading"
+        @click="() => void submitEditAmortizacao()"
+      >
+        Salvar
+      </Button>
     </template>
   </Modal>
 </template>
