@@ -5,6 +5,7 @@ using NodaTime;
 using Sgcf.Application.Antecipacao;
 using Sgcf.Application.Auditoria;
 using Sgcf.Application.Bancos;
+using Sgcf.Application.Calendario;
 using Sgcf.Application.Contabilidade;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cotacoes;
@@ -13,6 +14,7 @@ using Sgcf.Application.Painel;
 using Sgcf.Infrastructure.Antecipacao;
 using Sgcf.Infrastructure.Auditoria;
 using Sgcf.Infrastructure.Caching;
+using Sgcf.Infrastructure.Calendario;
 using Sgcf.Infrastructure.Cotacoes;
 using Sgcf.Infrastructure.Cronograma;
 using Sgcf.Infrastructure.Persistence;
@@ -58,6 +60,8 @@ public static class DependencyInjection
         services.AddScoped<IHedgeRepository, HedgeRepository>();
         services.AddScoped<IEbitdaMensalRepository, EbitdaMensalRepository>();
         services.AddScoped<IExportacaoAuditLog, ExportacaoAuditLog>();
+        services.AddScoped<IFeriadoRepository, FeriadoRepository>();
+        services.AddScoped<IBusinessDayCalendar, BusinessDayCalendar>();
 
         return services;
     }

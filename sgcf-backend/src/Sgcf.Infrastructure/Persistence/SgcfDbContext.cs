@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sgcf.Domain.Antecipacao;
 using Sgcf.Domain.Bancos;
+using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Contabilidade;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -38,6 +39,7 @@ public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(
     public DbSet<EventoCronograma> EventosCronograma => Set<EventoCronograma>();
     public DbSet<SimulacaoAntecipacao> SimulacoesAntecipacao => Set<SimulacaoAntecipacao>();
     public DbSet<EbitdaMensal> EbitdasMensais => Set<EbitdaMensal>();
+    public DbSet<Feriado> Feriados => Set<Feriado>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
