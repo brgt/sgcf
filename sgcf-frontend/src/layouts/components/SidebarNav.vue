@@ -30,7 +30,10 @@ const sections: NavSection[] = [
   {
     heading: 'Painel',
     policy: 'Auditoria',
-    items: [{ label: 'Input EBITDA', to: '/painel/ebitda' }],
+    items: [
+      { label: 'Input EBITDA', to: '/painel/ebitda' },
+      { label: 'Auditoria', to: '/auditoria' },
+    ],
   },
   {
     heading: 'Contratos',
@@ -54,6 +57,7 @@ const sections: NavSection[] = [
     items: [
       { label: 'Plano de Contas', to: '/plano-contas' },
       { label: 'Parâmetros de Cotação', to: '/parametros-cotacao' },
+      { label: 'Feriados', to: '/feriados' },
     ],
   },
 ]
