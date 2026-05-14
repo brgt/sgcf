@@ -16,7 +16,9 @@ import RoleGate from '@/shared/auth/RoleGate.vue'
 import { apiClient, postIdempotent, extractApiError } from '@/shared/api/client'
 import { API } from '@/shared/api/endpoints'
 import { toast } from '@/shared/ui/toast'
-import type { PlanoContasDto, CreatePlanoContasCommand, AtualizarContaRequest } from '@/shared/api/types'
+import { listLancamentos, createLancamento } from '@/features/plano-contas/api/useLancamentos'
+import { Moeda } from '@/shared/api/enums'
+import type { PlanoContasDto, CreatePlanoContasCommand, AtualizarContaRequest, LancamentoContabilDto, CreateLancamentoRequest } from '@/shared/api/types'
 
 interface Column<T> {
   key: keyof T
@@ -240,6 +242,98 @@ async function submitEdit(): Promise<void> {
     isEditing.value = false
   }
 }
+
+// ============================================================================
+// Lancamentos modal
+// ============================================================================
+
+const showLancamentosModal = ref(false)
+const lancamentosContaId = ref<string | null>(null)
+const lancamentos = ref<LancamentoContabilDto[]>([])
+const isLoadingLancamentos = ref(false)
+const lancamentosError = ref<string | null>(null)
+
+const isCreatingLancamento = ref(false)
+const createLancamentoError = ref<string | null>(null)
+
+interface CreateLancamentoForm {
+  contratoId: string
+  data: string
+  origem: string
+  valorDecimal: string
+  moeda: typeof Moeda[keyof typeof Moeda]
+  descricao: string
+}
+
+const createLancamentoForm = ref<CreateLancamentoForm>({
+  contratoId: '',
+  data: '',
+  origem: '',
+  valorDecimal: '',
+  moeda: Moeda.Brl,
+  descricao: '',
+})
+
+const createLancamentoErrors = ref<Partial<Record<keyof CreateLancamentoForm, string>>>({})
+
+function validateCreateLancamento(): boolean {
+  const errs: Partial<Record<keyof CreateLancamentoForm, string>> = {}
+  if (!createLancamentoForm.value.contratoId.trim()) errs.contratoId = 'Obrigatório'
+  if (!createLancamentoForm.value.data.trim()) errs.data = 'Obrigatório'
+  if (!createLancamentoForm.value.origem.trim()) errs.origem = 'Obrigatório'
+  if (!createLancamentoForm.value.valorDecimal.trim()) errs.valorDecimal = 'Obrigatório'
+  if (isNaN(Number(createLancamentoForm.value.valorDecimal))) errs.valorDecimal = 'Deve ser um número'
+  createLancamentoErrors.value = errs
+  return Object.keys(errs).length === 0
+}
+
+async function openLancamentosModal(row: ContaRow): Promise<void> {
+  lancamentosContaId.value = row.id
+  lancamentos.value = []
+  lancamentosError.value = null
+  isLoadingLancamentos.value = true
+  showLancamentosModal.value = true
+
+  try {
+    lancamentos.value = await listLancamentos(row.id)
+  } catch (err) {
+    lancamentosError.value = extractApiError(err)
+  } finally {
+    isLoadingLancamentos.value = false
+  }
+}
+
+async function submitCreateLancamento(): Promise<void> {
+  if (!lancamentosContaId.value || !validateCreateLancamento()) return
+  isCreatingLancamento.value = true
+  createLancamentoError.value = null
+  try {
+    const body: CreateLancamentoRequest = {
+      contratoId: createLancamentoForm.value.contratoId.trim(),
+      data: createLancamentoForm.value.data,
+      origem: createLancamentoForm.value.origem.trim(),
+      valorDecimal: Number(createLancamentoForm.value.valorDecimal),
+      moeda: createLancamentoForm.value.moeda,
+      descricao: createLancamentoForm.value.descricao.trim(),
+    }
+    const newLancamento = await createLancamento(lancamentosContaId.value, body)
+    lancamentos.value.push(newLancamento)
+    toast.success('Lançamento criado com sucesso.')
+    createLancamentoForm.value = {
+      contratoId: '',
+      data: '',
+      origem: '',
+      valorDecimal: '',
+      moeda: Moeda.Brl,
+      descricao: '',
+    }
+    createLancamentoErrors.value = {}
+  } catch (err) {
+    createLancamentoError.value = extractApiError(err)
+  } finally {
+    isCreatingLancamento.value = false
+  }
+}
 </script>
 
 <template>
@@ -309,13 +403,22 @@ async function submitEdit(): Promise<void> {
 
           <template #cell-actions="{ row }">
             <RoleGate policy="Auditoria">
-              <Button
-                variant="ghost"
-                size="sm"
-                @click.stop="openEditModal(row as ContaRow)"
-              >
-                Editar
-              </Button>
+              <div class="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  @click.stop="openLancamentosModal(row as ContaRow)"
+                >
+                  Lançamentos
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  @click.stop="openEditModal(row as ContaRow)"
+                >
+                  Editar
+                </Button>
+              </div>
             </RoleGate>
           </template>
         </DataTable>
@@ -440,6 +543,150 @@ async function submitEdit(): Promise<void> {
       </Button>
     </template>
   </Modal>
+
+  <!-- =========================================================================
+       Modal — Lançamentos Contábeis
+  ========================================================================= -->
+  <Modal v-model="showLancamentosModal" title="Lançamentos Contábeis" size="lg">
+    <div class="modal-form">
+      <!-- Error -->
+      <Alert v-if="lancamentosError" variant="error" title="Erro ao carregar">
+        {{ lancamentosError }}
+      </Alert>
+
+      <!-- Loading -->
+      <div v-if="isLoadingLancamentos" class="text-center py-8">
+        <Skeleton height="40px" />
+      </div>
+
+      <!-- Lancamentos list -->
+      <template v-else>
+        <div v-if="lancamentos.length === 0" class="text-center py-4 text-sm text-gray-500">
+          Nenhum lançamento registrado
+        </div>
+
+        <div v-else class="lancamentos-list">
+          <div v-for="lance in lancamentos" :key="lance.id" class="lancamento-item">
+            <div class="lancamento-row">
+              <span class="lancamento-label">Data:</span>
+              <span class="lancamento-value">{{ lance.data }}</span>
+            </div>
+            <div class="lancamento-row">
+              <span class="lancamento-label">Origem:</span>
+              <span class="lancamento-value">{{ lance.origem }}</span>
+            </div>
+            <div class="lancamento-row">
+              <span class="lancamento-label">Valor:</span>
+              <span class="lancamento-value">{{ lance.valor.toFixed(2) }} {{ lance.moeda }}</span>
+            </div>
+            <div class="lancamento-row">
+              <span class="lancamento-label">Descrição:</span>
+              <span class="lancamento-value">{{ lance.descricao }}</span>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Create form -->
+      <div v-if="!isLoadingLancamentos" class="mt-6 pt-6 border-t border-gray-200">
+        <h4 class="text-sm font-semibold mb-4">Novo Lançamento</h4>
+
+        <Alert v-if="createLancamentoError" variant="error" title="Erro ao criar">
+          {{ createLancamentoError }}
+        </Alert>
+
+        <div class="form-grid">
+          <label class="form-field">
+            <span class="form-field__label">Contrato <span class="form-field__required">*</span></span>
+            <input
+              v-model="createLancamentoForm.contratoId"
+              type="text"
+              class="form-field__input"
+              :class="{ 'form-field__input--error': createLancamentoErrors.contratoId }"
+              placeholder="ID do contrato"
+            />
+            <span v-if="createLancamentoErrors.contratoId" class="form-field__error">
+              {{ createLancamentoErrors.contratoId }}
+            </span>
+          </label>
+
+          <label class="form-field">
+            <span class="form-field__label">Data <span class="form-field__required">*</span></span>
+            <input
+              v-model="createLancamentoForm.data"
+              type="date"
+              class="form-field__input"
+              :class="{ 'form-field__input--error': createLancamentoErrors.data }"
+            />
+            <span v-if="createLancamentoErrors.data" class="form-field__error">
+              {{ createLancamentoErrors.data }}
+            </span>
+          </label>
+
+          <label class="form-field">
+            <span class="form-field__label">Origem <span class="form-field__required">*</span></span>
+            <input
+              v-model="createLancamentoForm.origem"
+              type="text"
+              class="form-field__input"
+              :class="{ 'form-field__input--error': createLancamentoErrors.origem }"
+              placeholder="Ex.: Manual, Automático"
+            />
+            <span v-if="createLancamentoErrors.origem" class="form-field__error">
+              {{ createLancamentoErrors.origem }}
+            </span>
+          </label>
+
+          <label class="form-field">
+            <span class="form-field__label">Valor <span class="form-field__required">*</span></span>
+            <input
+              v-model="createLancamentoForm.valorDecimal"
+              type="number"
+              class="form-field__input"
+              :class="{ 'form-field__input--error': createLancamentoErrors.valorDecimal }"
+              placeholder="0.00"
+              step="0.01"
+            />
+            <span v-if="createLancamentoErrors.valorDecimal" class="form-field__error">
+              {{ createLancamentoErrors.valorDecimal }}
+            </span>
+          </label>
+
+          <label class="form-field">
+            <span class="form-field__label">Moeda</span>
+            <select v-model="createLancamentoForm.moeda" class="form-field__input">
+              <option :value="Moeda.Brl">BRL</option>
+              <option :value="Moeda.Usd">USD</option>
+              <option :value="Moeda.Eur">EUR</option>
+            </select>
+          </label>
+
+          <label class="form-field form-field--full">
+            <span class="form-field__label">Descrição</span>
+            <input
+              v-model="createLancamentoForm.descricao"
+              type="text"
+              class="form-field__input"
+              placeholder="Descrição do lançamento"
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <template #footer>
+      <Button variant="ghost" size="md" @click="showLancamentosModal = false">Fechar</Button>
+      <Button
+        v-if="!isLoadingLancamentos"
+        variant="primary"
+        size="md"
+        :loading="isCreatingLancamento"
+        @click="() => void submitCreateLancamento()"
+      >
+        Criar Lançamento
+      </Button>
+    </template>
+  </Modal>
 </template>
 
 <style scoped>
@@ -548,5 +795,36 @@ async function submitEdit(): Promise<void> {
 .form-field__error {
   font-size: 0.75rem;
   color: var(--color-error, #ef4444);
+}
+
+.lancamentos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.lancamento-item {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 6px;
+  background: var(--color-surface, #f9fafb);
+}
+
+.lancamento-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.lancamento-label {
+  font-weight: 500;
+  color: var(--color-text-secondary, #6b7280);
+}
+
+.lancamento-value {
+  color: var(--color-text-primary, #111827);
 }
 </style>
