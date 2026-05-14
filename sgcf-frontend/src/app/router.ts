@@ -33,6 +33,8 @@ const routes: RouteRecordRaw[] = [
       { path: 'simulador/antecipacao-portfolio', component: () => import('../features/simulador/pages/AntecipacaoPortfolioPage.vue'), meta: { policy: 'Executivo', title: 'Antecipação de Portfólio' } },
       { path: 'plano-contas', component: () => import('../features/plano-contas/pages/PlanoContasListPage.vue'), meta: { title: 'Plano de Contas' } },
       { path: 'parametros-cotacao', component: () => import('../features/parametros-cotacao/pages/ParametrosListPage.vue'), meta: { title: 'Parâmetros de Cotação' } },
+      { path: 'feriados', component: () => import('../features/feriados/pages/FeriadosListPage.vue'), meta: { title: 'Feriados' } },
+      { path: 'auditoria', component: () => import('../features/auditoria/pages/AuditoriaPage.vue'), meta: { title: 'Auditoria' } },
     ],
   },
   { path: '/403', component: () => import('../layouts/ForbiddenPage.vue') },
