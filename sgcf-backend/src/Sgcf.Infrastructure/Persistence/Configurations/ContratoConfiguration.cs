@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sgcf.Domain.Contratos;
 
 namespace Sgcf.Infrastructure.Persistence.Configurations;
@@ -83,6 +84,47 @@ internal sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
         builder.Property(c => c.Observacoes)
             .HasColumnName("observacoes")
             .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(c => c.Periodicidade)
+            .HasColumnName("periodicidade")
+            .HasConversion(new ValueConverter<Periodicidade, short>(v => (short)v, v => (Periodicidade)v))
+            .HasColumnType("smallint")
+            .IsRequired();
+
+        builder.Property(c => c.EstruturaAmortizacao)
+            .HasColumnName("estrutura_amortizacao")
+            .HasConversion(new ValueConverter<EstruturaAmortizacao, short>(v => (short)v, v => (EstruturaAmortizacao)v))
+            .HasColumnType("smallint")
+            .IsRequired();
+
+        builder.Property(c => c.DataPrimeiroVencimento)
+            .HasColumnName("data_primeiro_vencimento")
+            .HasColumnType("date")
+            .IsRequired();
+
+        builder.Property(c => c.QuantidadeParcelas)
+            .HasColumnName("quantidade_parcelas")
+            .HasColumnType("int")
+            .IsRequired();
+
+        builder.Property(c => c.AnchorDiaMes)
+            .HasColumnName("anchor_dia_mes")
+            .HasConversion(new ValueConverter<AnchorDiaMes, short>(v => (short)v, v => (AnchorDiaMes)v))
+            .HasColumnType("smallint")
+            .IsRequired();
+
+        builder.Property(c => c.AnchorDiaFixo)
+            .HasColumnName("anchor_dia_fixo")
+            .HasColumnType("int")
+            .IsRequired(false);
+
+        builder.Property(c => c.PeriodicidadeJuros)
+            .HasColumnName("periodicidade_juros")
+            .HasConversion(new ValueConverter<Periodicidade?, short?>(
+                v => v.HasValue ? (short)v.Value : (short?)null,
+                v => v.HasValue ? (Periodicidade)v.Value : (Periodicidade?)null))
+            .HasColumnType("smallint")
             .IsRequired(false);
 
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();

@@ -10,6 +10,12 @@
     <RootNamespace>Sgcf.Infrastructure</RootNamespace>
   </PropertyGroup>
 
+  <!-- Auto-generated EF migration files violate style rules that are valid in hand-written code.
+       These rules (IDE0161, CA1861) are suppressed project-wide; they only occur in generated files. -->
+  <PropertyGroup>
+    <NoWarn>$(NoWarn);IDE0161;CA1861</NoWarn>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\Sgcf.Domain\Sgcf.Domain.csproj" />
     <ProjectReference Include="..\Sgcf.Application\Sgcf.Application.csproj" />

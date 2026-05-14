@@ -156,17 +156,17 @@ public sealed class CreateContratoCommandHandler(IContratoRepository repo, ICloc
         }
 
         Contrato contrato = Contrato.Criar(
-            cmd.NumeroExterno,
-            cmd.BancoId,
-            modalidade,
-            valorPrincipal,
-            dataContratacao,
-            dataVencimento,
-            taxaAa,
-            baseCalculo,
-            clock,
-            cmd.ContratoPaiId,
-            cmd.Observacoes);
+            numeroExterno: cmd.NumeroExterno,
+            bancoId: cmd.BancoId,
+            modalidade: modalidade,
+            valorPrincipal: valorPrincipal,
+            dataContratacao: dataContratacao,
+            dataVencimento: dataVencimento,
+            taxaAa: taxaAa,
+            baseCalculo: baseCalculo,
+            clock: clock,
+            contratoPaiId: cmd.ContratoPaiId,
+            observacoes: cmd.Observacoes);
 
         int count = await repo.CountByAnoAsync(dataContratacao.Year, cancellationToken);
         string codigoInterno = $"FIN-{dataContratacao.Year}-{count + 1:D4}";
