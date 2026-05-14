@@ -1,0 +1,37 @@
+meta {
+  name: Tabela Completa
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}/tabela-completa?formato=json
+  body: none
+  auth: bearer
+}
+
+params:query {
+  formato: json
+  ~dataReferencia:
+  ~cotacao:
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Demonstrativo financeiro completo do contrato.
+  Política: Leitura
+
+  Parâmetros:
+  - dataReferencia (YYYY-MM-DD): data base para cálculo
+  - cotacao (decimal): sobrescreve PTAX
+  - formato: json (padrão) | pdf | xlsx
+
+  Exportações PDF/XLSX são registradas no log de auditoria.
+}

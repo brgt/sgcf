@@ -18,6 +18,26 @@ internal sealed class PlanoContasRepository(SgcfDbContext context) : IPlanoConta
         return list.AsReadOnly();
     }
 
+    public async Task<IReadOnlyList<PlanoContasGerencial>> ListFilteredAsync(string? search, bool? ativo, CancellationToken cancellationToken)
+    {
+        IQueryable<PlanoContasGerencial> q = context.Set<PlanoContasGerencial>().AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            string pattern = $"%{search.Trim()}%";
+            q = q.Where(p => EF.Functions.ILike(p.CodigoGerencial, pattern)
+                          || EF.Functions.ILike(p.Nome, pattern));
+        }
+
+        if (ativo.HasValue)
+        {
+            q = q.Where(p => p.Ativo == ativo.Value);
+        }
+
+        List<PlanoContasGerencial> list = await q.OrderBy(p => p.CodigoGerencial).ToListAsync(cancellationToken);
+        return list.AsReadOnly();
+    }
+
     public void Add(PlanoContasGerencial conta) => context.Set<PlanoContasGerencial>().Add(conta);
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken) => context.SaveChangesAsync(cancellationToken);

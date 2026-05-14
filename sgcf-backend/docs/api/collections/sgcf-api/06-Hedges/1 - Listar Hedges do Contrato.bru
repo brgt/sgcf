@@ -1,0 +1,30 @@
+meta {
+  name: Listar Hedges do Contrato
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}/hedges
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+script:post-response {
+  if (res.status === 200 && res.body && res.body.length > 0) {
+    bru.setEnvVar("hedgeId", res.body[0].id);
+  }
+}
+
+docs {
+  Lista hedges vinculados ao contrato.
+  Política: Leitura
+}

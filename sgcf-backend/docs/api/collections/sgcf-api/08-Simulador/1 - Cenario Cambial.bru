@@ -1,0 +1,40 @@
+meta {
+  name: Cenario Cambial
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/simulador/cenario-cambial
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "deltaUsdPct": -5.0,
+    "deltaEurPct": 0.0,
+    "deltaJpyPct": 0.0,
+    "deltaCnyPct": 0.0
+  }
+}
+
+docs {
+  Simula impacto na dívida consolidada com choques nas taxas de câmbio.
+  Política: Executivo
+
+  Retorna 4 cenários:
+  - Personalizado (com os deltas informados)
+  - Pessimista (+10% todas as moedas)
+  - Base (0%)
+  - Otimista (-10% todas as moedas)
+}

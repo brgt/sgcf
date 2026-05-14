@@ -99,6 +99,7 @@ public sealed class GerarCronogramaCommandHandler(
             entities = contrato.Modalidade switch
             {
                 ModalidadeContrato.Finimp => GerarEntidadesBullet(cmd, contrato),
+                ModalidadeContrato.Refinimp => GerarEntidadesBullet(cmd, contrato),
                 ModalidadeContrato.Nce => GerarEntidadesBullet(cmd, contrato),
                 ModalidadeContrato.Lei4131 => GerarEntidadesSac(cmd, contrato),
                 ModalidadeContrato.BalcaoCaixa => throw new ArgumentException(

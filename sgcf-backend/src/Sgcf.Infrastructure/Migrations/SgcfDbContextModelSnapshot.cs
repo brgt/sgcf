@@ -24,6 +24,178 @@ namespace Sgcf.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sgcf.Domain.Alertas.AlertaExposicaoBanco", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BancoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("banco_id");
+
+                    b.Property<Instant>("CriadoEm")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("criado_em");
+
+                    b.Property<LocalDate>("DataAlerta")
+                        .HasColumnType("date")
+                        .HasColumnName("data_alerta");
+
+                    b.Property<decimal>("ExposicaoBrlDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("exposicao_brl");
+
+                    b.Property<decimal>("LimiteBrlDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("limite_brl");
+
+                    b.Property<decimal>("PercentualOcupacao")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("percentual_ocupacao");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BancoId", "DataAlerta")
+                        .IsUnique()
+                        .HasDatabaseName("UX_alerta_exposicao_banco_banco_data");
+
+                    b.ToTable("alerta_exposicao_banco", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Alertas.AlertaVencimento", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContratoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contrato_id");
+
+                    b.Property<Instant>("CriadoEm")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("criado_em");
+
+                    b.Property<LocalDate>("DataAlerta")
+                        .HasColumnType("date")
+                        .HasColumnName("data_alerta");
+
+                    b.Property<LocalDate>("DataVencimento")
+                        .HasColumnType("date")
+                        .HasColumnName("data_vencimento");
+
+                    b.Property<string>("Moeda")
+                        .IsRequired()
+                        .HasColumnType("char(3)")
+                        .HasColumnName("moeda");
+
+                    b.Property<string>("TipoAlerta")
+                        .IsRequired()
+                        .HasColumnType("varchar(20)")
+                        .HasColumnName("tipo_alerta");
+
+                    b.Property<decimal>("ValorDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContratoId", "TipoAlerta", "DataVencimento")
+                        .IsUnique()
+                        .HasDatabaseName("UX_alerta_vencimento_contrato_tipo_data");
+
+                    b.ToTable("alerta_vencimento", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Antecipacao.SimulacaoAntecipacao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ComponentesCustoJson")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("componentes_custo");
+
+                    b.Property<Guid>("ContratoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contrato_id");
+
+                    b.Property<decimal?>("CotacaoAplicada")
+                        .HasColumnType("numeric(12,6)")
+                        .HasColumnName("cotacao_aplicada");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<LocalDate>("DataEfetivaProposta")
+                        .HasColumnType("date")
+                        .HasColumnName("data_efetiva_proposta");
+
+                    b.Property<Instant>("DataSimulacao")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("data_simulacao");
+
+                    b.Property<decimal?>("EconomiaEstimadaBrlValor")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("economia_estimada_brl");
+
+                    b.Property<string>("ObservacoesBanco")
+                        .HasColumnType("text")
+                        .HasColumnName("observacoes_banco");
+
+                    b.Property<short>("PadraoAplicado")
+                        .HasColumnType("smallint")
+                        .HasColumnName("padrao_aplicado");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("source");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("status");
+
+                    b.Property<decimal?>("TaxaMercadoAtualAa")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("taxa_mercado_atual_aa");
+
+                    b.Property<short>("TipoAntecipacao")
+                        .HasColumnType("smallint")
+                        .HasColumnName("tipo_antecipacao");
+
+                    b.Property<short>("ValorPrincipalAQuitarMoedaId")
+                        .HasColumnType("smallint")
+                        .HasColumnName("valor_principal_a_quitar_moeda");
+
+                    b.Property<decimal>("ValorPrincipalAQuitarValor")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor_principal_a_quitar");
+
+                    b.Property<decimal>("ValorTotalSimuladoBrlValor")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor_total_simulado_brl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContratoId", "DataSimulacao")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("idx_simulacao_contrato");
+
+                    b.ToTable("simulacao_antecipacao", "sgcf");
+                });
+
             modelBuilder.Entity("Sgcf.Domain.Bancos.Banco", b =>
                 {
                     b.Property<Guid>("Id")
@@ -85,6 +257,10 @@ namespace Sgcf.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("exige_parcela_inteira");
 
+                    b.Property<decimal?>("LimiteCreditoBrlDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("limite_credito_brl");
+
                     b.Property<string>("ObservacoesAntecipacao")
                         .HasColumnType("text")
                         .HasColumnName("observacoes_antecipacao");
@@ -120,6 +296,52 @@ namespace Sgcf.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("banco_config", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contabilidade.LancamentoContabil", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContratoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("contrato_id");
+
+                    b.Property<Instant>("CriadoEm")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("criado_em");
+
+                    b.Property<LocalDate>("Data")
+                        .HasColumnType("date")
+                        .HasColumnName("data");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("descricao");
+
+                    b.Property<string>("MoedaContrato")
+                        .IsRequired()
+                        .HasColumnType("char(3)")
+                        .HasColumnName("moeda_contrato");
+
+                    b.Property<string>("Origem")
+                        .IsRequired()
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("origem");
+
+                    b.Property<decimal>("ValorDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContratoId", "Data", "Origem")
+                        .IsUnique()
+                        .HasDatabaseName("UX_lancamento_contabil_contrato_data_origem");
+
+                    b.ToTable("lancamento_contabil", "sgcf");
                 });
 
             modelBuilder.Entity("Sgcf.Domain.Contabilidade.PlanoContasGerencial", b =>
@@ -719,18 +941,34 @@ namespace Sgcf.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("contrato_id");
 
-                    b.Property<LocalDate?>("DataVigenciaFim")
-                        .HasColumnType("date")
-                        .HasColumnName("data_vigencia_fim");
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
 
-                    b.Property<LocalDate>("DataVigenciaIni")
-                        .HasColumnType("date")
-                        .HasColumnName("data_vigencia_ini");
-
-                    b.Property<string>("Moeda")
+                    b.Property<string>("CreatedBy")
                         .IsRequired()
-                        .HasColumnType("char(3)")
-                        .HasColumnName("moeda");
+                        .HasColumnType("text")
+                        .HasColumnName("created_by");
+
+                    b.Property<LocalDate>("DataConstituicao")
+                        .HasColumnType("date")
+                        .HasColumnName("data_constituicao");
+
+                    b.Property<LocalDate?>("DataLiberacaoEfetiva")
+                        .HasColumnType("date")
+                        .HasColumnName("data_liberacao_efetiva");
+
+                    b.Property<LocalDate?>("DataLiberacaoPrevista")
+                        .HasColumnType("date")
+                        .HasColumnName("data_liberacao_prevista");
+
+                    b.Property<string>("Observacoes")
+                        .HasColumnType("text")
+                        .HasColumnName("observacoes");
+
+                    b.Property<decimal?>("PercentualPrincipalDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("percentual_principal");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -742,16 +980,367 @@ namespace Sgcf.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("tipo");
 
-                    b.Property<decimal>("ValorDecimal")
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.Property<decimal>("ValorBrlDecimal")
                         .HasColumnType("numeric(20,6)")
-                        .HasColumnName("valor");
+                        .HasColumnName("valor_brl");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ContratoId", "Tipo", "DataVigenciaIni")
-                        .IsUnique();
+                    b.HasIndex("ContratoId");
+
+                    b.HasIndex("ContratoId", "Status");
 
                     b.ToTable("garantia", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaAlienacaoFiduciariaDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CartorioRegistro")
+                        .HasColumnType("text")
+                        .HasColumnName("cartorio_registro");
+
+                    b.Property<string>("DescricaoBem")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("descricao_bem");
+
+                    b.Property<Guid>("GarantiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("garantia_id");
+
+                    b.Property<string>("MatriculaOuChassi")
+                        .HasColumnType("text")
+                        .HasColumnName("matricula_ou_chassi");
+
+                    b.Property<string>("TipoBem")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tipo_bem");
+
+                    b.Property<decimal>("ValorAvaliadoDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor_avaliado");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarantiaId")
+                        .IsUnique();
+
+                    b.ToTable("garantia_alienacao_fiduciaria_detail", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaAvalDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AvalistaDocumento")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("avalista_documento");
+
+                    b.Property<string>("AvalistaNome")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("avalista_nome");
+
+                    b.Property<string>("AvalistaTipo")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("avalista_tipo");
+
+                    b.Property<Guid>("GarantiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("garantia_id");
+
+                    b.Property<decimal>("ValorAvalDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor_aval");
+
+                    b.Property<LocalDate?>("VigenciaAte")
+                        .HasColumnType("date")
+                        .HasColumnName("vigencia_ate");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarantiaId")
+                        .IsUnique();
+
+                    b.ToTable("garantia_aval_detail", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaBoletoBancarioDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BancoEmissor")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("banco_emissor");
+
+                    b.Property<LocalDate>("DataEmissaoInicial")
+                        .HasColumnType("date")
+                        .HasColumnName("data_emissao_inicial");
+
+                    b.Property<LocalDate>("DataVencimentoFinal")
+                        .HasColumnType("date")
+                        .HasColumnName("data_vencimento_final");
+
+                    b.Property<LocalDate>("DataVencimentoInicial")
+                        .HasColumnType("date")
+                        .HasColumnName("data_vencimento_inicial");
+
+                    b.Property<Guid>("GarantiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("garantia_id");
+
+                    b.Property<string>("Periodicidade")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("periodicidade");
+
+                    b.Property<int>("QuantidadeBoletos")
+                        .HasColumnType("integer")
+                        .HasColumnName("quantidade_boletos");
+
+                    b.Property<decimal>("ValorUnitarioDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor_unitario");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarantiaId")
+                        .IsUnique();
+
+                    b.ToTable("garantia_boleto_bancario_detail", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaCdbCativoDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BancoCustodia")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("banco_custodia");
+
+                    b.Property<LocalDate>("DataEmissaoCdb")
+                        .HasColumnType("date")
+                        .HasColumnName("data_emissao_cdb");
+
+                    b.Property<LocalDate>("DataVencimentoCdb")
+                        .HasColumnType("date")
+                        .HasColumnName("data_vencimento_cdb");
+
+                    b.Property<Guid>("GarantiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("garantia_id");
+
+                    b.Property<string>("NumeroCdb")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("numero_cdb");
+
+                    b.Property<decimal?>("PercentualCdiDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("percentual_cdi");
+
+                    b.Property<decimal?>("RendimentoAaDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("rendimento_aa");
+
+                    b.Property<decimal?>("TaxaIrrfAplicacaoDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("taxa_irrf_aplicacao");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarantiaId")
+                        .IsUnique();
+
+                    b.ToTable("garantia_cdb_cativo_detail", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaDuplicatasDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("GarantiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("garantia_id");
+
+                    b.Property<LocalDate?>("InstrumentoCessaoData")
+                        .HasColumnType("date")
+                        .HasColumnName("instrumento_cessao_data");
+
+                    b.Property<decimal>("PercentualDescontoDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("percentual_desconto");
+
+                    b.Property<int>("QtdDuplicatasCedidas")
+                        .HasColumnType("integer")
+                        .HasColumnName("qtd_duplicatas_cedidas");
+
+                    b.Property<decimal>("ValorTotalDuplicatasDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor_total_duplicatas");
+
+                    b.Property<LocalDate>("VencimentoEscalonadoFim")
+                        .HasColumnType("date")
+                        .HasColumnName("vencimento_escalonado_fim");
+
+                    b.Property<LocalDate>("VencimentoEscalonadoInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("vencimento_escalonado_inicio");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarantiaId")
+                        .IsUnique();
+
+                    b.ToTable("garantia_duplicatas_detail", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaFgiDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BancoIntermediario")
+                        .HasColumnType("text")
+                        .HasColumnName("banco_intermediario");
+
+                    b.Property<string>("CodigoOperacaoBndes")
+                        .HasColumnType("text")
+                        .HasColumnName("codigo_operacao_bndes");
+
+                    b.Property<Guid>("GarantiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("garantia_id");
+
+                    b.Property<decimal>("PercentualCoberturaDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("percentual_cobertura");
+
+                    b.Property<decimal?>("TaxaFgiAaDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("taxa_fgi_aa");
+
+                    b.Property<string>("TipoFgi")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tipo_fgi");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarantiaId")
+                        .IsUnique();
+
+                    b.ToTable("garantia_fgi_detail", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaRecebiveisCartaoDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("GarantiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("garantia_id");
+
+                    b.Property<string>("OperadoraCartao")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("operadora_cartao");
+
+                    b.Property<decimal>("PercentualFaturamentoComprometidoDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("percentual_faturamento_comprometido");
+
+                    b.Property<int>("PrazoRecebimentoDias")
+                        .HasColumnType("integer")
+                        .HasColumnName("prazo_recebimento_dias");
+
+                    b.Property<string>("TermoCessaoUrl")
+                        .HasColumnType("text")
+                        .HasColumnName("termo_cessao_url");
+
+                    b.Property<string>("TipoRecebivel")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("tipo_recebivel");
+
+                    b.Property<decimal?>("ValorMedioMensalReferenciaDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor_medio_mensal_referencia");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarantiaId")
+                        .IsUnique();
+
+                    b.ToTable("garantia_recebiveis_cartao_detail", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaSblcDetail", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BancoEmissor")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("banco_emissor");
+
+                    b.Property<decimal?>("ComissaoAaDecimal")
+                        .HasColumnType("numeric(10,6)")
+                        .HasColumnName("comissao_aa");
+
+                    b.Property<Guid>("GarantiaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("garantia_id");
+
+                    b.Property<string>("NumeroSblc")
+                        .HasColumnType("text")
+                        .HasColumnName("numero_sblc");
+
+                    b.Property<string>("PaisEmissor")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("pais_emissor");
+
+                    b.Property<string>("SwiftCode")
+                        .HasColumnType("text")
+                        .HasColumnName("swift_code");
+
+                    b.Property<int>("ValidadeDias")
+                        .HasColumnType("integer")
+                        .HasColumnName("validade_dias");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GarantiaId")
+                        .IsUnique();
+
+                    b.ToTable("garantia_sblc_detail", "sgcf");
                 });
 
             modelBuilder.Entity("Sgcf.Domain.Contratos.Lei4131Detail", b =>
@@ -1182,13 +1771,17 @@ namespace Sgcf.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<Guid>("HedgeId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("hedge_id");
+                    b.Property<Instant>("CalculadoEm")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("calculado_em");
 
                     b.Property<Guid>("ContratoId")
                         .HasColumnType("uuid")
                         .HasColumnName("contrato_id");
+
+                    b.Property<Guid>("HedgeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hedge_id");
 
                     b.Property<decimal>("MtmBrlDecimal")
                         .HasColumnType("numeric(20,6)")
@@ -1197,10 +1790,6 @@ namespace Sgcf.Infrastructure.Migrations
                     b.Property<decimal>("SpotUtilizadoDecimal")
                         .HasColumnType("numeric(20,6)")
                         .HasColumnName("spot_utilizado");
-
-                    b.Property<Instant>("CalculadoEm")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("calculado_em");
 
                     b.Property<string>("TipoCotacao")
                         .IsRequired()
@@ -1214,11 +1803,158 @@ namespace Sgcf.Infrastructure.Migrations
                     b.ToTable("posicao_snapshot", "sgcf");
                 });
 
+            modelBuilder.Entity("Sgcf.Domain.Painel.EbitdaMensal", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Ano")
+                        .HasColumnType("integer")
+                        .HasColumnName("ano");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("varchar(200)")
+                        .HasColumnName("created_by");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer")
+                        .HasColumnName("mes");
+
+                    b.Property<decimal>("ValorBrlDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("valor_brl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ano", "Mes")
+                        .IsUnique()
+                        .HasDatabaseName("UX_ebitda_mensal_ano_mes");
+
+                    b.ToTable("ebitda_mensal", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Painel.SnapshotMensalPosicao", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Ano")
+                        .HasColumnType("integer")
+                        .HasColumnName("ano");
+
+                    b.Property<Instant>("CriadoEm")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("criado_em");
+
+                    b.Property<int>("Mes")
+                        .HasColumnType("integer")
+                        .HasColumnName("mes");
+
+                    b.Property<decimal>("SaldoPrincipalBrlDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("saldo_principal_brl");
+
+                    b.Property<int>("TotalContratosAtivos")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_contratos_ativos");
+
+                    b.Property<decimal>("TotalParcelasAbertasBrlDecimal")
+                        .HasColumnType("numeric(20,6)")
+                        .HasColumnName("total_parcelas_abertas_brl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Ano", "Mes")
+                        .IsUnique()
+                        .HasDatabaseName("UX_snapshot_mensal_posicao_ano_mes");
+
+                    b.ToTable("snapshot_mensal_posicao", "sgcf");
+                });
+
             modelBuilder.Entity("Sgcf.Domain.Contratos.Garantia", b =>
                 {
                     b.HasOne("Sgcf.Domain.Contratos.Contrato", null)
                         .WithMany("Garantias")
                         .HasForeignKey("ContratoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaAlienacaoFiduciariaDetail", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Contratos.Garantia", null)
+                        .WithOne()
+                        .HasForeignKey("Sgcf.Domain.Contratos.GarantiaAlienacaoFiduciariaDetail", "GarantiaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaAvalDetail", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Contratos.Garantia", null)
+                        .WithOne()
+                        .HasForeignKey("Sgcf.Domain.Contratos.GarantiaAvalDetail", "GarantiaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaBoletoBancarioDetail", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Contratos.Garantia", null)
+                        .WithOne()
+                        .HasForeignKey("Sgcf.Domain.Contratos.GarantiaBoletoBancarioDetail", "GarantiaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaCdbCativoDetail", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Contratos.Garantia", null)
+                        .WithOne()
+                        .HasForeignKey("Sgcf.Domain.Contratos.GarantiaCdbCativoDetail", "GarantiaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaDuplicatasDetail", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Contratos.Garantia", null)
+                        .WithOne()
+                        .HasForeignKey("Sgcf.Domain.Contratos.GarantiaDuplicatasDetail", "GarantiaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaFgiDetail", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Contratos.Garantia", null)
+                        .WithOne()
+                        .HasForeignKey("Sgcf.Domain.Contratos.GarantiaFgiDetail", "GarantiaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaRecebiveisCartaoDetail", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Contratos.Garantia", null)
+                        .WithOne()
+                        .HasForeignKey("Sgcf.Domain.Contratos.GarantiaRecebiveisCartaoDetail", "GarantiaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Contratos.GarantiaSblcDetail", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Contratos.Garantia", null)
+                        .WithOne()
+                        .HasForeignKey("Sgcf.Domain.Contratos.GarantiaSblcDetail", "GarantiaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1248,96 +1984,6 @@ namespace Sgcf.Infrastructure.Migrations
                     b.Navigation("Garantias");
 
                     b.Navigation("Parcelas");
-                });
-
-            modelBuilder.Entity("Sgcf.Domain.Antecipacao.SimulacaoAntecipacao", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("ContratoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("contrato_id");
-
-                    b.Property<short>("TipoAntecipacao")
-                        .HasColumnType("smallint")
-                        .HasColumnName("tipo_antecipacao");
-
-                    b.Property<Instant>("DataSimulacao")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("data_simulacao");
-
-                    b.Property<LocalDate>("DataEfetivaProposta")
-                        .HasColumnType("date")
-                        .HasColumnName("data_efetiva_proposta");
-
-                    b.Property<decimal>("ValorPrincipalAQuitarValor")
-                        .HasColumnType("numeric(20,6)")
-                        .HasColumnName("valor_principal_a_quitar");
-
-                    b.Property<short>("ValorPrincipalAQuitarMoedaId")
-                        .HasColumnType("smallint")
-                        .HasColumnName("valor_principal_a_quitar_moeda");
-
-                    b.Property<decimal>("ValorTotalSimuladoBrlValor")
-                        .HasColumnType("numeric(20,6)")
-                        .HasColumnName("valor_total_simulado_brl");
-
-                    b.Property<decimal?>("CotacaoAplicada")
-                        .HasColumnType("numeric(12,6)")
-                        .HasColumnName("cotacao_aplicada");
-
-                    b.Property<decimal?>("TaxaMercadoAtualAa")
-                        .HasColumnType("numeric(10,6)")
-                        .HasColumnName("taxa_mercado_atual_aa");
-
-                    b.Property<short>("PadraoAplicado")
-                        .HasColumnType("smallint")
-                        .HasColumnName("padrao_aplicado");
-
-                    b.Property<string>("ComponentesCustoJson")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("componentes_custo");
-
-                    b.Property<decimal?>("EconomiaEstimadaBrlValor")
-                        .HasColumnType("numeric(20,6)")
-                        .HasColumnName("economia_estimada_brl");
-
-                    b.Property<string>("ObservacoesBanco")
-                        .HasColumnType("text")
-                        .HasColumnName("observacoes_banco");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text")
-                        .HasDefaultValue("SIMULADA")
-                        .HasColumnName("status");
-
-                    b.Property<string>("CreatedBy")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("created_by");
-
-                    b.Property<string>("Source")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("source");
-
-                    b.Property<Instant>("CreatedAt")
-                        .HasColumnType("timestamptz")
-                        .HasColumnName("created_at");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ContratoId", "DataSimulacao")
-                        .HasDatabaseName("idx_simulacao_contrato")
-                        .IsDescending(false, true);
-
-                    b.ToTable("simulacao_antecipacao", "sgcf");
                 });
 #pragma warning restore 612, 618
         }

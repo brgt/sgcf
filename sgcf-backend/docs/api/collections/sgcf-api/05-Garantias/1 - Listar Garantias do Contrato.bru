@@ -1,0 +1,30 @@
+meta {
+  name: Listar Garantias do Contrato
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://localhost:5000/api/v1/contratos/019e21cc-1000-7c20-ac4f-e813f9c89d2d/garantias
+  body: none
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  if (res.status === 200 && res.body && res.body.length > 0) {
+    bru.setEnvVar("garantiaId", res.body[0].id);
+  }
+}
+
+docs {
+  Lista garantias vinculadas ao contrato.
+  Política: Leitura
+}

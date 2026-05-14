@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sgcf.Application.Authorization;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Commands;
 using Sgcf.Application.Cotacoes.Queries;
@@ -13,6 +15,7 @@ namespace Sgcf.Api.Controllers;
 public sealed class ParametrosCotacaoController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<IReadOnlyList<ParametroCotacaoDto>>(StatusCodes.Status200OK)]
     public async Task<IActionResult> ListAll(CancellationToken ct)
     {
@@ -21,6 +24,7 @@ public sealed class ParametrosCotacaoController(IMediator mediator) : Controller
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<ParametroCotacaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
@@ -37,6 +41,7 @@ public sealed class ParametrosCotacaoController(IMediator mediator) : Controller
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.Admin)]
     [ProducesResponseType<ParametroCotacaoDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateParametroCommand command, CancellationToken ct)
@@ -46,6 +51,7 @@ public sealed class ParametrosCotacaoController(IMediator mediator) : Controller
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = Policies.Admin)]
     [ProducesResponseType<ParametroCotacaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -64,6 +70,7 @@ public sealed class ParametrosCotacaoController(IMediator mediator) : Controller
     }
 
     [HttpGet("resolve")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<ResolveTipoCotacaoResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Resolve(

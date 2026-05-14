@@ -1,0 +1,31 @@
+meta {
+  name: Divida Consolidada
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/painel/divida
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ~bancoId:
+  ~modalidade:
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Dívida bruta e líquida consolidada de toda a carteira, com breakdown por moeda e ajuste MTM dos hedges.
+  Política: Leitura
+
+  Filtros opcionais: bancoId, modalidade
+}

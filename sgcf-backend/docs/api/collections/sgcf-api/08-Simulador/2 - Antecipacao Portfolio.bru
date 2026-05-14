@@ -1,0 +1,34 @@
+meta {
+  name: Antecipacao Portfolio
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/simulador/antecipacao-portfolio
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "caixaDisponivelBrl": 5000000.00,
+    "taxaCdiAa": 13.75
+  }
+}
+
+docs {
+  Dado um caixa disponível, ranqueia os contratos com maior economia líquida em caso de liquidação antecipada.
+  Política: Executivo
+
+  Retorna top 5 contratos. Contratos com custo abaixo do CDI são marcados como "Manter".
+}

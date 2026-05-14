@@ -36,6 +36,15 @@ public sealed class Banco : Entity
 
     public string? ObservacoesAntecipacao { get; private set; }
 
+    internal decimal? LimiteCreditoBrlDecimal { get; private set; }
+
+    /// <summary>
+    /// Limite de crédito em BRL para cálculo de exposição.
+    /// Nulo quando não configurado (sem monitoramento de exposição para este banco).
+    /// </summary>
+    public Money? LimiteCreditoBrl =>
+        LimiteCreditoBrlDecimal.HasValue ? new(LimiteCreditoBrlDecimal.Value, Moeda.Brl) : null;
+
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
 
@@ -81,6 +90,23 @@ public sealed class Banco : Entity
     public void AtualizarAceitaRefinimp(bool aceitaRefinimp, IClock clock)
     {
         AceitaRefinimp = aceitaRefinimp;
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Atualiza o limite de crédito em BRL para este banco.
+    /// Passe <c>null</c> para desabilitar o monitoramento de exposição.
+    /// </summary>
+    public void AtualizarLimiteCredito(decimal? limiteBrl, IClock clock)
+    {
+        if (limiteBrl.HasValue && limiteBrl.Value <= 0)
+        {
+            throw new ArgumentException("LimiteCreditoBrl deve ser positivo quando informado.", nameof(limiteBrl));
+        }
+
+        LimiteCreditoBrlDecimal = limiteBrl.HasValue
+            ? Math.Round(limiteBrl.Value, 6, MidpointRounding.AwayFromZero)
+            : (decimal?)null;
         UpdatedAt = clock.GetCurrentInstant();
     }
 

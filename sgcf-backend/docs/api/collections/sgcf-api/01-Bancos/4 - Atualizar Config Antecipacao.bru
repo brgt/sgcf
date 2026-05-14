@@ -1,0 +1,41 @@
+meta {
+  name: Atualizar Config Antecipacao
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/bancos/{{bancoId}}/config-antecipacao
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "aceitaLiquidacaoTotal": true,
+    "aceitaLiquidacaoParcial": true,
+    "exigeAnuenciaExpressa": false,
+    "exigeParcelaInteira": false,
+    "avisoPrevioMinDiasUteis": 3,
+    "padraoAntecipacao": "BREAKFUNDING",
+    "valorMinimoParcialPct": 10.0,
+    "breakFundingFeePct": 0.5,
+    "tlaPctSobreSaldo": null,
+    "tlaPctPorMesRemanescente": null,
+    "observacoesAntecipacao": "Atualizado via Bruno collection."
+  }
+}
+
+docs {
+  Atualiza as regras de antecipação de um banco existente.
+  Política: Admin
+}

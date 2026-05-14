@@ -1,0 +1,33 @@
+meta {
+  name: Calendario de Vencimentos
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/painel/vencimentos?ano=2026
+  body: none
+  auth: bearer
+}
+
+params:query {
+  ano: 2026
+  ~bancoId:
+  ~modalidade:
+  ~moeda:
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Calendário de vencimentos de parcelas para um ano específico, com totais mensais.
+  Política: Leitura
+
+  Parâmetro `ano` é OBRIGATÓRIO.
+}

@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sgcf.Application.Authorization;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Painel.Commands;
 using Sgcf.Application.Painel.Queries;
@@ -22,6 +24,7 @@ public sealed class PainelController(IMediator mediator) : ControllerBase
     /// Retorna o painel consolidado de dívida com breakdown por moeda, ajuste MTM e alertas.
     /// </summary>
     [HttpGet("divida")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<PainelDividaDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPainelDivida(
         [FromQuery] Guid? bancoId,
@@ -39,6 +42,7 @@ public sealed class PainelController(IMediator mediator) : ControllerBase
     /// Retorna o painel de garantias ativas com distribuição por tipo e por banco.
     /// </summary>
     [HttpGet("garantias")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<PainelGarantiasDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetPainelGarantias(CancellationToken cancellationToken)
     {
@@ -53,6 +57,7 @@ public sealed class PainelController(IMediator mediator) : ControllerBase
     /// Retorna o calendário de vencimentos de parcelas abertas para o ano informado.
     /// </summary>
     [HttpGet("vencimentos")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<CalendarioVencimentosDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetCalendarioVencimentos(
@@ -60,6 +65,7 @@ public sealed class PainelController(IMediator mediator) : ControllerBase
         [FromQuery] Guid? bancoId,
         [FromQuery] string? modalidade,
         [FromQuery] string? moeda,
+        [FromQuery] decimal? cdiAnualPct,
         CancellationToken cancellationToken)
     {
         if (!ano.HasValue)
@@ -68,7 +74,7 @@ public sealed class PainelController(IMediator mediator) : ControllerBase
         }
 
         CalendarioVencimentosDto resultado = await mediator.Send(
-            new GetCalendarioVencimentosQuery(ano.Value, bancoId, modalidade, moeda),
+            new GetCalendarioVencimentosQuery(ano.Value, bancoId, modalidade, moeda, cdiAnualPct),
             cancellationToken);
 
         return Ok(resultado);
@@ -78,6 +84,7 @@ public sealed class PainelController(IMediator mediator) : ControllerBase
     /// Retorna os KPIs executivos do dashboard (dívida, custo médio, prazo médio, share por banco).
     /// </summary>
     [HttpGet("kpis")]
+    [Authorize(Policy = Policies.Executivo)]
     [ProducesResponseType<KpiDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetKpis(CancellationToken cancellationToken)
     {
@@ -89,6 +96,7 @@ public sealed class PainelController(IMediator mediator) : ControllerBase
     /// Cadastra ou atualiza o EBITDA mensal (upsert). Requer perfil administrativo.
     /// </summary>
     [HttpPost("ebitda")]
+    [Authorize(Policy = Policies.Auditoria)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> UpsertEbitda(

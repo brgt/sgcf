@@ -1,0 +1,20 @@
+meta {
+  name: Health Check
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://127.0.0.1:5000/health
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Verifica disponibilidade da API. Não requer autenticação.
+  Resposta esperada: 200 OK { "status": "healthy" }
+}

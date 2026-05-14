@@ -94,7 +94,7 @@ public sealed class DividaTools(
         {
             decimal mid = Math.Round((ptax.ValorCompra.Valor + ptax.ValorVenda.Valor) / 2m, 6, MidpointRounding.AwayFromZero);
             string momentoStr = ptax.Momento
-                .ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+                .ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
             return JsonSerializer.Serialize(
                 new { moeda = moedaEnum.ToString(), valor_brl = mid, tipo = "PTAX_D1_FALLBACK", momento = momentoStr },
                 McpJsonOptions.Default);

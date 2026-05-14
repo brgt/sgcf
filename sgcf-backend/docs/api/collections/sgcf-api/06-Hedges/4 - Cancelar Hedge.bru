@@ -1,0 +1,24 @@
+meta {
+  name: Cancelar Hedge
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/hedges/{{hedgeId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Cancela (desativa) um hedge. Mantém histórico com status inativo.
+  Política: Gerencial
+}

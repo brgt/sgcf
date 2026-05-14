@@ -1,0 +1,47 @@
+meta {
+  name: Adicionar Garantia CDB
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}/garantias
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Idempotency-Key: {{$randomUUID}}
+}
+
+body:json {
+  {
+    "tipo": "CDB",
+    "valorBrl": 1500000.00,
+    "dataConstituicao": "2025-01-10",
+    "dataLiberacaoPrevista": "2027-01-10",
+    "observacoes": "CDB caucionado como garantia do FINIMP-2025-001",
+    "cdb": {
+      "banco": "Santander",
+      "numeroAplicacao": "CDB-887766",
+      "dataVencimentoCdb": "2027-01-10"
+    }
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("garantiaId", res.body.id);
+  }
+}
+
+docs {
+  Adiciona uma garantia do tipo CDB ao contrato.
+  Política: Escrita
+}

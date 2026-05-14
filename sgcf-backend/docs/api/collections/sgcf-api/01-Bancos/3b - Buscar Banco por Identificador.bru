@@ -1,0 +1,36 @@
+meta {
+  name: Buscar Banco por Identificador
+  type: http
+  seq: 4
+}
+
+get {
+  url: http://127.0.0.1:5000/api/v1/bancos/Itaú
+  body: none
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Busca flexível: aceita qualquer um dos identificadores abaixo.
+  Política: Leitura.
+  
+  Exemplos de URL:
+    GET /api/v1/bancos/033            → por codigoCompe (exato)
+    GET /api/v1/bancos/Santander      → por apelido (case-insensitive)
+    GET /api/v1/bancos/Banco+do       → por texto parcial em razaoSocial / apelido / codigoCompe
+  
+  Ordem de resolução:
+    1. codigoCompe exato
+    2. apelido exato (case-insensitive)
+    3. primeiro resultado do filtro ILIKE em todos os campos de texto
+  
+  Troque "Santander" na URL pelo identificador desejado antes de executar.
+}

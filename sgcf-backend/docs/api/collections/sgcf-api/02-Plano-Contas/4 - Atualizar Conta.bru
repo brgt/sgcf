@@ -1,0 +1,33 @@
+meta {
+  name: Atualizar Conta
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/plano-contas/{{planoContaId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "nome": "Despesas com IOF Câmbio - Finimp",
+    "natureza": "DEVEDORA",
+    "codigoSapB1": "6.02.01.005"
+  }
+}
+
+docs {
+  Atualiza uma conta contábil existente.
+  Política: Auditoria
+}

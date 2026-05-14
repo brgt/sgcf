@@ -1,0 +1,56 @@
+meta {
+  name: Criar Contrato LEI4131
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contratos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Idempotency-Key: {{$randomUUID}}
+}
+
+body:json {
+  {
+    "numeroExterno": "LEI4131-2025-001",
+    "bancoId": "{{bancoId}}",
+    "modalidade": "LEI4131",
+    "moeda": "USD",
+    "valorPrincipal": 3000000.00,
+    "dataContratacao": "2025-03-01",
+    "dataVencimento": "2028-03-01",
+    "taxaAa": 6.10,
+    "baseCalculo": "ACT360",
+    "observacoes": "Captação externa Lei 4.131 com SBLC",
+    "lei4131Detail": {
+      "sblcNumero": "SBLC-2025-001",
+      "sblcBancoEmissor": "JP Morgan Chase",
+      "sblcValorUsd": 3300000.00,
+      "temMarketFlex": true,
+      "breakFundingFeePercentual": 0.75
+    }
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("contratoId", res.body.id);
+  }
+}
+
+docs {
+  Cria um contrato Lei 4.131 (captação externa com SBLC).
+  Política: Escrita
+
+  O campo `lei4131Detail` é obrigatório quando modalidade=LEI4131.
+}

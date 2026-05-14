@@ -1,0 +1,45 @@
+meta {
+  name: Adicionar Hedge Forward
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}/hedges
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "tipo": "FORWARD",
+    "contraparteId": "{{bancoId}}",
+    "notionalMoedaOriginal": 1500000.00,
+    "moedaBase": "USD",
+    "dataContratacao": "2025-01-15",
+    "dataVencimento": "2027-01-10",
+    "strikeForward": 5.95
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("hedgeId", res.body.id);
+  }
+}
+
+docs {
+  Adiciona um hedge FORWARD ao contrato.
+  Política: Escrita
+
+  Para PUT use `strikePut`; para CALL use `strikeCall`.
+}

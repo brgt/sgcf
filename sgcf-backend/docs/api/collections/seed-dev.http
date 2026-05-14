@@ -1,0 +1,266 @@
+###
+# SGCF API — Seed Script (Ambiente Dev)
+#
+# Uso:
+#   - VS Code:    extensão "REST Client" (humao.rest-client)
+#   - JetBrains:  abre direto em Rider / WebStorm
+#
+# Execute os requests na ordem (clique em "Send Request" acima de cada bloco).
+# As variáveis @ são preenchidas a partir das respostas anteriores.
+#
+# Pré-requisitos:
+#   - API rodando em http://localhost:5000
+#   - Em dev, qualquer token Bearer funciona
+###
+
+@baseUrl = http://localhost:5000
+@token = dev-token
+@contentType = application/json
+
+### 0. Health Check
+GET {{baseUrl}}/health
+
+### -------------------------------------------------------------------------
+### 1. BANCOS — cadastrar os principais bancos parceiros
+### -------------------------------------------------------------------------
+
+### 1.1 Santander (Padrão A - BB FINIMP-like)
+# @name criarSantander
+POST {{baseUrl}}/api/v1/bancos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "codigoCompe": "033",
+  "razaoSocial": "Banco Santander (Brasil) S.A.",
+  "apelido": "Santander",
+  "padraoAntecipacao": "A"
+}
+
+@santanderId = {{criarSantander.response.body.id}}
+
+### 1.2 Itaú (Padrão D - TLA BACEN)
+# @name criarItau
+POST {{baseUrl}}/api/v1/bancos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "codigoCompe": "341",
+  "razaoSocial": "Itaú Unibanco S.A.",
+  "apelido": "Itaú",
+  "padraoAntecipacao": "D"
+}
+
+@itauId = {{criarItau.response.body.id}}
+
+### 1.3 Bradesco (Padrão E - Caixa prefixado)
+# @name criarBradesco
+POST {{baseUrl}}/api/v1/bancos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "codigoCompe": "237",
+  "razaoSocial": "Banco Bradesco S.A.",
+  "apelido": "Bradesco",
+  "padraoAntecipacao": "E"
+}
+
+@bradescoId = {{criarBradesco.response.body.id}}
+
+### 1.4 Banco do Brasil (Padrão A - BB FINIMP)
+# @name criarBB
+POST {{baseUrl}}/api/v1/bancos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "codigoCompe": "001",
+  "razaoSocial": "Banco do Brasil S.A.",
+  "apelido": "BB",
+  "padraoAntecipacao": "A"
+}
+
+@bbId = {{criarBB.response.body.id}}
+
+### 1.5 Sicredi (Padrão B - juros totais, sem economia)
+# @name criarSicredi
+POST {{baseUrl}}/api/v1/bancos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "codigoCompe": "748",
+  "razaoSocial": "Banco Cooperativo Sicredi S.A.",
+  "apelido": "Sicredi",
+  "padraoAntecipacao": "B"
+}
+
+@sicrediId = {{criarSicredi.response.body.id}}
+
+### 1.6 BV (Padrão C - MTM, FGI/PEAC)
+# @name criarBV
+POST {{baseUrl}}/api/v1/bancos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "codigoCompe": "655",
+  "razaoSocial": "Banco Votorantim S.A.",
+  "apelido": "BV",
+  "padraoAntecipacao": "C"
+}
+
+@bvId = {{criarBV.response.body.id}}
+
+### -------------------------------------------------------------------------
+### 2. PARÂMETROS DE COTAÇÃO — tipos de cotação base
+### -------------------------------------------------------------------------
+
+### 2.1 PTAX
+# @name criarPtax
+POST {{baseUrl}}/api/v1/parametros-cotacao
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "tipoCotacao": "PTAX",
+  "ativo": true
+}
+
+### 2.2 SPOT
+# @name criarSpot
+POST {{baseUrl}}/api/v1/parametros-cotacao
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "tipoCotacao": "SPOT",
+  "ativo": true
+}
+
+### 2.3 Cupom Cambial
+# @name criarCupom
+POST {{baseUrl}}/api/v1/parametros-cotacao
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "tipoCotacao": "CUPOM_CAMBIAL",
+  "ativo": true
+}
+
+### -------------------------------------------------------------------------
+### 3. PLANO DE CONTAS — contas contábeis básicas
+### -------------------------------------------------------------------------
+
+### 3.1 Despesas com IOF Câmbio
+# @name criarContaIof
+POST {{baseUrl}}/api/v1/plano-contas
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "nome": "Despesas com IOF Câmbio",
+  "natureza": "DEVEDORA",
+  "codigoSapB1": "6.02.01.005"
+}
+
+### 3.2 Despesas com Juros sobre Empréstimos
+# @name criarContaJuros
+POST {{baseUrl}}/api/v1/plano-contas
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "nome": "Despesas com Juros sobre Empréstimos",
+  "natureza": "DEVEDORA",
+  "codigoSapB1": "6.02.01.001"
+}
+
+### 3.3 Variação Cambial Ativa
+# @name criarContaVCAtiva
+POST {{baseUrl}}/api/v1/plano-contas
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "nome": "Variação Cambial Ativa",
+  "natureza": "CREDORA",
+  "codigoSapB1": "6.01.01.001"
+}
+
+### 3.4 Variação Cambial Passiva
+# @name criarContaVCPassiva
+POST {{baseUrl}}/api/v1/plano-contas
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "nome": "Variação Cambial Passiva",
+  "natureza": "DEVEDORA",
+  "codigoSapB1": "6.02.02.001"
+}
+
+### 3.5 Empréstimos no Exterior (Passivo)
+# @name criarContaEmprestimos
+POST {{baseUrl}}/api/v1/plano-contas
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+
+{
+  "nome": "Empréstimos e Financiamentos no Exterior",
+  "natureza": "CREDORA",
+  "codigoSapB1": "2.02.01.001"
+}
+
+### -------------------------------------------------------------------------
+### 4. VALIDAÇÃO — listar tudo que foi criado
+### -------------------------------------------------------------------------
+
+### 4.1 Listar Bancos
+GET {{baseUrl}}/api/v1/bancos
+Authorization: Bearer {{token}}
+
+### 4.2 Listar Parâmetros de Cotação
+GET {{baseUrl}}/api/v1/parametros-cotacao
+Authorization: Bearer {{token}}
+
+### 4.3 Listar Plano de Contas
+GET {{baseUrl}}/api/v1/plano-contas
+Authorization: Bearer {{token}}
+
+### -------------------------------------------------------------------------
+### 5. PRÓXIMO PASSO — criar um contrato de teste
+### -------------------------------------------------------------------------
+
+### 5.1 Criar Contrato FINIMP (usar @santanderId obtido em 1.1)
+POST {{baseUrl}}/api/v1/contratos
+Authorization: Bearer {{token}}
+Content-Type: {{contentType}}
+Idempotency-Key: 550e8400-e29b-41d4-a716-446655440001
+
+{
+  "numeroExterno": "FINIMP-2025-001",
+  "bancoId": "{{santanderId}}",
+  "modalidade": "FINIMP",
+  "moeda": "USD",
+  "valorPrincipal": 1500000.00,
+  "dataContratacao": "2025-01-10",
+  "dataVencimento": "2027-01-10",
+  "taxaAa": 5.25,
+  "baseCalculo": "ACT360",
+  "observacoes": "Importação de máquinas industriais",
+  "finimpDetail": {
+    "rofNumero": "ROF-2025-001",
+    "rofDataEmissao": "2025-01-05",
+    "exportadorNome": "Siemens AG",
+    "exportadorPais": "DE",
+    "produtoImportado": "Linha de produção automatizada",
+    "faturaReferencia": "INV-2025-SIE-001",
+    "incoterm": "CIF",
+    "breakFundingFeePercentual": 0.5,
+    "temMarketFlex": false
+  }
+}

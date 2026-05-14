@@ -1,0 +1,24 @@
+meta {
+  name: Buscar Banco por ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: http://127.0.0.1:5000/api/v1/bancos/341
+  body: none
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Retorna detalhes de um banco específico.
+  Política: Leitura
+}

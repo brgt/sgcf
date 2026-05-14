@@ -1,0 +1,58 @@
+meta {
+  name: Listar Contratos
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://127.0.0.1:5000/api/v1/contratos?page=1&pageSize=25&sort=DataVencimento&dir=asc
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 1
+  pageSize: 25
+  sort: DataVencimento
+  dir: asc
+  ~q: 
+  ~bancoId: 
+  ~modalidade: 
+  ~moeda: 
+  ~status: 
+  ~vencDe: 
+  ~vencAte: 
+  ~valorMin: 
+  ~valorMax: 
+  ~temHedge: 
+  ~temGarantia: 
+  ~temAlerta: 
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  if (res.status === 200 && res.body && res.body.items && res.body.items.length > 0) {
+    bru.setEnvVar("contratoId", res.body.items[0].id);
+  }
+}
+
+docs {
+  Lista contratos paginados com filtros.
+  Política: Leitura
+  
+  Filtros (descomente em params:query):
+  - q: busca textual (NumeroExterno, CodigoInterno)
+  - bancoId, modalidade, moeda, status
+  - vencDe, vencAte (YYYY-MM-DD)
+  - valorMin, valorMax
+  - temHedge, temGarantia, temAlerta (bool)
+  
+  Ordenação: DataVencimento | DataContratacao | ValorPrincipal | NumeroExterno
+}

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using Sgcf.Application.Alertas;
 using Sgcf.Application.Antecipacao;
 using Sgcf.Application.Auditoria;
 using Sgcf.Application.Bancos;
@@ -60,6 +61,10 @@ public static class DependencyInjection
         services.AddScoped<IHedgeRepository, HedgeRepository>();
         services.AddScoped<IEbitdaMensalRepository, EbitdaMensalRepository>();
         services.AddScoped<IExportacaoAuditLog, ExportacaoAuditLog>();
+        services.AddScoped<IAlertaVencimentoRepository, AlertaVencimentoRepository>();
+        services.AddScoped<IAlertaExposicaoBancoRepository, AlertaExposicaoBancoRepository>();
+        services.AddScoped<ISnapshotMensalPosicaoRepository, SnapshotMensalPosicaoRepository>();
+        services.AddScoped<ILancamentoContabilRepository, LancamentoContabilRepository>();
         services.AddScoped<IFeriadoRepository, FeriadoRepository>();
         services.AddScoped<IBusinessDayCalendar, BusinessDayCalendar>();
 

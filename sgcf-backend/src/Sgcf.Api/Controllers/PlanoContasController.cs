@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sgcf.Application.Authorization;
 using Sgcf.Application.Contabilidade;
 using Sgcf.Application.Contabilidade.Commands;
 using Sgcf.Application.Contabilidade.Queries;
@@ -11,14 +13,19 @@ namespace Sgcf.Api.Controllers;
 public sealed class PlanoContasController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<IReadOnlyList<PlanoContasDto>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> ListAll(CancellationToken ct)
+    public async Task<IActionResult> ListAll(
+        [FromQuery] string? search,
+        [FromQuery] bool? ativo,
+        CancellationToken ct)
     {
-        IReadOnlyList<PlanoContasDto> result = await mediator.Send(new ListContasQuery(), ct);
+        IReadOnlyList<PlanoContasDto> result = await mediator.Send(new ListContasQuery(search, ativo), ct);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<PlanoContasDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
@@ -35,6 +42,7 @@ public sealed class PlanoContasController(IMediator mediator) : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.Auditoria)]
     [ProducesResponseType<PlanoContasDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateContaCommand command, CancellationToken ct)
@@ -44,6 +52,7 @@ public sealed class PlanoContasController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = Policies.Auditoria)]
     [ProducesResponseType<PlanoContasDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

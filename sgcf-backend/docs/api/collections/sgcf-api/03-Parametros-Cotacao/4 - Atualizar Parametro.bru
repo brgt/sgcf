@@ -1,0 +1,32 @@
+meta {
+  name: Atualizar Parametro
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/parametros-cotacao/{{parametroCotacaoId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "tipoCotacao": "PTAX",
+    "ativo": false
+  }
+}
+
+docs {
+  Atualiza um parâmetro existente (ex.: desativar um tipo).
+  Política: Admin
+}

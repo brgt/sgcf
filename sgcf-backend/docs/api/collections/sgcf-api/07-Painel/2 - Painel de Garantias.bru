@@ -1,0 +1,24 @@
+meta {
+  name: Painel de Garantias
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/painel/garantias
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Visão consolidada das garantias ativas da carteira, com breakdown por tipo.
+  Política: Leitura
+}

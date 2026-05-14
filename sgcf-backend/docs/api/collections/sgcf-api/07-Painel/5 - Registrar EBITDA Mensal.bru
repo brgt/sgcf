@@ -1,0 +1,35 @@
+meta {
+  name: Registrar EBITDA Mensal
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/painel/ebitda
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "ano": 2026,
+    "mes": 3,
+    "valorBrl": 6450000.00
+  }
+}
+
+docs {
+  Cria ou atualiza o EBITDA de um mês específico.
+  Política: Auditoria (contabilidade, auditor, admin)
+
+  Usado para calcular o índice Dívida/EBITDA nos KPIs.
+}

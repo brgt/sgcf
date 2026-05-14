@@ -15,6 +15,10 @@
     <ProjectReference Include="..\Sgcf.Infrastructure\Sgcf.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup Label="Auth">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  </ItemGroup>
+
   <ItemGroup Label="API Documentation">
     <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

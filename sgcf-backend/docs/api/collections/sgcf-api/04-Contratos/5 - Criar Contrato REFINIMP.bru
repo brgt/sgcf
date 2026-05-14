@@ -1,0 +1,54 @@
+meta {
+  name: Criar Contrato REFINIMP
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contratos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Idempotency-Key: {{$randomUUID}}
+}
+
+body:json {
+  {
+    "numeroExterno": "REFINIMP-2025-001",
+    "bancoId": "{{bancoId}}",
+    "modalidade": "REFINIMP",
+    "moeda": "USD",
+    "valorPrincipal": 750000.00,
+    "dataContratacao": "2025-06-15",
+    "dataVencimento": "2026-12-15",
+    "taxaAa": 5.50,
+    "baseCalculo": "ACT360",
+    "contratoPaiId": "{{contratoId}}",
+    "observacoes": "Refinanciamento parcial 50% do FINIMP-2025-001",
+    "refinimpDetail": {
+      "contratoMaeId": "{{contratoId}}",
+      "percentualRefinanciado": 50.0
+    }
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("contratoId", res.body.id);
+  }
+}
+
+docs {
+  Cria um contrato REFINIMP (refinanciamento de FINIMP existente).
+  Política: Escrita
+
+  Tanto `contratoPaiId` (raiz) quanto `refinimpDetail.contratoMaeId` apontam para o contrato original.
+}

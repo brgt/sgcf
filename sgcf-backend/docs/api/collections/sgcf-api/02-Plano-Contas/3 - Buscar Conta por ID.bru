@@ -1,0 +1,24 @@
+meta {
+  name: Buscar Conta por ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/plano-contas/{{planoContaId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Retorna detalhes de uma conta contábil.
+  Política: Leitura
+}

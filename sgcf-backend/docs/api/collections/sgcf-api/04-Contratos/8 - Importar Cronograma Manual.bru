@@ -1,0 +1,68 @@
+meta {
+  name: Importar Cronograma Manual
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}/importar-cronograma
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  [
+    {
+      "numero": 1,
+      "dataVencimento": "2025-07-10",
+      "valorPrincipal": 250000.00,
+      "valorJuros": 31125.00
+    },
+    {
+      "numero": 2,
+      "dataVencimento": "2026-01-10",
+      "valorPrincipal": 250000.00,
+      "valorJuros": 25500.00
+    },
+    {
+      "numero": 3,
+      "dataVencimento": "2026-07-10",
+      "valorPrincipal": 250000.00,
+      "valorJuros": 18750.00
+    },
+    {
+      "numero": 4,
+      "dataVencimento": "2027-01-10",
+      "valorPrincipal": 250000.00,
+      "valorJuros": 12000.00
+    },
+    {
+      "numero": 5,
+      "dataVencimento": "2027-07-10",
+      "valorPrincipal": 250000.00,
+      "valorJuros": 5750.00
+    },
+    {
+      "numero": 6,
+      "dataVencimento": "2028-01-10",
+      "valorPrincipal": 250000.00,
+      "valorJuros": 0.00
+    }
+  ]
+}
+
+docs {
+  Substitui o cronograma calculado por um cronograma manual.
+  Política: Escrita
+
+  Use quando o cronograma do banco diverge do cálculo padrão.
+}

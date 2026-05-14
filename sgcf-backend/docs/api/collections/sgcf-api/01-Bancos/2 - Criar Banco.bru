@@ -1,0 +1,55 @@
+meta {
+  name: Criar Banco
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://127.0.0.1:5000/api/v1/bancos
+  body: json
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "codigoCompe": "033",
+    "razaoSocial": "Banco Santander (Brasil) S.A.",
+    "apelido": "Santander",
+    "padraoAntecipacao": "BREAKFUNDING",
+    "aceitaLiquidacaoTotal": true,
+    "aceitaLiquidacaoParcial": true,
+    "exigeAnuenciaExpressa": false,
+    "exigeParcelaInteira": false,
+    "avisoPrevioMinDiasUteis": 3,
+    "valorMinimoParcialPct": 10.0,
+    "breakFundingFeePct": 0.5,
+    "tlaPctSobreSaldo": null,
+    "tlaPctPorMesRemanescente": null,
+    "observacoesAntecipacao": null
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("bancoId", res.body.id);
+  }
+}
+
+docs {
+  Cria um novo banco. Salva o ID retornado em `bancoId`.
+  Política: Admin
+  
+  Modalidades de antecipação:
+  - BREAKFUNDING: cobrança via fee proporcional
+  - TLA: taxa de liquidação antecipada
+  - CUSTOM: regras negociadas
+}

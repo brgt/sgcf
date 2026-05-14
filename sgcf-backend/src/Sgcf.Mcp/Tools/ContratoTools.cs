@@ -3,6 +3,7 @@ using System.Text.Json;
 using MediatR;
 using ModelContextProtocol.Server;
 using NodaTime.Text;
+using Sgcf.Application.Common;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Contratos.Queries;
 
@@ -12,10 +13,15 @@ namespace Sgcf.Mcp.Tools;
 public sealed class ContratoTools(IMediator mediator)
 {
     [McpServerTool(Name = "list_contratos")]
-    [Description("Lista todos os contratos de financiamento cadastrados no SGCF.")]
-    public async Task<string> ListContratosAsync(CancellationToken cancellationToken)
+    [Description("Lista contratos de financiamento com suporte a filtros e paginação. Retorna uma página de resultados e o total de registros que satisfazem o filtro.")]
+    public async Task<string> ListContratosAsync(
+        [Description("Texto livre para busca em NumeroExterno e CodigoInterno (opcional).")] string? search,
+        [Description("Número da página (base 1, padrão 1).")] int page,
+        [Description("Tamanho da página, máximo 100 (padrão 25).")] int pageSize,
+        CancellationToken cancellationToken)
     {
-        IReadOnlyList<ContratoDto> result = await mediator.Send(new ListContratosQuery(), cancellationToken);
+        ContratoFilter filter = new(Search: search, Page: page <= 0 ? 1 : page, PageSize: pageSize <= 0 ? 25 : pageSize);
+        PagedResult<ContratoDto> result = await mediator.Send(new ListContratosQuery(filter), cancellationToken);
         return JsonSerializer.Serialize(result, McpJsonOptions.Default);
     }
 

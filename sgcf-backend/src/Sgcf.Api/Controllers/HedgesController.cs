@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sgcf.Application.Authorization;
 using Sgcf.Application.Hedge;
 using Sgcf.Application.Hedge.Commands;
 using Sgcf.Application.Hedge.Queries;
@@ -11,6 +13,7 @@ namespace Sgcf.Api.Controllers;
 public sealed class HedgesController(IMediator mediator) : ControllerBase
 {
     [HttpGet("{id:guid}/mtm")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<MtmResultadoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
@@ -32,6 +35,7 @@ public sealed class HedgesController(IMediator mediator) : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Policies.Gerencial)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Cancelar(Guid id, CancellationToken cancellationToken)

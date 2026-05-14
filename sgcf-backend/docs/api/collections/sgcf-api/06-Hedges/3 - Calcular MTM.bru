@@ -1,0 +1,26 @@
+meta {
+  name: Calcular MTM
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/hedges/{{hedgeId}}/mtm
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Calcula o valor presente de mercado (Mark-to-Market) do hedge.
+  Política: Leitura
+
+  Retorna o MTM em moeda original e em BRL na data de cálculo.
+}

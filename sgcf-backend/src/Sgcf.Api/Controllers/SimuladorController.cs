@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sgcf.Application.Authorization;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Painel.Queries;
 
@@ -29,6 +31,7 @@ public sealed class SimuladorController(IMediator mediator) : ControllerBase
     /// Retorna cenário customizado + pessimista (-10%), realista (0%) e otimista (+10%).
     /// </summary>
     [HttpPost("cenario-cambial")]
+    [Authorize(Policy = Policies.Executivo)]
     [ProducesResponseType<ResultadoCenarioCambialDto>(StatusCodes.Status200OK)]
     public async Task<IActionResult> SimularCenarioCambial(
         [FromBody] SimularCenarioCambialRequest body,
@@ -50,6 +53,7 @@ public sealed class SimuladorController(IMediator mediator) : ControllerBase
     /// considerando o custo de oportunidade do CDI.
     /// </summary>
     [HttpPost("antecipacao-portfolio")]
+    [Authorize(Policy = Policies.Executivo)]
     [ProducesResponseType<ResultadoAntecipacaoPortfolioDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> SimularAntecipacaoPortfolio(

@@ -79,6 +79,11 @@ internal sealed class BancoConfiguration : IEntityTypeConfiguration<Banco>
             .HasColumnType("text")
             .IsRequired(false);
 
+        builder.Property(b => b.LimiteCreditoBrlDecimal)
+            .HasColumnName("limite_credito_brl")
+            .HasColumnType("numeric(20,6)")
+            .IsRequired(false);
+
         builder.Property(b => b.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(b => b.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
@@ -86,5 +91,6 @@ internal sealed class BancoConfiguration : IEntityTypeConfiguration<Banco>
         builder.Ignore(b => b.BreakFundingFeePct);
         builder.Ignore(b => b.TlaPctSobreSaldo);
         builder.Ignore(b => b.TlaPctPorMesRemanescente);
+        builder.Ignore(b => b.LimiteCreditoBrl);
     }
 }

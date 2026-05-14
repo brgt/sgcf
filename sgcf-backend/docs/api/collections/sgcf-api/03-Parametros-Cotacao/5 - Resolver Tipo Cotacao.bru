@@ -1,0 +1,31 @@
+meta {
+  name: Resolver Tipo Cotacao
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/parametros-cotacao/resolve?bancoId={{bancoId}}&modalidade=FINIMP
+  body: none
+  auth: bearer
+}
+
+params:query {
+  bancoId: {{bancoId}}
+  modalidade: FINIMP
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Resolve qual tipo de cotação aplicar para um banco + modalidade.
+  Política: Leitura
+
+  Modalidades válidas: FINIMP, REFINIMP, LEI4131, NCE, BALCAOCAIXA, FGI
+}

@@ -1,0 +1,38 @@
+meta {
+  name: Simular Antecipacao Parcial
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}/simular-antecipacao
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Idempotency-Key: {{$randomUUID}}
+}
+
+body:json {
+  {
+    "tipoAntecipacao": "PARCIAL",
+    "dataEfetiva": "2026-06-15",
+    "valorPrincipalAQuitarMoedaOriginal": 500000.00,
+    "taxaMercadoAtualAa": 4.85,
+    "salvarSimulacao": true
+  }
+}
+
+docs {
+  Simula amortização parcial do contrato.
+  Política: Leitura
+
+  Para PARCIAL, `valorPrincipalAQuitarMoedaOriginal` é obrigatório.
+}

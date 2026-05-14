@@ -1,5 +1,7 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sgcf.Application.Authorization;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Bancos.Commands;
 using Sgcf.Application.Bancos.Queries;
@@ -11,14 +13,18 @@ namespace Sgcf.Api.Controllers;
 public sealed class BancosController(IMediator mediator) : ControllerBase
 {
     [HttpGet]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<IReadOnlyList<BancoDto>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> ListAll(CancellationToken ct)
+    public async Task<IActionResult> ListAll(
+        [FromQuery] string? search,
+        CancellationToken ct)
     {
-        IReadOnlyList<BancoDto> result = await mediator.Send(new ListBancosQuery(), ct);
+        IReadOnlyList<BancoDto> result = await mediator.Send(new ListBancosQuery(search), ct);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<BancoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
@@ -34,7 +40,25 @@ public sealed class BancosController(IMediator mediator) : ControllerBase
         }
     }
 
+    [HttpGet("{identifier}")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<BancoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetByIdentifier(string identifier, CancellationToken ct)
+    {
+        try
+        {
+            BancoDto result = await mediator.Send(new GetBancoByIdentifierQuery(identifier), ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
     [HttpPost]
+    [Authorize(Policy = Policies.Admin)]
     [ProducesResponseType<BancoDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateBancoCommand command, CancellationToken ct)
@@ -44,6 +68,7 @@ public sealed class BancosController(IMediator mediator) : ControllerBase
     }
 
     [HttpPut("{id:guid}/config-antecipacao")]
+    [Authorize(Policy = Policies.Admin)]
     [ProducesResponseType<BancoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

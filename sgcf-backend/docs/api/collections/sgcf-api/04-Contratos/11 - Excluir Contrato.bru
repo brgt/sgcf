@@ -1,0 +1,26 @@
+meta {
+  name: Excluir Contrato
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Exclui um contrato.
+  Política: Gerencial
+
+  Atenção: operação destrutiva. Em ambientes produtivos, prefira cancelamento via mudança de status.
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Buscar Parametro por ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/parametros-cotacao/{{parametroCotacaoId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Retorna detalhes de um parâmetro de cotação.
+  Política: Leitura
+}

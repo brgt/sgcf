@@ -1,0 +1,37 @@
+meta {
+  name: Gerar Cronograma
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}/gerar-cronograma
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "aliqIrrfPct": 15.0,
+    "aliqIofCambioPct": 0.38,
+    "tarifaRofBrl": 250.00,
+    "tarifaCadempBrl": 0.00,
+    "taxaFgiAaPct": null
+  }
+}
+
+docs {
+  Calcula e persiste o cronograma de parcelas do contrato.
+  Política: Escrita
+
+  Todos os campos são opcionais - use null para usar padrões do sistema.
+}

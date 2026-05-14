@@ -1,11 +1,14 @@
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
+using Sgcf.Application.Authorization;
 using Sgcf.Api.Export;
 using Sgcf.Api.Filters;
 using Sgcf.Application.Antecipacao;
 using Sgcf.Application.Antecipacao.Commands;
 using Sgcf.Application.Auditoria;
+using Sgcf.Application.Common;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Contratos.Commands;
 using Sgcf.Application.Contratos.Queries;
@@ -13,6 +16,7 @@ using Sgcf.Application.Hedge;
 using Sgcf.Application.Hedge.Commands;
 using Sgcf.Application.Hedge.Queries;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Contratos;
 
 namespace Sgcf.Api.Controllers;
 
@@ -66,14 +70,65 @@ public sealed record AddGarantiaRequest(
 public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog auditLog) : ControllerBase
 {
     [HttpGet]
-    [ProducesResponseType<IReadOnlyList<ContratoDto>>(StatusCodes.Status200OK)]
-    public async Task<IActionResult> List(CancellationToken cancellationToken)
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<PagedResult<ContratoDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> List(
+        [FromQuery] string? q,
+        [FromQuery] Guid? bancoId,
+        [FromQuery] string? modalidade,
+        [FromQuery] string? moeda,
+        [FromQuery] string? status,
+        [FromQuery] string? vencDe,
+        [FromQuery] string? vencAte,
+        [FromQuery] decimal? valorMin,
+        [FromQuery] decimal? valorMax,
+        [FromQuery] bool? temHedge,
+        [FromQuery] bool? temGarantia,
+        [FromQuery] bool? temAlerta,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string sort = "DataVencimento",
+        [FromQuery] string dir = "asc",
+        CancellationToken cancellationToken = default)
     {
-        IReadOnlyList<ContratoDto> result = await mediator.Send(new ListContratosQuery(), cancellationToken);
+        LocalDate? vencDeDate = null;
+        LocalDate? vencAteDate = null;
+
+        if (!string.IsNullOrEmpty(vencDe) && DateOnly.TryParse(vencDe, out DateOnly d1))
+        {
+            vencDeDate = LocalDate.FromDateOnly(d1);
+        }
+
+        if (!string.IsNullOrEmpty(vencAte) && DateOnly.TryParse(vencAte, out DateOnly d2))
+        {
+            vencAteDate = LocalDate.FromDateOnly(d2);
+        }
+
+        ModalidadeContrato? modalidadeEnum = null;
+        if (!string.IsNullOrEmpty(modalidade) && Enum.TryParse<ModalidadeContrato>(modalidade, ignoreCase: true, out ModalidadeContrato modalidadeParsed))
+        {
+            modalidadeEnum = modalidadeParsed;
+        }
+
+        Moeda? moedaEnum = null;
+        if (!string.IsNullOrEmpty(moeda) && Enum.TryParse<Moeda>(moeda, ignoreCase: true, out Moeda moedaParsed))
+        {
+            moedaEnum = moedaParsed;
+        }
+
+        StatusContrato? statusEnum = null;
+        if (!string.IsNullOrEmpty(status) && Enum.TryParse<StatusContrato>(status, ignoreCase: true, out StatusContrato statusParsed))
+        {
+            statusEnum = statusParsed;
+        }
+
+        ContratoFilter filter = new(q, bancoId, modalidadeEnum, moedaEnum, statusEnum, vencDeDate, vencAteDate, valorMin, valorMax, temHedge, temGarantia, temAlerta, page, pageSize, sort, dir);
+        PagedResult<ContratoDto> result = await mediator.Send(new ListContratosQuery(filter), cancellationToken);
         return Ok(result);
     }
 
     [HttpGet("{id:guid}")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<ContratoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
@@ -90,6 +145,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpPost]
+    [Authorize(Policy = Policies.Escrita)]
     [ServiceFilter(typeof(IdempotencyFilter))]
     [ProducesResponseType<ContratoDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -100,6 +156,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpGet("{id:guid}/tabela-completa")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<TabelaCompletaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -162,6 +219,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
 
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Policies.Gerencial)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
@@ -178,6 +236,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpPost("{id:guid}/gerar-cronograma")]
+    [Authorize(Policy = Policies.Escrita)]
     [ProducesResponseType<IReadOnlyList<EventoCronogramaDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
@@ -201,6 +260,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpPost("{id:guid}/simular-antecipacao")]
+    [Authorize(Policy = Policies.Leitura)]
     [ServiceFilter(typeof(IdempotencyFilter))]
     [ProducesResponseType<ResultadoSimulacaoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -246,6 +306,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpGet("{id:guid}/garantias")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<IReadOnlyList<GarantiaDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListGarantias(Guid id, CancellationToken cancellationToken)
@@ -262,6 +323,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpGet("{id:guid}/garantias/indicadores")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<IndicadoresGarantiaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetIndicadoresGarantia(Guid id, CancellationToken cancellationToken)
@@ -279,6 +341,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpPost("{id:guid}/garantias")]
+    [Authorize(Policy = Policies.Escrita)]
     [ServiceFilter(typeof(IdempotencyFilter))]
     [ProducesResponseType<GarantiaDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -322,6 +385,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpDelete("{id:guid}/garantias/{garantiaId:guid}")]
+    [Authorize(Policy = Policies.Gerencial)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CancelarGarantia(
@@ -341,6 +405,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpPost("{id:guid}/hedges")]
+    [Authorize(Policy = Policies.Escrita)]
     [ProducesResponseType<HedgeDto>(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -378,6 +443,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpGet("{id:guid}/hedges")]
+    [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<IReadOnlyList<HedgeDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListHedges(Guid id, CancellationToken cancellationToken)
@@ -387,6 +453,7 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
     [HttpPost("{id:guid}/importar-cronograma")]
+    [Authorize(Policy = Policies.Escrita)]
     [ProducesResponseType<IReadOnlyList<EventoCronogramaDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

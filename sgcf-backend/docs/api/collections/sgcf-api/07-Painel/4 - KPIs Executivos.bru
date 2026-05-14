@@ -1,0 +1,31 @@
+meta {
+  name: KPIs Executivos
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/painel/kpis
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Indicadores financeiros para o dashboard executivo:
+  - Dívida total e líquida
+  - Razão Dívida/EBITDA
+  - Share por banco
+  - Custo médio ponderado
+  - Prazo médio remanescente
+  - Comparativo com mês anterior
+
+  Política: Executivo (tesouraria, gerente, diretor, admin)
+}

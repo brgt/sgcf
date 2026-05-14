@@ -1,0 +1,35 @@
+meta {
+  name: Listar Contas
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://127.0.0.1:5000/api/v1/plano-contas?search=&ativo=
+  body: none
+  auth: bearer
+}
+
+params:query {
+  search: 
+  ativo: 
+}
+
+headers {
+  Accept: application/json
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+script:post-response {
+  if (res.status === 200 && res.body && res.body.length > 0) {
+    bru.setEnvVar("planoContaId", res.body[0].id);
+  }
+}
+
+docs {
+  Lista contas do plano contábil.
+  Política: Leitura
+}

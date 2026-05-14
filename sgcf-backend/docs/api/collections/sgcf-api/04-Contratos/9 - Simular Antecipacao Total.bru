@@ -1,0 +1,37 @@
+meta {
+  name: Simular Antecipacao Total
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}/simular-antecipacao
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+  Idempotency-Key: {{$randomUUID}}
+}
+
+body:json {
+  {
+    "tipoAntecipacao": "TOTAL",
+    "dataEfetiva": "2026-06-15",
+    "taxaMercadoAtualAa": 4.85,
+    "salvarSimulacao": true
+  }
+}
+
+docs {
+  Simula liquidação total antecipada do contrato.
+  Política: Leitura
+
+  Para PARCIAL, use `9a - Simular Antecipacao Parcial`.
+}
