@@ -8,6 +8,13 @@ import type {
   StatusGarantia,
   BaseCalculo,
   PadraoAntecipacao,
+  Periodicidade,
+  EstruturaAmortizacao,
+  AnchorDiaMes,
+  ConvencaoDataNaoUtil,
+  EscopoFeriado,
+  TipoFeriado,
+  FonteFeriado,
 } from './enums'
 
 // ============================================================================
@@ -257,6 +264,17 @@ export interface ContratoDto {
   dataVencimento: string
   taxaAa: number
   baseCalculo: BaseCalculo
+  // --- campos de amortização (Sprint 3) ---
+  periodicidade: Periodicidade
+  estruturaAmortizacao: EstruturaAmortizacao
+  quantidadeParcelas: number
+  /** yyyy-MM-dd */
+  dataPrimeiroVencimento: string
+  anchorDiaMes: AnchorDiaMes
+  anchorDiaFixo: number | null
+  periodicidadeJuros: Periodicidade | null
+  convencaoDataNaoUtil: ConvencaoDataNaoUtil
+  // -----------------------------------------
   status: StatusContrato
   contratoPaiId: string | null
   observacoes: string | null
@@ -271,6 +289,19 @@ export interface ContratoDto {
   nceDetail: NceDetailDto | null
   balcaoCaixaDetail: BalcaoCaixaDetailDto | null
   fgiDetail: FgiDetailDto | null
+}
+
+export interface UpdateContratoRequest {
+  numeroExterno?: string | null
+  taxaAa?: number | null
+  dataVencimento?: string | null
+  observacoes?: string | null
+  baseCalculo?: BaseCalculo | null
+  periodicidade?: Periodicidade | null
+  estruturaAmortizacao?: EstruturaAmortizacao | null
+  quantidadeParcelas?: number | null
+  dataPrimeiroVencimento?: string | null
+  convencaoDataNaoUtil?: ConvencaoDataNaoUtil | null
 }
 
 // ============================================================================
@@ -406,4 +437,88 @@ export interface CreateParametroCommand {
 
 export interface ResolveTipoCotacaoResponse {
   tipoCotacao: TipoCotacao
+}
+
+// ============================================================================
+// FERIADOS
+// ============================================================================
+
+export interface FeriadoDto {
+  id: string
+  /** yyyy-MM-dd */
+  data: string
+  descricao: string
+  abrangencia: EscopoFeriado
+  tipo: TipoFeriado
+  fonte: FonteFeriado
+  /** ISO 8601 instant */
+  createdAt: string
+}
+
+export interface CreateFeriadoRequest {
+  /** yyyy-MM-dd */
+  data: string
+  descricao: string
+  abrangencia: EscopoFeriado
+  tipo: TipoFeriado
+}
+
+// ============================================================================
+// LANÇAMENTOS CONTÁBEIS
+// ============================================================================
+
+export interface LancamentoContabilDto {
+  id: string
+  contratoId: string
+  planoContaId: string
+  /** yyyy-MM-dd */
+  data: string
+  origem: string
+  valor: number
+  moeda: string
+  descricao: string
+  /** ISO 8601 instant */
+  createdAt: string
+}
+
+export interface CreateLancamentoRequest {
+  contratoId: string
+  /** yyyy-MM-dd */
+  data: string
+  /** Máx. 50 caracteres */
+  origem: string
+  valorDecimal: number
+  moeda: Moeda
+  descricao: string
+}
+
+// ============================================================================
+// AUDITORIA
+// ============================================================================
+
+export interface AuditEventoDto {
+  id: number
+  occurredAt: string
+  actorSub: string
+  actorRole: string
+  source: 'rest' | 'mcp' | 'a2a' | 'job'
+  entity: string
+  entityId: string | null
+  operation: 'CREATE' | 'UPDATE' | 'DELETE'
+  diffJson: string | null
+  requestId: string
+}
+
+export interface AuditFilter {
+  entity?: string
+  entityId?: string
+  actorSub?: string
+  source?: 'rest' | 'mcp' | 'a2a' | 'job'
+  operation?: 'CREATE' | 'UPDATE' | 'DELETE'
+  /** ISO 8601 */
+  de?: string
+  /** ISO 8601 */
+  ate?: string
+  page?: number
+  pageSize?: number
 }
