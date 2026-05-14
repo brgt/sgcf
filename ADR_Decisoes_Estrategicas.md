@@ -530,6 +530,64 @@ No MVP, a indexação é feita **uma vez em batch durante a migração** dos 1.2
 
 ---
 
+## ADR-016 — Calendário ANBIMA como referência de dias úteis
+
+**Contexto:** contratos bancários no Brasil seguem a convenção *Following Business Day* — vencimentos que recaiam em sábado, domingo ou feriado são ajustados para o próximo dia útil. Para derivativos e contratos cambiais é comum a variante *Modified Following* (não atravessar fronteira de mês). O motor de cronograma do SGCF precisa contar dias úteis (base 252 do CDI) e ajustar datas previstas — sem isso, parcelas seriam geradas em datas inválidas e provisões de juros não fechariam com o que o banco efetivamente cobra.
+
+A pergunta natural: qual fonte de calendário adotar? Há três opções de mercado: BACEN, ANBIMA e B3. Há ainda bibliotecas externas (`Nager.Date`, `Holidays.NET`) e a opção de tabela própria manual.
+
+### Decisão
+
+Adotar o **calendário ANBIMA** (Associação Brasileira das Entidades dos Mercados Financeiro e de Capitais) como referência primária de dias úteis, materializado em uma tabela `sgcf.feriado` administrada internamente.
+
+| Eixo | Escolha |
+|------|---------|
+| Fonte canônica | **ANBIMA** (planilha anual oficial em `anbima.com.br/feriados`) |
+| Mecanismo | **Tabela `sgcf.feriado` persistida**, atualizada anualmente por upload de admin |
+| Atualização | **Operacional** — não há sincronização automática em runtime; novos anos entram via migration ou endpoint admin |
+| Escopo aplicado pelo motor | **Brasil (nacional)** — feriados regionais/municipais ficam apenas registrados, não influenciam cronograma |
+| Convenções suportadas | `Following`, `ModifiedFollowing`, `Preceding`, `ModifiedPreceding`, `Unadjusted` (ISDA 2006 §4.12) |
+
+### Por que ANBIMA, não BACEN nem B3
+
+- **ANBIMA** publica calendário oficial usado por todo o mercado financeiro brasileiro; cobre feriados nacionais civis, feriados bancários e dias sem expediente nos principais centros.
+- **BACEN** não publica calendário formal via API estável; sua tabela é derivada das mesmas portarias federais que a ANBIMA segue.
+- **B3** é o calendário de pregão, equivalente ao ANBIMA na prática mas com escopo limitado ao mercado de capitais.
+- **ANBIMA** marca convenientemente quais feriados são bancários (Carnaval, Corpus Christi) e quais são nacionais civis (Lei 662/49) — diferenciação útil para relatórios.
+
+### Por que tabela interna em vez de lib externa
+
+- `Nager.Date` cobre feriados nacionais mas **não trata Carnaval e Corpus Christi como dias não úteis** (não são feriados civis, são bancários). Para o mercado financeiro brasileiro isso é incorreto.
+- Tabela interna permite **emendas e ajustes manuais** (feriados extraordinários, decisões de mercado pontuais como pandemias) sem depender de release externo.
+- O custo é uma tarefa anual de atualização — aceitável.
+
+### Implementação
+
+| Componente | Escolha |
+|------------|---------|
+| Domínio | `Feriado` entity + enums `TipoFeriado`, `EscopoFeriado`, `FonteFeriado`, `ConvencaoDataNaoUtil` |
+| Pure functions | `BusinessDayCalculator` (Sgcf.Domain.Calendario) — sem I/O |
+| Service | `IBusinessDayCalendar` (Application) com cache em memória por ano |
+| Persistência | Tabela `sgcf.feriado` com índice único `(data, tipo, escopo)` e secundário `(ano_referencia, escopo)` |
+| Seed inicial | Feriados nacionais ANBIMA 2026 e 2027 via migration `CalendarioFeriado` |
+| API | `GET /api/v1/feriados?ano={ano}&escopo={escopo}` |
+
+### Decisões pendentes (próxima rodada)
+
+- Endpoint admin para upload de planilha ANBIMA anual (POST multipart) — Sprint que adicionar Provisão de Juros base 252
+- Suporte a feriados regionais (UF) — fora do MVP; cliente pediu para ignorar por ora
+- Integração com BACEN-SGS para validação cruzada — opcional, baixa prioridade
+
+### Consequências
+
+- ✅ Geração de cronograma fiel ao mercado brasileiro
+- ✅ Cálculo de juros base 252 (CDI) tem fonte determinística
+- ✅ Convenções ISDA suportadas para derivativos (NDF/swap)
+- ⚠️ Atualização anual é tarefa manual — deve entrar no calendário operacional
+- ⚠️ Carnaval e Corpus Christi marcados como `Bancario`, não `Nacional` — relatórios contábeis que diferenciam precisam respeitar essa nuance
+
+---
+
 ## Decisões pendentes para próxima rodada
 
 | #   | Decisão                                                                                | Quem decide          | Quando              |

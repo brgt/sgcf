@@ -666,9 +666,13 @@ Alinhado ao "Validador de Contrato" do `Plano_Agentes_FINIMP.md`, será o agente
 
 ### 9.3 Calendário e dias úteis
 
-- **Pagamentos cuja data cair em fim de semana ou feriado nacional brasileiro:** rolar para o **próximo dia útil** (default; pode ser sobrescrito por contrato específico)
-- **Feriados:** lista mantida em tabela `feriados_nacionais` com seed inicial (2026-2030); admin pode adicionar
-- **Pro rata** sempre conta dias corridos (não úteis), exceto quando contrato específico exigir
+Implementação: módulo `Sgcf.Domain.Calendario` (entity `Feriado`, enums `TipoFeriado`/`EscopoFeriado`/`FonteFeriado`/`ConvencaoDataNaoUtil`, pure functions `BusinessDayCalculator`) e serviço `IBusinessDayCalendar` (Application, async com cache em memória por ano). Detalhes em `plan/modalidades/00_DiasUteis_Calendario.md` e `ADR-016`.
+
+- **Pagamentos cuja data cair em fim de semana ou feriado:** ajustar conforme `Contrato.ConvencaoDataNaoUtil` (padrão `Following` — próximo dia útil). Para derivativos atrelados a mês de competência, usar `ModifiedFollowing` (não atravessar fronteira de mês).
+- **Feriados:** tabela `sgcf.feriado` com seed inicial 2026-2027 (migration `CalendarioFeriado`). Atualização anual via endpoint admin ou nova migration. Fonte canônica: **ANBIMA**.
+- **Escopo aplicado pelo motor:** `Brasil` (nacional). Feriados regionais ficam registrados, mas não influenciam cronograma.
+- **Pro rata** sempre conta dias corridos (não úteis), exceto quando o contrato exigir base 252 (CDI) — nesse caso, `IBusinessDayCalendar.CountBusinessDaysAsync` é usado.
+- **API:** `GET /api/v1/feriados?ano={ano}&escopo={escopo}`
 
 ### 9.4 PTAX intraday (Anexo A §5.1)
 
