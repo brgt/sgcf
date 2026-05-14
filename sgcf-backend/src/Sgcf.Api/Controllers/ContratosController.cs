@@ -218,6 +218,25 @@ public sealed class ContratosController(IMediator mediator, IExportacaoAuditLog 
     }
 
 
+    [HttpPatch("{id:guid}")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType<ContratoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateContratoCommand command, CancellationToken cancellationToken)
+    {
+        UpdateContratoCommand cmd = command with { ContratoId = id };
+        try
+        {
+            ContratoDto result = await mediator.Send(cmd, cancellationToken);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
     [HttpDelete("{id:guid}")]
     [Authorize(Policy = Policies.Gerencial)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

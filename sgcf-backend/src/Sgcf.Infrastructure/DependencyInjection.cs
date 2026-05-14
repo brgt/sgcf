@@ -7,6 +7,7 @@ using Sgcf.Application.Antecipacao;
 using Sgcf.Application.Auditoria;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Calendario;
+using Sgcf.Application.Common;
 using Sgcf.Application.Contabilidade;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cotacoes;
@@ -19,6 +20,7 @@ using Sgcf.Infrastructure.Calendario;
 using Sgcf.Infrastructure.Cotacoes;
 using Sgcf.Infrastructure.Persistence;
 using Sgcf.Infrastructure.Persistence.Repositories;
+using Sgcf.Infrastructure.Services;
 
 namespace Sgcf.Infrastructure;
 
@@ -31,8 +33,14 @@ public static class DependencyInjection
         string connStr = configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("ConnectionString 'Postgres' não configurada.");
 
-        services.AddDbContext<SgcfDbContext>(options =>
-            options.UseNpgsql(connStr, npgsql => npgsql.UseNodaTime()));
+        services.AddScoped<AuditInterceptor>();
+        services.AddScoped<ICurrentUserService, SystemCurrentUserService>();
+        services.AddScoped<IRequestContextService, SystemRequestContextService>();
+
+        services.AddDbContext<SgcfDbContext>((sp, options) =>
+            options
+                .UseNpgsql(connStr, npgsql => npgsql.UseNodaTime())
+                .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
 
         string? redisConn = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrEmpty(redisConn))
@@ -58,6 +66,7 @@ public static class DependencyInjection
         services.AddScoped<IHedgeRepository, HedgeRepository>();
         services.AddScoped<IEbitdaMensalRepository, EbitdaMensalRepository>();
         services.AddScoped<IExportacaoAuditLog, ExportacaoAuditLog>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAlertaVencimentoRepository, AlertaVencimentoRepository>();
         services.AddScoped<IAlertaExposicaoBancoRepository, AlertaExposicaoBancoRepository>();
         services.AddScoped<ISnapshotMensalPosicaoRepository, SnapshotMensalPosicaoRepository>();

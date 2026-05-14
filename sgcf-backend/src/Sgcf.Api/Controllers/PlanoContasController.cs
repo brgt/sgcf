@@ -5,6 +5,7 @@ using Sgcf.Application.Authorization;
 using Sgcf.Application.Contabilidade;
 using Sgcf.Application.Contabilidade.Commands;
 using Sgcf.Application.Contabilidade.Queries;
+using System.Collections.Generic;
 
 namespace Sgcf.Api.Controllers;
 
@@ -69,9 +70,47 @@ public sealed class PlanoContasController(IMediator mediator) : ControllerBase
             return NotFound();
         }
     }
+
+    [HttpPost("{contaId:guid}/lancamentos")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType<LancamentoContabilDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateLancamento(
+        Guid contaId,
+        [FromBody] CreateLancamentoContabilRequest request,
+        CancellationToken ct)
+    {
+        CreateLancamentoContabilCommand command = new(
+            contaId,
+            request.Data,
+            request.Origem,
+            request.ValorDecimal,
+            request.Moeda,
+            request.Descricao);
+
+        LancamentoContabilDto result = await mediator.Send(command, ct);
+        return CreatedAtAction(nameof(GetLancamentosByConta), new { contaId }, result);
+    }
+
+    [HttpGet("{contaId:guid}/lancamentos")]
+    [Authorize(Policy = Policies.Auditoria)]
+    [ProducesResponseType<IReadOnlyList<LancamentoContabilDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetLancamentosByConta(Guid contaId, CancellationToken ct)
+    {
+        IReadOnlyList<LancamentoContabilDto> result =
+            await mediator.Send(new GetLancamentosByContaQuery(contaId), ct);
+        return Ok(result);
+    }
 }
 
 public sealed record AtualizarContaRequest(
     string Nome,
     string Natureza,
     string? CodigoSapB1);
+
+public sealed record CreateLancamentoContabilRequest(
+    DateOnly Data,
+    string Origem,
+    decimal ValorDecimal,
+    string Moeda,
+    string Descricao);

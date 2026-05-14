@@ -1,9 +1,10 @@
 using NodaTime;
+using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Common;
 
 namespace Sgcf.Domain.Bancos;
 
-public sealed class Banco : Entity
+public sealed class Banco : Entity, IAuditable
 {
     public string CodigoCompe { get; private set; } = default!;
     public string RazaoSocial { get; private set; } = default!;

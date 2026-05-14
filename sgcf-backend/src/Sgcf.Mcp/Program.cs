@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Sgcf.Application;
+using Sgcf.Application.Common;
 using Sgcf.Infrastructure;
+using Sgcf.Mcp.Services;
 using Sgcf.Mcp.Tools;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -13,6 +15,10 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // ── Application (MediatR handlers + FluentValidation pipeline) ────────────────
 builder.Services.AddApplication();
+
+// ── Audit context (MCP source overrides the system default) ───────────────────
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IRequestContextService, McpRequestContextService>();
 
 // ── Authentication — JWT Bearer (same authority as Sgcf.Api) ─────────────────
 builder.Services

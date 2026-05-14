@@ -30,5 +30,9 @@ public interface IFeriadoRepository
 
     public void Add(Feriado feriado);
 
+    public Task<Feriado?> GetByIdAsync(Guid id, CancellationToken ct = default);
+
+    public void Remove(Feriado feriado);
+
     public Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

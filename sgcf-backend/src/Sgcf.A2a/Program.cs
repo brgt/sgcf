@@ -8,7 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Sgcf.A2a.Protocol;
+using Sgcf.A2a.Services;
 using Sgcf.Application;
+using Sgcf.Application.Common;
 using Sgcf.Application.Painel.Queries;
 using Sgcf.Infrastructure;
 
@@ -17,6 +19,10 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 // ── Infrastructure + Application ─────────────────────────────────────────────
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddApplication();
+
+// ── Audit context (A2A source overrides the system default) ───────────────────
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IRequestContextService, A2aRequestContextService>();
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 builder.Services

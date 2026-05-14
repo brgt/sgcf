@@ -53,6 +53,11 @@ internal sealed class FeriadoRepository(SgcfDbContext context) : IFeriadoReposit
 
     public void Add(Feriado feriado) => context.Feriados.Add(feriado);
 
+    public Task<Feriado?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
+        context.Feriados.FirstOrDefaultAsync(f => f.Id == id, ct);
+
+    public void Remove(Feriado feriado) => context.Feriados.Remove(feriado);
+
     public Task<int> SaveChangesAsync(CancellationToken ct = default) =>
         context.SaveChangesAsync(ct);
 }

@@ -1,11 +1,12 @@
 using NodaTime;
+using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Cronograma;
 
 namespace Sgcf.Domain.Contratos;
 
-public sealed class Contrato : Entity
+public sealed class Contrato : Entity, IAuditable
 {
     public string NumeroExterno { get; private set; } = default!;
     public string? CodigoInterno { get; private set; }
@@ -194,6 +195,91 @@ public sealed class Contrato : Entity
     public void MarcarRefinanciadoTotal(IClock clock)
     {
         Status = StatusContrato.RefinanciadoTotal;
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Atualiza os campos mutáveis do contrato após criação.
+    /// Apenas os parâmetros não-nulos são aplicados; os demais permanecem inalterados.
+    /// </summary>
+    public void Atualizar(
+        IClock clock,
+        string? numeroExterno = null,
+        Percentual? taxaAa = null,
+        LocalDate? dataVencimento = null,
+        string? observacoes = null,
+        BaseCalculo? baseCalculo = null,
+        Periodicidade? periodicidade = null,
+        EstruturaAmortizacao? estruturaAmortizacao = null,
+        int? quantidadeParcelas = null,
+        LocalDate? dataPrimeiroVencimento = null,
+        ConvencaoDataNaoUtil? convencaoDataNaoUtil = null)
+    {
+        if (dataVencimento.HasValue && dataVencimento.Value <= DataContratacao)
+        {
+            throw new ArgumentException("DataVencimento deve ser posterior a DataContratacao.", nameof(dataVencimento));
+        }
+
+        if (dataPrimeiroVencimento.HasValue && dataPrimeiroVencimento.Value <= DataContratacao)
+        {
+            throw new ArgumentException("DataPrimeiroVencimento deve ser posterior a DataContratacao.", nameof(dataPrimeiroVencimento));
+        }
+
+        if (quantidadeParcelas.HasValue && quantidadeParcelas.Value < 1)
+        {
+            throw new ArgumentException("QuantidadeParcelas deve ser maior ou igual a 1.", nameof(quantidadeParcelas));
+        }
+
+        if (numeroExterno is not null)
+        {
+            NumeroExterno = numeroExterno;
+        }
+
+        if (taxaAa is not null)
+        {
+            TaxaAaDecimal = taxaAa.Value.AsDecimal;
+        }
+
+        if (dataVencimento.HasValue)
+        {
+            DataVencimento = dataVencimento.Value;
+        }
+
+        if (observacoes is not null)
+        {
+            Observacoes = observacoes;
+        }
+
+        if (baseCalculo.HasValue)
+        {
+            BaseCalculo = baseCalculo.Value;
+        }
+
+        if (periodicidade.HasValue)
+        {
+            Periodicidade = periodicidade.Value;
+        }
+
+        if (estruturaAmortizacao.HasValue)
+        {
+            EstruturaAmortizacao = estruturaAmortizacao.Value;
+        }
+
+        if (quantidadeParcelas.HasValue)
+        {
+            QuantidadeParcelas = quantidadeParcelas.Value;
+        }
+
+        if (dataPrimeiroVencimento.HasValue)
+        {
+            DataPrimeiroVencimento = dataPrimeiroVencimento.Value;
+        }
+
+        if (convencaoDataNaoUtil.HasValue)
+        {
+            ConvencaoDataNaoUtil = convencaoDataNaoUtil.Value;
+        }
+
         UpdatedAt = clock.GetCurrentInstant();
     }
 

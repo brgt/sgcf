@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sgcf.Domain.Alertas;
 using Sgcf.Domain.Antecipacao;
+using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Contabilidade;
@@ -45,6 +46,7 @@ public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(
     public DbSet<SnapshotMensalPosicao> SnapshotsMensais => Set<SnapshotMensalPosicao>();
     public DbSet<LancamentoContabil> LancamentosContabeis => Set<LancamentoContabil>();
     public DbSet<Feriado> Feriados => Set<Feriado>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -3,6 +3,7 @@ using MediatR;
 using NodaTime;
 using Sgcf.Application.Bancos;
 using Sgcf.Domain.Bancos;
+using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 
@@ -66,7 +67,15 @@ public sealed record CreateContratoCommand(
     RefinimpDetailRequest? RefinimpDetail,
     NceDetailRequest? NceDetail = null,
     BalcaoCaixaDetailRequest? BalcaoCaixaDetail = null,
-    FgiDetailRequest? FgiDetail = null)
+    FgiDetailRequest? FgiDetail = null,
+    string? Periodicidade = null,
+    string? EstruturaAmortizacao = null,
+    int? QuantidadeParcelas = null,
+    DateOnly? DataPrimeiroVencimento = null,
+    string? AnchorDiaMes = null,
+    int? AnchorDiaFixo = null,
+    string? PeriodicidadeJuros = null,
+    string? ConvencaoDataNaoUtil = null)
     : IRequest<ContratoDto>;
 
 public sealed class CreateContratoCommandValidator : AbstractValidator<CreateContratoCommand>
@@ -131,6 +140,51 @@ public sealed class CreateContratoCommandValidator : AbstractValidator<CreateCon
                 .Must(v => string.Equals(v, nameof(Domain.Common.Moeda.Brl), StringComparison.OrdinalIgnoreCase))
                 .WithMessage("NCE deve ter moeda BRL.");
         });
+
+        RuleFor(c => c.Periodicidade)
+            .Must(v => Enum.TryParse<Periodicidade>(v, true, out _))
+            .When(c => c.Periodicidade is not null)
+            .WithMessage($"Periodicidade deve ser um dos valores: {string.Join(", ", Enum.GetNames<Periodicidade>())}.");
+
+        RuleFor(c => c.EstruturaAmortizacao)
+            .Must(v => Enum.TryParse<Domain.Contratos.EstruturaAmortizacao>(v, true, out _))
+            .When(c => c.EstruturaAmortizacao is not null)
+            .WithMessage($"EstruturaAmortizacao deve ser um dos valores: {string.Join(", ", Enum.GetNames<Domain.Contratos.EstruturaAmortizacao>())}.");
+
+        RuleFor(c => c.QuantidadeParcelas)
+            .GreaterThanOrEqualTo(1)
+            .When(c => c.QuantidadeParcelas.HasValue)
+            .WithMessage("QuantidadeParcelas deve ser maior ou igual a 1.");
+
+        RuleFor(c => c.DataPrimeiroVencimento)
+            .GreaterThan(c => c.DataContratacao)
+            .When(c => c.DataPrimeiroVencimento.HasValue)
+            .WithMessage("DataPrimeiroVencimento deve ser posterior a DataContratacao.");
+
+        RuleFor(c => c.AnchorDiaMes)
+            .Must(v => Enum.TryParse<Domain.Contratos.AnchorDiaMes>(v, true, out _))
+            .When(c => c.AnchorDiaMes is not null)
+            .WithMessage($"AnchorDiaMes deve ser um dos valores: {string.Join(", ", Enum.GetNames<Domain.Contratos.AnchorDiaMes>())}.");
+
+        RuleFor(c => c.AnchorDiaFixo)
+            .InclusiveBetween(1, 31)
+            .When(c => c.AnchorDiaFixo.HasValue)
+            .WithMessage("AnchorDiaFixo deve estar entre 1 e 31.");
+
+        RuleFor(c => c.AnchorDiaFixo)
+            .NotNull()
+            .When(c => string.Equals(c.AnchorDiaMes, nameof(Domain.Contratos.AnchorDiaMes.DiaFixo), StringComparison.OrdinalIgnoreCase))
+            .WithMessage("AnchorDiaFixo é obrigatório quando AnchorDiaMes é DiaFixo.");
+
+        RuleFor(c => c.PeriodicidadeJuros)
+            .Must(v => Enum.TryParse<Periodicidade>(v, true, out _))
+            .When(c => c.PeriodicidadeJuros is not null)
+            .WithMessage($"PeriodicidadeJuros deve ser um dos valores: {string.Join(", ", Enum.GetNames<Periodicidade>())}.");
+
+        RuleFor(c => c.ConvencaoDataNaoUtil)
+            .Must(v => Enum.TryParse<Domain.Calendario.ConvencaoDataNaoUtil>(v, true, out _))
+            .When(c => c.ConvencaoDataNaoUtil is not null)
+            .WithMessage($"ConvencaoDataNaoUtil deve ser um dos valores: {string.Join(", ", Enum.GetNames<Domain.Calendario.ConvencaoDataNaoUtil>())}.");
     }
 }
 
@@ -155,6 +209,30 @@ public sealed class CreateContratoCommandHandler(IContratoRepository repo, ICloc
             throw new InvalidOperationException($"O banco '{banco.Apelido}' não aceita contratos Refinimp.");
         }
 
+        Periodicidade periodicidade = cmd.Periodicidade is not null
+            ? Enum.Parse<Periodicidade>(cmd.Periodicidade, true)
+            : Periodicidade.Bullet;
+
+        Domain.Contratos.EstruturaAmortizacao estruturaAmortizacao = cmd.EstruturaAmortizacao is not null
+            ? Enum.Parse<Domain.Contratos.EstruturaAmortizacao>(cmd.EstruturaAmortizacao, true)
+            : Domain.Contratos.EstruturaAmortizacao.Bullet;
+
+        Domain.Contratos.AnchorDiaMes anchorDiaMes = cmd.AnchorDiaMes is not null
+            ? Enum.Parse<Domain.Contratos.AnchorDiaMes>(cmd.AnchorDiaMes, true)
+            : Domain.Contratos.AnchorDiaMes.DiaContratacao;
+
+        Domain.Calendario.ConvencaoDataNaoUtil convencao = cmd.ConvencaoDataNaoUtil is not null
+            ? Enum.Parse<Domain.Calendario.ConvencaoDataNaoUtil>(cmd.ConvencaoDataNaoUtil, true)
+            : Domain.Calendario.ConvencaoDataNaoUtil.Following;
+
+        LocalDate? dataPrimeiroVenc = cmd.DataPrimeiroVencimento.HasValue
+            ? new LocalDate(cmd.DataPrimeiroVencimento.Value.Year, cmd.DataPrimeiroVencimento.Value.Month, cmd.DataPrimeiroVencimento.Value.Day)
+            : (LocalDate?)null;
+
+        Periodicidade? periodicidadeJuros = cmd.PeriodicidadeJuros is not null
+            ? Enum.Parse<Periodicidade>(cmd.PeriodicidadeJuros, true)
+            : (Periodicidade?)null;
+
         Contrato contrato = Contrato.Criar(
             numeroExterno: cmd.NumeroExterno,
             bancoId: cmd.BancoId,
@@ -165,6 +243,14 @@ public sealed class CreateContratoCommandHandler(IContratoRepository repo, ICloc
             taxaAa: taxaAa,
             baseCalculo: baseCalculo,
             clock: clock,
+            periodicidade: periodicidade,
+            estruturaAmortizacao: estruturaAmortizacao,
+            quantidadeParcelas: cmd.QuantidadeParcelas ?? 1,
+            dataPrimeiroVencimento: dataPrimeiroVenc,
+            anchorDiaMes: anchorDiaMes,
+            anchorDiaFixo: cmd.AnchorDiaFixo,
+            periodicidadeJuros: periodicidadeJuros,
+            convencaoDataNaoUtil: convencao,
             contratoPaiId: cmd.ContratoPaiId,
             observacoes: cmd.Observacoes);
 

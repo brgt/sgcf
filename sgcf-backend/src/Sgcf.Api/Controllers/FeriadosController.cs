@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using Sgcf.Application.Authorization;
 using Sgcf.Application.Calendario;
+using Sgcf.Application.Calendario.Commands;
 using Sgcf.Application.Calendario.Queries;
 using Sgcf.Domain.Calendario;
 
@@ -35,5 +36,40 @@ public sealed class FeriadosController(IMediator mediator) : ControllerBase
             new ListFeriadosQuery(ano, escopo), ct);
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Cria um novo feriado.
+    /// </summary>
+    [HttpPost]
+    [Authorize(Policy = Policies.Admin)]
+    [ProducesResponseType<FeriadoDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Create(
+        [FromBody] CreateFeriadoCommand command,
+        CancellationToken ct)
+    {
+        FeriadoDto result = await mediator.Send(command, ct);
+        return CreatedAtAction(nameof(List), new { ano = result.AnoReferencia }, result);
+    }
+
+    /// <summary>
+    /// Remove um feriado pelo identificador.
+    /// </summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = Policies.Admin)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new DeleteFeriadoCommand(id), ct);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
     }
 }

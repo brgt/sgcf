@@ -3,8 +3,10 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using Sgcf.Api.Middleware;
+using Sgcf.Api.Services;
 using Sgcf.Application;
 using Sgcf.Application.Authorization;
+using Sgcf.Application.Common;
 using Sgcf.Infrastructure;
 
 // QuestPDF community license — required before any PDF generation
@@ -14,6 +16,9 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserService, HttpCurrentUserService>();
+builder.Services.AddScoped<IRequestContextService, HttpRequestContextService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 

@@ -11,6 +11,8 @@ public interface ILancamentoContabilRepository
     /// </summary>
     public Task<bool> ExisteAsync(Guid contratoId, LocalDate data, string origem, CancellationToken ct = default);
 
+    public Task<IReadOnlyList<LancamentoContabil>> ListByContratoAsync(Guid contratoId, CancellationToken ct = default);
+
     public void Add(LancamentoContabil lancamento);
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default);
