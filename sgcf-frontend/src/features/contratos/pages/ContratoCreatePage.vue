@@ -19,7 +19,15 @@ interface SelectOption {
   disabled?: boolean
 }
 import { API } from '@/shared/api/endpoints'
-import { ModalidadeContrato, Moeda, BaseCalculo } from '@/shared/api/enums'
+import {
+  ModalidadeContrato,
+  Moeda,
+  BaseCalculo,
+  Periodicidade,
+  EstruturaAmortizacao,
+  AnchorDiaMes,
+  ConvencaoDataNaoUtil,
+} from '@/shared/api/enums'
 import type { ContratoDto } from '@/shared/api/types'
 import { useBancosOptions } from '@/shared/api/useBancosOptions'
 import { toast } from '@/shared/ui/toast'
@@ -67,6 +75,30 @@ const baseCalculoOptions: SelectOption[] = Object.values(BaseCalculo).map((v) =>
   value: v,
 }))
 
+const periodicidadeOptions: SelectOption[] = Object.values(Periodicidade).map((v) => ({
+  label: v,
+  value: v,
+}))
+
+const estruturaAmortizacaoOptions: SelectOption[] = Object.values(EstruturaAmortizacao).map(
+  (v) => ({
+    label: v,
+    value: v,
+  }),
+)
+
+const anchorDiaMesOptions: SelectOption[] = Object.values(AnchorDiaMes).map((v) => ({
+  label: v,
+  value: v,
+}))
+
+const convencaoDataNaoUtilOptions: SelectOption[] = Object.values(ConvencaoDataNaoUtil).map(
+  (v) => ({
+    label: v,
+    value: v,
+  }),
+)
+
 // ============================================================================
 // Step 1 — Dados Básicos
 // ============================================================================
@@ -81,6 +113,16 @@ const form = reactive({
   dataVencimento: '',
   taxaAa: null as number | null,
   baseCalculo: 'Du252' as string,
+  // --- Sprint 3 Amortization fields ---
+  periodicidade: '' as string,
+  estruturaAmortizacao: '' as string,
+  quantidadeParcelas: null as number | null,
+  dataPrimeiroVencimento: '',
+  anchorDiaMes: '' as string,
+  anchorDiaFixo: null as number | null,
+  periodicidadeJuros: '' as string,
+  convencaoDataNaoUtil: '' as string,
+  // --------------------------------
   contratoPaiId: '',
   observacoes: '',
 })
@@ -113,6 +155,22 @@ const step1Errors = computed<Record<string, string>>(() => {
     errors['dataVencimento'] = 'Deve ser posterior à data de contratação'
   if (!form.taxaAa || form.taxaAa <= 0) errors['taxaAa'] = 'Deve ser maior que zero'
   if (!form.baseCalculo) errors['baseCalculo'] = 'Obrigatório'
+  // Sprint 3 Amortization validation
+  if (!form.periodicidade) errors['periodicidade'] = 'Obrigatório'
+  if (!form.estruturaAmortizacao) errors['estruturaAmortizacao'] = 'Obrigatório'
+  if (!form.quantidadeParcelas || form.quantidadeParcelas <= 0)
+    errors['quantidadeParcelas'] = 'Deve ser maior que zero'
+  if (!form.dataPrimeiroVencimento) errors['dataPrimeiroVencimento'] = 'Obrigatório'
+  if (
+    form.dataPrimeiroVencimento &&
+    form.dataContratacao &&
+    form.dataPrimeiroVencimento <= form.dataContratacao
+  )
+    errors['dataPrimeiroVencimento'] = 'Deve ser posterior à data de contratação'
+  if (!form.anchorDiaMes) errors['anchorDiaMes'] = 'Obrigatório'
+  if (form.anchorDiaMes === AnchorDiaMes.DiaFixo && !form.anchorDiaFixo)
+    errors['anchorDiaFixo'] = 'Obrigatório quando âncora é Dia Fixo'
+  if (!form.convencaoDataNaoUtil) errors['convencaoDataNaoUtil'] = 'Obrigatório'
   if (form.modalidade === ModalidadeContrato.Refinimp && !form.contratoPaiId.trim())
     errors['contratoPaiId'] = 'Obrigatório para Refinimp'
   if (
@@ -240,6 +298,16 @@ function buildRequestBody() {
     dataVencimento: form.dataVencimento,
     taxaAa: form.taxaAa ?? 0,
     baseCalculo: form.baseCalculo,
+    // Sprint 3 Amortization fields
+    periodicidade: form.periodicidade,
+    estruturaAmortizacao: form.estruturaAmortizacao,
+    quantidadeParcelas: form.quantidadeParcelas ?? 0,
+    dataPrimeiroVencimento: form.dataPrimeiroVencimento,
+    anchorDiaMes: form.anchorDiaMes,
+    anchorDiaFixo: form.anchorDiaFixo,
+    periodicidadeJuros: form.periodicidadeJuros || null,
+    convencaoDataNaoUtil: form.convencaoDataNaoUtil,
+    // --------------------------------
     contratoPaiId: nullIfEmpty(form.contratoPaiId),
     observacoes: nullIfEmpty(form.observacoes),
     finimpDetail:
@@ -348,6 +416,20 @@ const reviewRows = computed<{ label: string; value: string }[]>(() => {
       value: form.taxaAa != null ? String(form.taxaAa) : '—',
     },
     { label: 'Base de Cálculo', value: form.baseCalculo },
+    { label: 'Periodicidade', value: form.periodicidade },
+    { label: 'Estrutura Amortização', value: form.estruturaAmortizacao },
+    {
+      label: 'Quantidade de Parcelas',
+      value: form.quantidadeParcelas != null ? String(form.quantidadeParcelas) : '—',
+    },
+    { label: 'Data Primeiro Vencimento', value: form.dataPrimeiroVencimento },
+    { label: 'Âncora Dia Mês', value: form.anchorDiaMes },
+    { label: 'Dia Fixo Âncora', value: form.anchorDiaFixo != null ? String(form.anchorDiaFixo) : '—' },
+    {
+      label: 'Periodicidade Juros',
+      value: form.periodicidadeJuros.trim() || '—',
+    },
+    { label: 'Convenção Data Não Útil', value: form.convencaoDataNaoUtil },
   ]
   if (form.contratoPaiId.trim())
     rows.push({ label: 'Contrato Mãe (ID)', value: form.contratoPaiId })
@@ -552,6 +634,118 @@ const reviewRows = computed<{ label: string; value: string }[]>(() => {
               :error="(step1Touched && step1Errors['baseCalculo']) || ''"
             />
           </div>
+
+          <!-- === Sprint 3: Amortization Fields === -->
+
+          <!-- Periodicidade -->
+          <div class="field">
+            <Select
+              v-model="form.periodicidade"
+              label="Periodicidade"
+              :options="periodicidadeOptions"
+              placeholder="Selecione"
+              :error="(step1Touched && step1Errors['periodicidade']) || ''"
+            />
+          </div>
+
+          <!-- Estrutura Amortização -->
+          <div class="field">
+            <Select
+              v-model="form.estruturaAmortizacao"
+              label="Estrutura de Amortização"
+              :options="estruturaAmortizacaoOptions"
+              placeholder="Selecione"
+              :error="(step1Touched && step1Errors['estruturaAmortizacao']) || ''"
+            />
+          </div>
+
+          <!-- Quantidade de Parcelas -->
+          <div class="field">
+            <Input
+              :model-value="form.quantidadeParcelas ?? ''"
+              label="Quantidade de Parcelas"
+              type="number"
+              placeholder="0"
+              :error="(step1Touched && step1Errors['quantidadeParcelas']) || ''"
+              full-width
+              @update:model-value="(v) => (form.quantidadeParcelas = v === '' ? null : Number(v))"
+            />
+          </div>
+
+          <!-- Data Primeiro Vencimento -->
+          <div class="field">
+            <div class="native-date-field">
+              <label class="native-date-label" for="dataPrimeiroVencimento">
+                Data Primeiro Vencimento
+              </label>
+              <input
+                id="dataPrimeiroVencimento"
+                v-model="form.dataPrimeiroVencimento"
+                type="date"
+                class="native-date-input"
+                :class="{ 'native-date-input--error': step1Touched && step1Errors['dataPrimeiroVencimento'] }"
+                aria-describedby="dataPrimeiroVencimento-error"
+              />
+              <span
+                v-if="step1Touched && step1Errors['dataPrimeiroVencimento']"
+                id="dataPrimeiroVencimento-error"
+                class="field-error"
+                role="alert"
+              >{{ step1Errors['dataPrimeiroVencimento'] }}</span>
+            </div>
+          </div>
+
+          <!-- Âncora Dia Mês -->
+          <div class="field">
+            <Select
+              v-model="form.anchorDiaMes"
+              label="Âncora Dia Mês"
+              :options="anchorDiaMesOptions"
+              placeholder="Selecione"
+              :error="(step1Touched && step1Errors['anchorDiaMes']) || ''"
+            />
+          </div>
+
+          <!-- Dia Fixo (Âncora) - Only if DiaFixo is selected -->
+          <div v-if="form.anchorDiaMes === 'DiaFixo'" class="field">
+            <Input
+              :model-value="form.anchorDiaFixo ?? ''"
+              label="Dia Fixo (1-31)"
+              type="number"
+              placeholder="1"
+              min="1"
+              max="31"
+              :error="(step1Touched && step1Errors['anchorDiaFixo']) || ''"
+              full-width
+              @update:model-value="(v) => (form.anchorDiaFixo = v === '' ? null : Number(v))"
+            />
+          </div>
+
+          <!-- Periodicidade Juros (Optional) -->
+          <div class="field">
+            <Select
+              v-model="form.periodicidadeJuros"
+              label="Periodicidade Juros (opcional)"
+              :options="[
+                { label: '—', value: '' },
+                ...periodicidadeOptions,
+              ]"
+              placeholder="Selecione ou deixe em branco"
+            />
+          </div>
+
+          <!-- Convenção Data Não Útil -->
+          <div class="field">
+            <Select
+              v-model="form.convencaoDataNaoUtil"
+              label="Convenção Data Não Útil"
+              :options="convencaoDataNaoUtilOptions"
+              placeholder="Selecione"
+              :error="(step1Touched && step1Errors['convencaoDataNaoUtil']) || ''"
+            />
+          </div>
+
+          <!-- ===== End Sprint 3 ===== -->
 
           <!-- Contrato Mãe (only for Refinimp) -->
           <div v-if="form.modalidade === 'Refinimp'" class="field field--full">
