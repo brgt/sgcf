@@ -1,0 +1,27 @@
+meta {
+  name: Listar Lancamentos Contabeis
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/plano-contas/{{planoContaId}}/lancamentos
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Lista todos os lançamentos contábeis de uma conta, ordenados por data decrescente.
+  Política: Auditoria
+
+  O contaId no path é o ID da PlanoContas ({{planoContaId}}).
+  Retorna IReadOnlyList<LancamentoContabilDto>.
+}

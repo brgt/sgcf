@@ -144,6 +144,52 @@ Idempotency-Key: recomendado
 
 ---
 
+### Atualizar Contrato (Parcial)
+
+```
+PATCH /api/v1/contratos/{id}
+Autorização: Escrita
+```
+
+Atualização parcial — apenas os campos enviados com valor não-nulo são aplicados. Campos omitidos ou `null` permanecem inalterados.
+
+**Path Parameters:**
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `id` | guid | ID do contrato |
+
+**Request Body (todos os campos opcionais):**
+
+```json
+{
+  "numeroExterno": "string | null",
+  "taxaAa": "decimal | null",
+  "dataVencimento": "YYYY-MM-DD | null",
+  "observacoes": "string | null",
+  "baseCalculo": "Dias252 | Dias360 | Dias365 | null",
+  "periodicidade": "Bullet | Mensal | Bimestral | Trimestral | Semestral | Anual | null",
+  "estruturaAmortizacao": "Bullet | Price | Sac | Customizada | null",
+  "quantidadeParcelas": "int | null",
+  "dataPrimeiroVencimento": "YYYY-MM-DD | null",
+  "convencaoDataNaoUtil": "Following | ModifiedFollowing | Preceding | NoAdjustment | null"
+}
+```
+
+**Validações:**
+- `dataVencimento` deve ser posterior a `dataContratacao` original.
+- `dataPrimeiroVencimento` deve ser posterior a `dataContratacao` original.
+- `quantidadeParcelas` deve ser ≥ 1.
+- Enums são validados por nome (case-insensitive).
+
+**Responses:**
+- `200 OK` — [ContratoDto](./schemas.md#contradto) atualizado
+- `400 Bad Request` — Validação falhou
+- `404 Not Found` — Contrato não encontrado
+- `403 Forbidden` — Role insuficiente
+
+---
+
 ### Excluir Contrato
 
 ```

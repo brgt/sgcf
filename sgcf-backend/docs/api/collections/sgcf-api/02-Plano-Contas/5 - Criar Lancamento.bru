@@ -1,0 +1,49 @@
+meta {
+  name: Criar Lancamento Contabil
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/plano-contas/{{planoContaId}}/lancamentos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "contratoId": "{{contratoId}}",
+    "data": "2026-05-14",
+    "origem": "CRONOGRAMA",
+    "valorDecimal": 12345.67,
+    "moeda": "Usd",
+    "descricao": "Juros parcela 3/12 — FINIMP-2026-001"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("lancamentoId", res.body.id);
+  }
+}
+
+docs {
+  Registra um lançamento contábil associado a um contrato e a uma conta do plano de contas.
+  Política: Escrita
+
+  O contaId no path é o ID da PlanoContas ({{planoContaId}}).
+  O contratoId no body associa o lançamento a um contrato específico.
+
+  moeda: Brl | Usd | Eur | Jpy | Cny
+  origem: string de até 50 caracteres (ex.: CRONOGRAMA, IOF, HEDGE, PROVISAO)
+  valorDecimal: deve ser > 0
+}

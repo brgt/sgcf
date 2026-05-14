@@ -242,10 +242,17 @@ Formato padrão com hífens: `3fa85f64-5717-4562-b3fc-2c963f66afa6`
 |------|---------|
 | `Modalidade` | `Finimp`, `Lei4131`, `Refinimp`, `Nce`, `BalcaoCaixa`, `Fgi` |
 | `Moeda` | `Brl`, `Usd`, `Eur`, `Jpy`, `Cny` |
-| `StatusContrato` | `Ativo`, `Liquidado`, `Inadimplente`, `Cancelado` |
+| `StatusContrato` | `Ativo`, `Liquidado`, `Inadimplente`, `Cancelado`, `RefinanciadoParcial`, `RefinanciadoTotal` |
 | `TipoGarantia` | `CdbCativo`, `Sblc`, `Aval`, `AlienacaoFiduciaria`, `Duplicatas`, `RecebiveisCartao`, `BoletoBancario`, `Fgi` |
 | `TipoCotacao` | `PtaxD0`, `PtaxD1`, `SpotIntraday`, `Fixing` |
 | `BaseCalculo` | `Dias252`, `Dias360`, `Dias365` |
+| `Periodicidade` | `Bullet`, `Mensal`, `Bimestral`, `Trimestral`, `Semestral`, `Anual` |
+| `EstruturaAmortizacao` | `Bullet`, `Price`, `Sac`, `Customizada` |
+| `AnchorDiaMes` | `DiaContratacao`, `DiaFixo`, `UltimoDiaMes` |
+| `ConvencaoDataNaoUtil` | `Following`, `ModifiedFollowing`, `Preceding`, `NoAdjustment` |
+| `EscopoFeriado` | `Nacional`, `Estadual`, `Municipal` |
+| `TipoFeriado` | `FixoCalendario`, `MovelCalendario`, `Pontual` |
+| `FonteFeriado` | `Manual`, `Anbima` |
 
 ---
 
@@ -453,6 +460,8 @@ docs/api/collections/sgcf-api/
 | `06-Hedges` | Hedges forward, MTM, cancelamento |
 | `07-Painel` | Dívida, KPIs, vencimentos, EBITDA |
 | `08-Simulador` | Cenário cambial + antecipação de portfólio |
+| `09-Feriados` | CRUD de feriados do calendário |
+| `10-Auditoria` | Log de auditoria imutável |
 
 **Variáveis do ambiente Dev:**
 
@@ -488,6 +497,7 @@ docs/api/collections/sgcf-api/
 | `GET` | `/api/v1/contratos` | Leitura | Listar contratos (paginado, multi-filtro) |
 | `GET` | `/api/v1/contratos/{id}` | Leitura | Buscar contrato |
 | `POST` | `/api/v1/contratos` | Escrita | Criar contrato (FINIMP/Lei4131/Refinimp/NCE/BalcaoCaixa/FGI) |
+| `PATCH` | `/api/v1/contratos/{id}` | Escrita | Atualizar campos mutáveis (parcial) |
 | `DELETE` | `/api/v1/contratos/{id}` | Gerencial | Excluir contrato (somente Rascunho) |
 | `POST` | `/api/v1/contratos/{id}/gerar-cronograma` | Escrita | Gerar cronograma automaticamente |
 | `POST` | `/api/v1/contratos/{id}/importar-cronograma` | Escrita | Importar parcelas manualmente (BalcaoCaixa) |
@@ -538,6 +548,22 @@ docs/api/collections/sgcf-api/
 | `GET` | `/plano-contas/{id}` | Leitura | Buscar conta |
 | `POST` | `/plano-contas` | Auditoria | Criar conta |
 | `PUT` | `/plano-contas/{id}` | Auditoria | Atualizar conta |
+| `POST` | `/plano-contas/{contaId}/lancamentos` | Escrita | Registrar lançamento contábil |
+| `GET` | `/plano-contas/{contaId}/lancamentos` | Auditoria | Listar lançamentos da conta |
+
+### Feriados — `/api/v1/feriados`
+
+| Método | Path | Política | Descrição |
+|--------|------|----------|-----------|
+| `GET` | `/api/v1/feriados` | Leitura | Listar feriados (`?ano=`, `?escopo=`) |
+| `POST` | `/api/v1/feriados` | Admin | Criar feriado manual |
+| `DELETE` | `/api/v1/feriados/{id}` | Admin | Excluir feriado manual |
+
+### Auditoria — `/audit`
+
+| Método | Path | Política | Descrição |
+|--------|------|----------|-----------|
+| `GET` | `/audit/eventos` | Auditoria | Listar eventos de auditoria (paginado, multi-filtro) |
 
 ### Parâmetros de Cotação — `/api/v1/parametros-cotacao`
 
@@ -576,7 +602,9 @@ Não requer autenticação. Use para verificar disponibilidade antes de iniciali
 | [hedges.md](./hedges.md) | Hedges NDF e MTM |
 | [painel.md](./painel.md) | Painel executivo e KPIs |
 | [simulador.md](./simulador.md) | Simulações de cenário e portfólio |
-| [plano-contas.md](./plano-contas.md) | Plano de contas contábil |
+| [plano-contas.md](./plano-contas.md) | Plano de contas contábil e lançamentos |
 | [parametros-cotacao.md](./parametros-cotacao.md) | Cotação PTAX/Spot e hierarquia de resolução |
+| [feriados.md](./feriados.md) | Calendário de feriados |
+| [auditoria.md](./auditoria.md) | Log de auditoria imutável |
 | [schemas.md](./schemas.md) | Todos os DTOs, enums e tipos compartilhados |
 | [getting-started.md](./getting-started.md) | Fluxo OAuth completo passo a passo |

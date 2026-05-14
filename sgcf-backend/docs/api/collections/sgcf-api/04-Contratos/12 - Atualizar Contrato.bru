@@ -1,0 +1,44 @@
+meta {
+  name: Atualizar Contrato
+  type: http
+  seq: 12
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/contratos/{{contratoId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "taxaAa": 5.75,
+    "dataVencimento": "2027-06-15",
+    "observacoes": "Renegociação de taxa em maio/2026",
+    "periodicidade": "Trimestral",
+    "estruturaAmortizacao": "Sac",
+    "quantidadeParcelas": 8,
+    "convencaoDataNaoUtil": "ModifiedFollowing"
+  }
+}
+
+docs {
+  Atualização parcial de contrato.
+  Política: Escrita
+
+  Apenas os campos enviados com valor não-nulo são aplicados.
+  Campos omitidos ou null permanecem inalterados.
+
+  Campos disponíveis: numeroExterno, taxaAa, dataVencimento, observacoes,
+  baseCalculo, periodicidade, estruturaAmortizacao, quantidadeParcelas,
+  dataPrimeiroVencimento, convencaoDataNaoUtil.
+}

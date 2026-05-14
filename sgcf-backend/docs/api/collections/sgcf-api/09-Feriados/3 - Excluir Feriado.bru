@@ -1,0 +1,29 @@
+meta {
+  name: Excluir Feriado
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/feriados/{{feriadoId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Remove um feriado manual do calendário.
+  Política: Admin
+
+  Apenas feriados com fonte=Manual devem ser excluídos.
+  Feriados ANBIMA são mantidos para rastreabilidade — não excluir via API.
+
+  Retorna 204 No Content em caso de sucesso.
+}

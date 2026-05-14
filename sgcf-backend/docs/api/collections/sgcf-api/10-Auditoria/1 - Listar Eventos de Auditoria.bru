@@ -1,0 +1,41 @@
+meta {
+  name: Listar Eventos de Auditoria
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/audit/eventos?page=1&pageSize=50
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Consulta o log de auditoria imutável.
+  Política: Auditoria (roles: auditor, admin)
+
+  Query params disponíveis (todos opcionais):
+    entity    — nome da entidade (ex.: Contrato, Banco, Feriado)
+    entityId  — UUID da entidade específica
+    actorSub  — claim sub do JWT do autor
+    source    — rest | mcp | a2a | job
+    operation — CREATE | UPDATE | DELETE
+    de        — início do intervalo (ISO 8601, ex.: 2026-05-01T00:00:00Z)
+    ate       — fim do intervalo (ISO 8601)
+    page      — página (padrão: 1)
+    pageSize  — itens por página (padrão: 50, máx.: 200)
+
+  Para filtrar eventos gerados por agentes de IA: ?source=mcp ou ?source=a2a
+  A lista é ordenada por occurredAt decrescente (mais recentes primeiro).
+
+  Nota: ipHash é omitido da resposta (proteção de privacidade LGPD).
+  Retenção mínima: 5 anos (append-only, nunca deletado).
+}

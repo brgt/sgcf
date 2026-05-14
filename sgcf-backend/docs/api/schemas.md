@@ -35,13 +35,87 @@ Tipos, enums e DTOs usados em múltiplos endpoints da SGCF API.
 
 | Valor | Descrição |
 |-------|-----------|
-| `ATIVO` | Contrato em vigor |
-| `LIQUIDADO` | Pago integralmente |
-| `VENCIDO` | Prazo expirado sem pagamento |
-| `INADIMPLENTE` | Em atraso |
-| `CANCELADO` | Cancelado antes do vencimento |
-| `REFINANCIADOPARCIAL` | Parcialmente refinanciado |
-| `REFINANCIADOTOTAL` | Totalmente refinanciado |
+| `Ativo` | Contrato em vigor |
+| `Liquidado` | Pago integralmente |
+| `Vencido` | Prazo expirado sem pagamento |
+| `Inadimplente` | Em atraso |
+| `Cancelado` | Cancelado antes do vencimento |
+| `RefinanciadoParcial` | Parcialmente refinanciado (< 100% do principal) |
+| `RefinanciadoTotal` | Totalmente refinanciado (≥ 100% do principal) |
+
+---
+
+### Periodicidade
+
+| Valor | Descrição |
+|-------|-----------|
+| `Bullet` | Pagamento único no vencimento (padrão) |
+| `Mensal` | Parcelas mensais |
+| `Bimestral` | Parcelas bimestrais |
+| `Trimestral` | Parcelas trimestrais |
+| `Semestral` | Parcelas semestrais |
+| `Anual` | Parcelas anuais |
+
+---
+
+### EstruturaAmortizacao
+
+| Valor | Descrição |
+|-------|-----------|
+| `Bullet` | Principal único no vencimento (padrão) |
+| `Price` | Parcelas iguais — sistema francês |
+| `Sac` | Amortização constante — parcelas decrescentes |
+| `Customizada` | Parcelas manuais via importação |
+
+---
+
+### AnchorDiaMes
+
+| Valor | Descrição |
+|-------|-----------|
+| `DiaContratacao` | Vencimento no mesmo dia do mês da contratação (padrão) |
+| `DiaFixo` | Vencimento em dia fixo do mês (requer `anchorDiaFixo` 1–31) |
+| `UltimoDiaMes` | Vencimento sempre no último dia útil do mês |
+
+---
+
+### ConvencaoDataNaoUtil
+
+| Valor | Descrição |
+|-------|-----------|
+| `Following` | Move para o próximo dia útil (padrão) |
+| `ModifiedFollowing` | Próximo dia útil, sem cruzar o mês |
+| `Preceding` | Move para o dia útil anterior |
+| `NoAdjustment` | Mantém a data original sem ajuste |
+
+---
+
+### EscopoFeriado
+
+| Valor | Descrição |
+|-------|-----------|
+| `Nacional` | Feriado nacional — afeta o motor de cronograma |
+| `Estadual` | Feriado estadual — registrado, não afeta cronograma no MVP |
+| `Municipal` | Feriado municipal — registrado, não afeta cronograma no MVP |
+
+---
+
+### TipoFeriado
+
+| Valor | Descrição |
+|-------|-----------|
+| `FixoCalendario` | Data fixa todo ano (ex.: 1° de janeiro) |
+| `MovelCalendario` | Data variável calculada (ex.: Carnaval, Páscoa) |
+| `Pontual` | Feriado de ocorrência única |
+
+---
+
+### FonteFeriado
+
+| Valor | Descrição |
+|-------|-----------|
+| `Manual` | Criado manualmente via API |
+| `Anbima` | Ingerido automaticamente da base ANBIMA |
 
 ---
 
@@ -87,16 +161,24 @@ Tipos, enums e DTOs usados em múltiplos endpoints da SGCF API.
 {
   "id": "guid",
   "numeroExterno": "string",
-  "codigoInterno": "string",
+  "codigoInterno": "string | null",
   "bancoId": "guid",
-  "modalidade": "FINIMP | REFINIMP | LEI4131 | NCE | BALCAOCAIXA | FGI",
-  "moeda": "BRL | USD | EUR | JPY | CNY",
+  "modalidade": "Finimp | Refinimp | Lei4131 | Nce | BalcaoCaixa | Fgi",
+  "moeda": "Brl | Usd | Eur | Jpy | Cny",
   "valorPrincipal": "decimal",
   "dataContratacao": "YYYY-MM-DD",
   "dataVencimento": "YYYY-MM-DD",
   "taxaAa": "decimal",
-  "baseCalculo": "string",
-  "status": "ATIVO | LIQUIDADO | ...",
+  "baseCalculo": "Dias252 | Dias360 | Dias365",
+  "periodicidade": "Bullet | Mensal | Bimestral | Trimestral | Semestral | Anual",
+  "estruturaAmortizacao": "Bullet | Price | Sac | Customizada",
+  "quantidadeParcelas": "int",
+  "dataPrimeiroVencimento": "YYYY-MM-DD",
+  "anchorDiaMes": "DiaContratacao | DiaFixo | UltimoDiaMes",
+  "anchorDiaFixo": "int (1–31) | null",
+  "periodicidadeJuros": "Bullet | Mensal | ... | null",
+  "convencaoDataNaoUtil": "Following | ModifiedFollowing | Preceding | NoAdjustment",
+  "status": "Ativo | Liquidado | Vencido | Inadimplente | Cancelado | RefinanciadoParcial | RefinanciadoTotal",
   "temHedge": "bool",
   "temGarantia": "bool",
   "temAlerta": "bool",
@@ -271,6 +353,63 @@ Tipos, enums e DTOs usados em múltiplos endpoints da SGCF API.
   }
 }
 ```
+
+---
+
+### FeriadoDto
+
+```json
+{
+  "id": "guid",
+  "data": "YYYY-MM-DD",
+  "descricao": "string",
+  "abrangencia": "Nacional | Estadual | Municipal",
+  "tipo": "FixoCalendario | MovelCalendario | Pontual",
+  "fonte": "Manual | Anbima",
+  "createdAt": "DateTimeOffset (ISO 8601)"
+}
+```
+
+---
+
+### LancamentoContabilDto
+
+```json
+{
+  "id": "guid",
+  "contratoId": "guid",
+  "planoContaId": "guid",
+  "data": "YYYY-MM-DD",
+  "origem": "string",
+  "valor": "decimal",
+  "moeda": "string",
+  "descricao": "string",
+  "createdAt": "DateTimeOffset"
+}
+```
+
+> `planoContaId` corresponde ao `contaId` usado no path do endpoint (`/plano-contas/{contaId}/lancamentos`).
+
+---
+
+### AuditEventoDto
+
+```json
+{
+  "id": "long (bigserial)",
+  "occurredAt": "DateTimeOffset (ISO 8601, UTC)",
+  "actorSub": "string — claim 'sub' do JWT ou 'system' para jobs",
+  "actorRole": "string — role do autor",
+  "source": "rest | mcp | a2a | job",
+  "entity": "string — nome da entidade C# (ex.: 'Contrato')",
+  "entityId": "guid | null",
+  "operation": "CREATE | UPDATE | DELETE",
+  "diffJson": "string JSON | null — estrutura { before: {...}, after: {...} }",
+  "requestId": "guid — correlation ID da requisição"
+}
+```
+
+> `ipHash` é intencionalmente omitido da resposta para proteção de privacidade (LGPD).
 
 ---
 

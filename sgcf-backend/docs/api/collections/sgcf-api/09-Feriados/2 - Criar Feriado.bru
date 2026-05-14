@@ -1,0 +1,46 @@
+meta {
+  name: Criar Feriado
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/feriados
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "data": "2026-11-20",
+    "descricao": "Dia da Consciência Negra",
+    "abrangencia": "Nacional",
+    "tipo": "FixoCalendario"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("feriadoId", res.body.id);
+  }
+}
+
+docs {
+  Cria um feriado manual no calendário.
+  Política: Admin
+
+  Feriados criados via API recebem fonte=Manual automaticamente.
+  Feriados ANBIMA são ingeridos por job e não podem ser criados manualmente.
+
+  abrangencia: Nacional | Estadual | Municipal
+  tipo: FixoCalendario | MovelCalendario | Pontual
+}

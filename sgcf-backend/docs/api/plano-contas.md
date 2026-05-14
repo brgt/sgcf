@@ -118,6 +118,91 @@ Autorização: Auditoria
 
 ---
 
+### Criar Lançamento Contábil
+
+```
+POST /api/v1/plano-contas/{contaId}/lancamentos
+Autorização: Escrita
+```
+
+Registra um lançamento contábil associado a um contrato e a uma conta do plano de contas.
+
+**Path Parameters:**
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `contaId` | guid | ID da conta no plano de contas |
+
+**Request Body:**
+
+```json
+{
+  "contratoId": "guid (obrigatório)",
+  "data": "YYYY-MM-DD (obrigatório)",
+  "origem": "string — máx. 50 chars (obrigatório)",
+  "valorDecimal": "decimal > 0 (obrigatório)",
+  "moeda": "Brl | Usd | Eur | Jpy | Cny (obrigatório)",
+  "descricao": "string (obrigatório)"
+}
+```
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `contratoId` | guid | Sim | Contrato ao qual o lançamento se refere |
+| `data` | date | Sim | Data de competência do lançamento |
+| `origem` | string | Sim | Identificador da origem (ex.: `CRONOGRAMA`, `IOF`, `HEDGE`) |
+| `valorDecimal` | decimal | Sim | Valor positivo do lançamento na moeda especificada |
+| `moeda` | string | Sim | Moeda do valor |
+| `descricao` | string | Sim | Descrição legível do lançamento |
+
+**Responses:**
+- `201 Created` — [LancamentoContabilDto](./schemas.md#lancamentocontabildto)
+- `400 Bad Request` — Validação falhou
+- `404 Not Found` — Conta ou contrato não encontrados
+- `403 Forbidden` — Role insuficiente
+
+---
+
+### Listar Lançamentos da Conta
+
+```
+GET /api/v1/plano-contas/{contaId}/lancamentos
+Autorização: Auditoria
+```
+
+Retorna todos os lançamentos registrados para uma conta contábil específica, ordenados por data decrescente.
+
+**Path Parameters:**
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `contaId` | guid | ID da conta no plano de contas |
+
+**Response 200 OK:** `LancamentoContabilDto[]` (ver [schemas.md](./schemas.md#lancamentocontabildto))
+
+```json
+[
+  {
+    "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+    "contratoId": "019e21cc-102f-79c0-b2c1-48ad8fef9d86",
+    "planoContaId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "data": "2026-05-14",
+    "origem": "CRONOGRAMA",
+    "valor": 12345.67,
+    "moeda": "Usd",
+    "descricao": "Juros parcela 3/12",
+    "createdAt": "2026-05-14T18:54:00Z"
+  }
+]
+```
+
+**Responses:**
+- `200 OK` — `LancamentoContabilDto[]`
+- `404 Not Found` — Conta não encontrada
+- `403 Forbidden` — Role insuficiente
+
+---
+
 ## Natureza das Contas
 
 | Valor | Descrição |

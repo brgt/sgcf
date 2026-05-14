@@ -1,0 +1,30 @@
+meta {
+  name: Listar Feriados
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/feriados?ano=2026
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Lista feriados do calendário.
+  Política: Leitura
+
+  Query params opcionais:
+    ano    — filtra pelo ano (ex.: 2026)
+    escopo — Nacional | Estadual | Municipal
+
+  O motor de cronograma considera apenas feriados com abrangencia=Nacional no MVP.
+}
