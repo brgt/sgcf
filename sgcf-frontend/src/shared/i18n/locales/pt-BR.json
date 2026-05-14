@@ -1,0 +1,102 @@
+{
+  "common": {
+    "actions": {
+      "save": "Salvar",
+      "cancel": "Cancelar",
+      "delete": "Excluir",
+      "edit": "Editar",
+      "create": "Criar",
+      "search": "Buscar",
+      "filter": "Filtrar",
+      "clear": "Limpar",
+      "confirm": "Confirmar",
+      "back": "Voltar",
+      "next": "Próximo",
+      "previous": "Anterior",
+      "loading": "Carregando...",
+      "export": "Exportar",
+      "import": "Importar",
+      "close": "Fechar"
+    },
+    "labels": {
+      "page": "Página",
+      "of": "de",
+      "records": "registros",
+      "noData": "Nenhum registro encontrado",
+      "clearFilters": "Limpar filtros"
+    },
+    "errors": {
+      "generic": "Ocorreu um erro inesperado.",
+      "notFound": "Recurso não encontrado.",
+      "forbidden": "Você não tem permissão para acessar este recurso.",
+      "networkError": "Erro de conexão. Verifique sua rede.",
+      "validation": "Verifique os campos marcados."
+    }
+  },
+  "nav": {
+    "painel": "Painel",
+    "contratos": "Contratos",
+    "bancos": "Bancos",
+    "hedges": "Hedges",
+    "simulador": "Simulador",
+    "configuracoes": "Configurações",
+    "planoContas": "Plano de Contas",
+    "parametrosCotacao": "Parâmetros de Cotação"
+  },
+  "contratos": {
+    "title": "Contratos",
+    "novo": "Novo Contrato",
+    "filters": {
+      "search": "Buscar por número ou código...",
+      "banco": "Banco",
+      "modalidade": "Modalidade",
+      "moeda": "Moeda",
+      "status": "Status",
+      "vencimentoDe": "Vencimento de",
+      "vencimentoAte": "Vencimento até",
+      "valorMin": "Valor mínimo (BRL)",
+      "valorMax": "Valor máximo (BRL)",
+      "advancedFilters": "Filtros avançados",
+      "temHedge": "Com hedge",
+      "temGarantia": "Com garantia",
+      "temAlerta": "Com alerta de vencimento"
+    },
+    "columns": {
+      "numeroExterno": "Nº Externo",
+      "codigoInterno": "Cód. Interno",
+      "banco": "Banco",
+      "modalidade": "Modalidade",
+      "moeda": "Moeda",
+      "valorPrincipal": "Principal",
+      "dataVencimento": "Vencimento",
+      "status": "Status"
+    },
+    "status": {
+      "Ativo": "Ativo",
+      "Liquidado": "Liquidado",
+      "Vencido": "Vencido",
+      "Inadimplente": "Inadimplente",
+      "Cancelado": "Cancelado",
+      "RefinanciadoParcial": "Refinanciado Parcial",
+      "RefinanciadoTotal": "Refinanciado Total"
+    },
+    "modalidades": {
+      "Finimp": "Finimp",
+      "Refinimp": "Refinimp",
+      "Lei4131": "Lei 4.131",
+      "Nce": "NCE",
+      "BalcaoCaixa": "Balcão/Caixa",
+      "Fgi": "FGI"
+    }
+  },
+  "bancos": {
+    "title": "Bancos",
+    "novo": "Novo Banco"
+  },
+  "painel": {
+    "divida": "Painel de Dívida",
+    "garantias": "Painel de Garantias",
+    "vencimentos": "Calendário de Vencimentos",
+    "kpis": "KPIs Executivos"
+  }
+}
