@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Contratos;
 
 namespace Sgcf.Infrastructure.Persistence.Configurations;
@@ -126,6 +127,13 @@ internal sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
                 v => v.HasValue ? (Periodicidade)v.Value : (Periodicidade?)null))
             .HasColumnType("smallint")
             .IsRequired(false);
+
+        builder.Property(c => c.ConvencaoDataNaoUtil)
+            .HasColumnName("convencao_data_nao_util")
+            .HasConversion(new ValueConverter<ConvencaoDataNaoUtil, short>(v => (short)v, v => (ConvencaoDataNaoUtil)v))
+            .HasColumnType("smallint")
+            .IsRequired()
+            .HasDefaultValue(ConvencaoDataNaoUtil.Following);
 
         builder.Property(c => c.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();

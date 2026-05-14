@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cronograma;
@@ -60,13 +61,12 @@ public sealed class GerarCronogramaCommandValidator : AbstractValidator<GerarCro
 public sealed class GerarCronogramaCommandHandler(
     IContratoRepository contratoRepo,
     IEventoCronogramaRepository cronogramaRepo,
-    IGeradorCronograma geradorCronograma,
-    IGerarSacStrategy geradorSac)
+    IBusinessDayCalendar calendar)
     : IRequestHandler<GerarCronogramaCommand, IReadOnlyList<EventoCronogramaDto>>
 {
-    private const int DefaultNumeroParcelas = 4;
-
-    public async Task<IReadOnlyList<EventoCronogramaDto>> Handle(GerarCronogramaCommand cmd, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<EventoCronogramaDto>> Handle(
+        GerarCronogramaCommand cmd,
+        CancellationToken cancellationToken)
     {
         Contrato contrato = await contratoRepo.GetByIdAsync(cmd.ContratoId, cancellationToken)
             ?? throw new KeyNotFoundException($"Contrato com Id '{cmd.ContratoId}' não encontrado.");
@@ -85,30 +85,37 @@ public sealed class GerarCronogramaCommandHandler(
             }
         }
 
+        if (contrato.Modalidade == ModalidadeContrato.BalcaoCaixa)
+        {
+            throw new ArgumentException(
+                "Balcão Caixa não suporta geração automática de cronograma. Use o endpoint importar-cronograma.",
+                nameof(cmd));
+        }
+
         await cronogramaRepo.DeleteAllByContratoIdAsync(cmd.ContratoId, cancellationToken);
 
-        List<EventoCronograma> entities;
+        GerarCronogramaInput strategyInput = BuildInput(cmd, contrato);
+        ICronogramaStrategy strategy = CronogramaStrategyFactory.Criar(contrato.EstruturaAmortizacao);
+        IReadOnlyList<EventoCronogramaGerado> gerados = strategy.Gerar(strategyInput);
+
+        List<EventoCronograma> entities = new(gerados.Count);
+        foreach (EventoCronogramaGerado g in gerados)
+        {
+            LocalDate dataAjustada = await calendar.AjustarPorConvencaoAsync(
+                g.DataPrevista, contrato.ConvencaoDataNaoUtil, cancellationToken);
+
+            entities.Add(EventoCronograma.Criar(
+                contratoId: cmd.ContratoId,
+                numeroEvento: (short)g.NumeroEvento,
+                tipo: g.Tipo,
+                dataPrevista: dataAjustada,
+                valorMoedaOriginal: g.Valor,
+                saldoDevedorApos: g.SaldoDevedorApos));
+        }
 
         if (contrato.Modalidade == ModalidadeContrato.Fgi)
         {
-            FgiDetail? fgiDetail = await contratoRepo.GetFgiDetailAsync(cmd.ContratoId, cancellationToken);
-            entities = await GerarEntidadesFgiAsync(cmd, contrato, fgiDetail);
-        }
-        else
-        {
-            entities = contrato.Modalidade switch
-            {
-                ModalidadeContrato.Finimp => GerarEntidadesBullet(cmd, contrato),
-                ModalidadeContrato.Refinimp => GerarEntidadesBullet(cmd, contrato),
-                ModalidadeContrato.Nce => GerarEntidadesBullet(cmd, contrato),
-                ModalidadeContrato.Lei4131 => GerarEntidadesSac(cmd, contrato),
-                ModalidadeContrato.BalcaoCaixa => throw new ArgumentException(
-                    "Balcão Caixa não suporta geração automática de cronograma. Use o endpoint importar-cronograma.",
-                    nameof(cmd)),
-                _ => throw new ArgumentException(
-                    $"Modalidade {contrato.Modalidade} não suporta geração automática de cronograma.",
-                    nameof(cmd))
-            };
+            await AdicionarTarifaFgiAsync(cmd, contrato, entities, cancellationToken);
         }
 
         cronogramaRepo.AddRange(entities);
@@ -132,99 +139,58 @@ public sealed class GerarCronogramaCommandHandler(
         return result.AsReadOnly();
     }
 
-    private List<EventoCronograma> GerarEntidadesBullet(GerarCronogramaCommand cmd, Contrato contrato)
-    {
-        EntradaBullet entrada = new(
+    private static GerarCronogramaInput BuildInput(GerarCronogramaCommand cmd, Contrato contrato) =>
+        new(
             ValorPrincipal: contrato.ValorPrincipal,
             TaxaAa: contrato.TaxaAa,
             BaseCalculo: contrato.BaseCalculo,
             DataDesembolso: contrato.DataContratacao,
-            DataVencimento: contrato.DataVencimento,
-            AliqIrrf: cmd.AliqIrrfPct.HasValue ? Percentual.De(cmd.AliqIrrfPct.Value) : (Percentual?)null,
-            AliqIofCambio: cmd.AliqIofCambioPct.HasValue ? Percentual.De(cmd.AliqIofCambioPct.Value) : (Percentual?)null,
+            DataPrimeiroVencimento: contrato.DataPrimeiroVencimento,
+            QuantidadeParcelas: contrato.QuantidadeParcelas,
+            Periodicidade: contrato.Periodicidade,
+            AnchorDiaMes: contrato.AnchorDiaMes,
+            AnchorDiaFixo: contrato.AnchorDiaFixo,
+            PeriodicidadeJuros: contrato.PeriodicidadeJuros,
+            ConvencaoDataNaoUtil: contrato.ConvencaoDataNaoUtil,
+            AliqIrrf: cmd.AliqIrrfPct.HasValue ? Percentual.De(cmd.AliqIrrfPct.Value) : null,
+            AliqIofCambio: cmd.AliqIofCambioPct.HasValue ? Percentual.De(cmd.AliqIofCambioPct.Value) : null,
             TarifaRofBrl: cmd.TarifaRofBrl,
             TarifaCadempBrl: cmd.TarifaCadempBrl);
 
-        IReadOnlyList<EventoGeradoBullet> gerados = geradorCronograma.Gerar(entrada);
-
-        List<EventoCronograma> entities = new(gerados.Count);
-        foreach (EventoGeradoBullet gerado in gerados)
-        {
-            entities.Add(EventoCronograma.Criar(
-                contratoId: cmd.ContratoId,
-                numeroEvento: gerado.NumeroEvento,
-                tipo: gerado.Tipo,
-                dataPrevista: gerado.DataPrevista,
-                valorMoedaOriginal: gerado.Valor,
-                saldoDevedorApos: gerado.SaldoDevedorApos));
-        }
-
-        return entities;
-    }
-
-    private List<EventoCronograma> GerarEntidadesSac(GerarCronogramaCommand cmd, Contrato contrato)
-    {
-        int numeroParcelas = cmd.NumeroParcelas ?? DefaultNumeroParcelas;
-
-        EntradaSac entrada = new(
-            ValorPrincipal: contrato.ValorPrincipal,
-            TaxaAa: contrato.TaxaAa,
-            BaseCalculo: contrato.BaseCalculo,
-            DataDesembolso: contrato.DataContratacao,
-            DataVencimento: contrato.DataVencimento,
-            NumeroParcelas: numeroParcelas,
-            AliqIrrf: cmd.AliqIrrfPct.HasValue ? Percentual.De(cmd.AliqIrrfPct.Value) : (Percentual?)null);
-
-        IReadOnlyList<EventoGeradoSac> gerados = geradorSac.GerarSac(entrada);
-
-        List<EventoCronograma> entities = new(gerados.Count);
-        foreach (EventoGeradoSac gerado in gerados)
-        {
-            entities.Add(EventoCronograma.Criar(
-                contratoId: cmd.ContratoId,
-                numeroEvento: (short)gerado.NumeroParcela,
-                tipo: gerado.Tipo,
-                dataPrevista: gerado.DataPrevista,
-                valorMoedaOriginal: gerado.Valor,
-                saldoDevedorApos: gerado.SaldoDevedorApos));
-        }
-
-        return entities;
-    }
-
-    // FGI: Bullet strategy + optional TarifaFgi event at vencimento.
-    // taxaFgiAa priority: command param overrides detail value.
-    private Task<List<EventoCronograma>> GerarEntidadesFgiAsync(
+    private async Task AdicionarTarifaFgiAsync(
         GerarCronogramaCommand cmd,
         Contrato contrato,
-        FgiDetail? fgiDetail)
+        List<EventoCronograma> entities,
+        CancellationToken cancellationToken)
     {
-        List<EventoCronograma> entities = GerarEntidadesBullet(cmd, contrato);
+        FgiDetail? fgiDetail = await contratoRepo.GetFgiDetailAsync(cmd.ContratoId, cancellationToken);
 
-        // Resolve taxa FGI: command param takes precedence over persisted detail
         Percentual? taxaFgi = cmd.TaxaFgiAaPct.HasValue
             ? Percentual.De(cmd.TaxaFgiAaPct.Value)
             : fgiDetail?.TaxaFgiAa;
 
-        if (taxaFgi.HasValue)
+        if (!taxaFgi.HasValue)
         {
-            int prazo = Period.Between(contrato.DataContratacao, contrato.DataVencimento, PeriodUnits.Days).Days;
-            decimal baseCalculo = (decimal)contrato.BaseCalculo;
-
-            decimal valorTarifaFgi = Math.Round(
-                contrato.ValorPrincipal.Valor * taxaFgi.Value.AsDecimal * prazo / baseCalculo,
-                2,
-                MidpointRounding.AwayFromZero);
-
-            entities.Add(EventoCronograma.Criar(
-                contratoId: cmd.ContratoId,
-                numeroEvento: 1,
-                tipo: TipoEventoCronograma.TarifaFgi,
-                dataPrevista: contrato.DataVencimento,
-                valorMoedaOriginal: new Money(valorTarifaFgi, contrato.ValorPrincipal.Moeda),
-                saldoDevedorApos: null));
+            return;
         }
 
-        return Task.FromResult(entities);
+        int prazo = Period.Between(contrato.DataContratacao, contrato.DataVencimento, PeriodUnits.Days).Days;
+        decimal baseCalculo = (decimal)contrato.BaseCalculo;
+
+        decimal valorTarifaFgi = Math.Round(
+            contrato.ValorPrincipal.Valor * taxaFgi.Value.AsDecimal * prazo / baseCalculo,
+            2,
+            MidpointRounding.AwayFromZero);
+
+        LocalDate dataVencAjustada = await calendar.AjustarPorConvencaoAsync(
+            contrato.DataVencimento, contrato.ConvencaoDataNaoUtil, cancellationToken);
+
+        entities.Add(EventoCronograma.Criar(
+            contratoId: cmd.ContratoId,
+            numeroEvento: 1,
+            tipo: TipoEventoCronograma.TarifaFgi,
+            dataPrevista: dataVencAjustada,
+            valorMoedaOriginal: new Money(valorTarifaFgi, contrato.ValorPrincipal.Moeda),
+            saldoDevedorApos: null));
     }
 }

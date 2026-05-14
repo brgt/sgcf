@@ -1,4 +1,5 @@
 using NodaTime;
+using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Cronograma;
 
@@ -33,6 +34,7 @@ public sealed class Contrato : Entity
     public AnchorDiaMes AnchorDiaMes { get; private set; }
     public int? AnchorDiaFixo { get; private set; }
     public Periodicidade? PeriodicidadeJuros { get; private set; }
+    public ConvencaoDataNaoUtil ConvencaoDataNaoUtil { get; private set; }
 
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
@@ -65,6 +67,7 @@ public sealed class Contrato : Entity
         AnchorDiaMes anchorDiaMes = AnchorDiaMes.DiaContratacao,
         int? anchorDiaFixo = null,
         Periodicidade? periodicidadeJuros = null,
+        ConvencaoDataNaoUtil convencaoDataNaoUtil = ConvencaoDataNaoUtil.Following,
         Guid? contratoPaiId = null,
         string? observacoes = null)
     {
@@ -125,6 +128,7 @@ public sealed class Contrato : Entity
             AnchorDiaMes = anchorDiaMes,
             AnchorDiaFixo = anchorDiaFixo,
             PeriodicidadeJuros = periodicidadeJuros,
+            ConvencaoDataNaoUtil = convencaoDataNaoUtil,
             ContratoPaiId = contratoPaiId,
             Observacoes = observacoes,
             CreatedAt = now,

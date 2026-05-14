@@ -17,7 +17,6 @@ using Sgcf.Infrastructure.Auditoria;
 using Sgcf.Infrastructure.Caching;
 using Sgcf.Infrastructure.Calendario;
 using Sgcf.Infrastructure.Cotacoes;
-using Sgcf.Infrastructure.Cronograma;
 using Sgcf.Infrastructure.Persistence;
 using Sgcf.Infrastructure.Persistence.Repositories;
 
@@ -53,8 +52,6 @@ public static class DependencyInjection
         services.AddScoped<IParametroCotacaoRepository, ParametroCotacaoRepository>();
         services.AddScoped<IEventoCronogramaRepository, EventoCronogramaRepository>();
         services.AddScoped<ICotacaoFxRepository, CotacaoFxRepository>();
-        services.AddScoped<IGeradorCronograma, BulletGeradorStrategy>();
-        services.AddScoped<IGerarSacStrategy, SacGeradorStrategy>();
         services.AddScoped<ICotacaoSpotCache, RedisCotacaoSpotCache>();
         services.AddScoped<IResolveTipoCotacaoService, CotacaoResolverService>();
         services.AddScoped<ISimulacaoAntecipacaoRepository, SimulacaoAntecipacaoRepository>();
