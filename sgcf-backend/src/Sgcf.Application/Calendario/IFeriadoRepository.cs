@@ -28,6 +28,15 @@ public interface IFeriadoRepository
         EscopoFeriado? escopo,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// Retorna true se já existe um feriado com exatamente a mesma data, tipo e escopo.
+    /// </summary>
+    public Task<bool> ExistsAsync(
+        LocalDate data,
+        TipoFeriado tipo,
+        EscopoFeriado escopo,
+        CancellationToken ct = default);
+
     public void Add(Feriado feriado);
 
     public Task<Feriado?> GetByIdAsync(Guid id, CancellationToken ct = default);

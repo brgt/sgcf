@@ -21,10 +21,10 @@ headers {
 
 body:json {
   {
-    "data": "2026-11-20",
-    "descricao": "Dia da Consciência Negra",
-    "abrangencia": "Nacional",
-    "tipo": "FixoCalendario"
+    "data": "2027-05-01",
+    "descricao": "Dia do Trabalho",
+    "abrangencia": "Brasil",
+    "tipo": "Nacional"
   }
 }
 
@@ -41,6 +41,8 @@ docs {
   Feriados criados via API recebem fonte=Manual automaticamente.
   Feriados ANBIMA são ingeridos por job e não podem ser criados manualmente.
 
-  abrangencia: Nacional | Estadual | Municipal
-  tipo: FixoCalendario | MovelCalendario | Pontual
+  abrangencia: Brasil | SaoPaulo | RioDeJaneiro | Municipal
+  tipo: Nacional | Bancario | BolsaB3 | Regional
+
+  Retorna 409 Conflict se já existir feriado com mesma data+tipo+escopo.
 }

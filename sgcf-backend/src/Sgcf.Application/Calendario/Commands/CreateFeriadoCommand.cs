@@ -46,6 +46,12 @@ public sealed class CreateFeriadoCommandHandler(IFeriadoRepository repo, IClock 
         EscopoFeriado escopo = Enum.Parse<EscopoFeriado>(cmd.Abrangencia, true);
         TipoFeriado tipo = Enum.Parse<TipoFeriado>(cmd.Tipo, true);
 
+        if (await repo.ExistsAsync(data, tipo, escopo, cancellationToken))
+        {
+            throw new InvalidOperationException(
+                $"Já existe um feriado '{tipo}' de escopo '{escopo}' para a data {data}.");
+        }
+
         Feriado feriado = Feriado.Criar(
             data,
             tipo,

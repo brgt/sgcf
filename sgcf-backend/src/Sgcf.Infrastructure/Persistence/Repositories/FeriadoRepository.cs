@@ -51,6 +51,14 @@ internal sealed class FeriadoRepository(SgcfDbContext context) : IFeriadoReposit
         return list.AsReadOnly();
     }
 
+    public Task<bool> ExistsAsync(
+        LocalDate data,
+        TipoFeriado tipo,
+        EscopoFeriado escopo,
+        CancellationToken ct = default) =>
+        context.Feriados.AsNoTracking()
+            .AnyAsync(f => f.Data == data && f.Tipo == tipo && f.Escopo == escopo, ct);
+
     public void Add(Feriado feriado) => context.Feriados.Add(feriado);
 
     public Task<Feriado?> GetByIdAsync(Guid id, CancellationToken ct = default) =>

@@ -21,24 +21,30 @@ headers {
 
 body:json {
   {
-    "taxaAa": 5.75,
-    "dataVencimento": "2027-06-15",
-    "observacoes": "Renegociação de taxa em maio/2026",
-    "periodicidade": "Trimestral",
-    "estruturaAmortizacao": "Sac",
-    "quantidadeParcelas": 8,
-    "convencaoDataNaoUtil": "ModifiedFollowing"
+    "periodicidade": "Mensal",
+    "estruturaAmortizacao": "Price",
+    "quantidadeParcelas": 12,
+    "dataPrimeiroVencimento": "2026-06-15",
+    "anchorDiaMes": 15,
+    "anchorDiaFixo": null,
+    "periodicidadeJuros": "Mensal",
+    "convencaoDataNaoUtil": "PróximoDiaÚtil"
   }
 }
 
 docs {
-  Atualização parcial de contrato.
+  Atualiza parcialmente um contrato com novos parâmetros de amortização.
   Política: Escrita
 
-  Apenas os campos enviados com valor não-nulo são aplicados.
-  Campos omitidos ou null permanecem inalterados.
+  Campos opcionais (envie apenas os que deseja alterar):
+    periodicidade      — Mensal, Trimestral, Semestral, Anual
+    estruturaAmortizacao — Price, SAC, Americano
+    quantidadeParcelas — número de parcelas
+    dataPrimeiroVencimento — data do primeiro vencimento (ISO 8601)
+    anchorDiaMes — dia do mês fixo para vencimentos
+    anchorDiaFixo — dia fixo sem relativização
+    periodicidadeJuros — frequência de cobrança de juros
+    convencaoDataNaoUtil — PróximoDiaÚtil, DiaÚtilAnterior, ModifiedFollowing
 
-  Campos disponíveis: numeroExterno, taxaAa, dataVencimento, observacoes,
-  baseCalculo, periodicidade, estruturaAmortizacao, quantidadeParcelas,
-  dataPrimeiroVencimento, convencaoDataNaoUtil.
+  Retorna 200 OK com o ContratoDto atualizado em caso de sucesso.
 }

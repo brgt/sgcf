@@ -1,0 +1,347 @@
+{
+  "info": {
+    "name": "SGCF API - Sprint 3",
+    "description": "Sistema de Gestão de Contratos de Financiamento - API Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Contratos",
+      "item": [
+        {
+          "name": "Atualizar Contrato (PATCH)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodicidade\": \"Mensal\",\n  \"estruturaAmortizacao\": \"Price\",\n  \"quantidadeParcelas\": 12,\n  \"dataPrimeiroVencimento\": \"2026-06-15\",\n  \"anchorDiaMes\": 15,\n  \"anchorDiaFixo\": null,\n  \"periodicidadeJuros\": \"Mensal\",\n  \"convencaoDataNaoUtil\": \"PróximoDiaÚtil\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "contratos",
+                "{{contratoId}}"
+              ]
+            },
+            "description": "Atualiza parcialmente um contrato com novos parâmetros de amortização.\nPolítica: Escrita"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feriados",
+      "item": [
+        {
+          "name": "Listar Feriados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/feriados?ano=2026",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "feriados"
+              ],
+              "query": [
+                {
+                  "key": "ano",
+                  "value": "2026"
+                },
+                {
+                  "key": "escopo",
+                  "value": "Nacional",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista feriados do calendário.\nPolítica: Leitura\n\nQuery params opcionais:\n- ano: filtra pelo ano (ex.: 2026)\n- escopo: Nacional | Estadual | Municipal"
+          }
+        },
+        {
+          "name": "Criar Feriado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": \"2027-05-01\",\n  \"descricao\": \"Dia do Trabalho\",\n  \"abrangencia\": \"Brasil\",\n  \"tipo\": \"Nacional\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/feriados",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "feriados"
+              ]
+            },
+            "description": "Cria um feriado manual no calendário.\nPolítica: Admin\n\nFeriados criados via API recebem fonte=Manual automaticamente.\nFeriados ANBIMA são ingeridos por job e não podem ser criados manualmente.\n\nabrangencia: Brasil | SaoPaulo | RioDeJaneiro | Municipal\ntipo: Nacional | Bancario | BolsaB3 | Regional\n\nRetorna 409 Conflict se já existir feriado com mesma data+tipo+escopo."
+          }
+        },
+        {
+          "name": "Excluir Feriado",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/feriados/{{feriadoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "feriados",
+                "{{feriadoId}}"
+              ]
+            },
+            "description": "Remove um feriado manual do calendário.\nPolítica: Admin\n\nApenas feriados com fonte=Manual devem ser excluídos.\nFeriados ANBIMA são mantidos para rastreabilidade — não excluir via API.\n\nRetorna 204 No Content em caso de sucesso."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Plano de Contas",
+      "item": [
+        {
+          "name": "Criar Lançamento Contábil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contratoId\": \"{{contratoId}}\",\n  \"data\": \"2026-05-14\",\n  \"origem\": \"CRONOGRAMA\",\n  \"valorDecimal\": 12345.67,\n  \"moeda\": \"Usd\",\n  \"descricao\": \"Juros parcela 3/12 — FINIMP-2026-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/plano-contas/{{planoContaId}}/lancamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "plano-contas",
+                "{{planoContaId}}",
+                "lancamentos"
+              ]
+            },
+            "description": "Registra um lançamento contábil associado a um contrato e a uma conta do plano de contas.\nPolítica: Escrita\n\nmoeda: Brl | Usd | Eur | Jpy | Cny\norigem: string de até 50 caracteres (ex.: CRONOGRAMA, IOF, HEDGE, PROVISAO)\nvalorDecimal: deve ser > 0"
+          }
+        },
+        {
+          "name": "Listar Lançamentos da Conta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/plano-contas/{{planoContaId}}/lancamentos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "plano-contas",
+                "{{planoContaId}}",
+                "lancamentos"
+              ]
+            },
+            "description": "Lista todos os lançamentos contábeis de uma conta, ordenados por data decrescente.\nPolítica: Auditoria\n\nRetorna IReadOnlyList<LancamentoContabilDto>."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auditoria",
+      "item": [
+        {
+          "name": "Listar Eventos de Auditoria",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/audit/eventos?page=1&pageSize=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit",
+                "eventos"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "50"
+                },
+                {
+                  "key": "entity",
+                  "value": "Contrato",
+                  "disabled": true
+                },
+                {
+                  "key": "entityId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "actorSub",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "source",
+                  "value": "rest",
+                  "disabled": true
+                },
+                {
+                  "key": "operation",
+                  "value": "CREATE",
+                  "disabled": true
+                },
+                {
+                  "key": "de",
+                  "value": "2026-05-01T00:00:00Z",
+                  "disabled": true
+                },
+                {
+                  "key": "ate",
+                  "value": "2026-05-31T23:59:59Z",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Consulta o log de auditoria imutável.\nPolítica: Auditoria (roles: auditor, admin)\n\nQuery params disponíveis (todos opcionais):\n- entity: nome da entidade (ex.: Contrato, Banco, Feriado)\n- entityId: UUID da entidade específica\n- actorSub: claim sub do JWT do autor\n- source: rest | mcp | a2a | job\n- operation: CREATE | UPDATE | DELETE\n- de: início do intervalo (ISO 8601, ex.: 2026-05-01T00:00:00Z)\n- ate: fim do intervalo (ISO 8601)\n- page: página (padrão: 1)\n- pageSize: itens por página (padrão: 50, máx.: 200)\n\nPara filtrar eventos gerados por agentes de IA: ?source=mcp ou ?source=a2a\nA lista é ordenada por occurredAt decrescente (mais recentes primeiro).\n\nNota: ipHash é omitido da resposta (proteção de privacidade LGPD).\nRetenção mínima: 5 anos (append-only, nunca deletado)."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "dev-mock-token",
+      "type": "string"
+    },
+    {
+      "key": "contratoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "feriadoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "planoContaId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  }
+}
