@@ -112,6 +112,70 @@ public sealed class CalculadoraCetTests
             .WithMessage("*PtaxUsdBrl*positiva*");
     }
 
+    // Bug Prove-It: CET do contrato fechado deve refletir a taxa final negociada,
+    // não a taxa original da proposta. Necessário para calcular economia corretamente
+    // em ConverterEmContratoCommandHandler (SPEC §5.2).
+    [Fact]
+    public void CalcularCet_com_taxaAaOverride_deve_usar_taxa_override_em_vez_da_proposta()
+    {
+        var proposta = PropostaFactory.CriarProposta(
+            moedaOriginal: Moeda.Usd,
+            valorOferecido: 1_000_000m,
+            taxaAaPercentual: 6.2m,
+            iofPercentual: 0.38m,
+            spreadAaPercentual: 0m,
+            prazoDias: 180);
+
+        decimal cetTaxaOriginal = CalculadoraCet.CalcularCet(proposta, PtaxFixo, DataDesembolso);
+        decimal cetTaxaReduzida = CalculadoraCet.CalcularCet(
+            proposta, PtaxFixo, DataDesembolso, taxaAaPercentualOverride: 6.0m);
+
+        cetTaxaReduzida.Should().BeLessThan(cetTaxaOriginal,
+            "taxa final negociada 6.0% < 6.2% original deve produzir CET menor");
+    }
+
+    // Bug Prove-It #21: rendimento CDB cativo ≥ 100% do principal produzia CET negativo.
+    // O modelo correto não permite que o rendimento da garantia torne o empréstimo lucrativo
+    // para o tomador (rendimento pertence ao banco durante o bloqueio). CET tem floor em 0%.
+    [Fact]
+    public void CalcularCet_com_CDB_alto_nao_deve_produzir_CET_negativo()
+    {
+        var proposta = PropostaFactory.CriarProposta(
+            moedaOriginal: Moeda.Brl,
+            valorOferecido: 1_040_000m,
+            taxaAaPercentual: 6m,
+            iofPercentual: 0m,
+            spreadAaPercentual: 0m,
+            prazoDias: 180,
+            garantiaEhCdbCativo: true,
+            rendimentoCdbAaPercentual: 11.15m,
+            valorGarantia: 1_040_000m); // garantia = 100% do principal
+
+        decimal cet = CalculadoraCet.CalcularCet(proposta, PtaxFixo, DataDesembolso);
+
+        cet.Should().BeGreaterThanOrEqualTo(0m,
+            "rendimento CDB pertence ao banco durante bloqueio; CET tem floor em 0%");
+    }
+
+    [Fact]
+    public void CalcularCet_sem_override_deve_usar_taxa_da_proposta()
+    {
+        var proposta = PropostaFactory.CriarProposta(
+            moedaOriginal: Moeda.Usd,
+            valorOferecido: 1_000_000m,
+            taxaAaPercentual: 6.2m,
+            iofPercentual: 0.38m,
+            spreadAaPercentual: 0m,
+            prazoDias: 180);
+
+        decimal cetSemOverride = CalculadoraCet.CalcularCet(proposta, PtaxFixo, DataDesembolso);
+        decimal cetOverrideExplicito = CalculadoraCet.CalcularCet(
+            proposta, PtaxFixo, DataDesembolso, taxaAaPercentualOverride: 6.2m);
+
+        cetOverrideExplicito.Should().Be(cetSemOverride,
+            "override igual à taxa da proposta produz resultado idêntico");
+    }
+
     // ─── Property-based tests (FsCheck 2.x) ─────────────────────────────────
     // SPEC §10.3
     // FsCheck 2.x Prop.ForAll suporta até 3 Arbitrary; combina parâmetros em tupla quando necessário.

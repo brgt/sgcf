@@ -24,11 +24,17 @@ public static class CalculadoraCet
     /// <param name="proposta">Proposta com taxa, estrutura e demais parâmetros.</param>
     /// <param name="ptaxUsdBrl">Taxa PTAX D-1 USD/BRL para conversão dos fluxos.</param>
     /// <param name="dataDesembolso">Data de desembolso (início do fluxo).</param>
+    /// <param name="taxaAaPercentualOverride">
+    /// Quando informado, substitui <see cref="Proposta.TaxaAaPercentualDecimal"/> no cálculo.
+    /// Necessário para calcular o CET do contrato fechado com taxa final negociada
+    /// sem mutar a proposta original (SPEC §5.2).
+    /// </param>
     /// <returns>CET em % a.a. (ex: 7.5m para 7,5%).</returns>
     public static decimal CalcularCet(
         Proposta proposta,
         decimal ptaxUsdBrl,
-        LocalDate dataDesembolso)
+        LocalDate dataDesembolso,
+        decimal? taxaAaPercentualOverride = null)
     {
         ArgumentNullException.ThrowIfNull(proposta);
 
@@ -42,7 +48,8 @@ public static class CalculadoraCet
 
         // ── 2. Projetar fluxo usando motor de amortização ────────────────────
         LocalDate dataVencimento = dataDesembolso.PlusDays(proposta.PrazoDias);
-        decimal taxaEfetiva = proposta.TaxaAaPercentualDecimal + proposta.SpreadAaPercentualDecimal;
+        decimal taxaBase = taxaAaPercentualOverride ?? proposta.TaxaAaPercentualDecimal;
+        decimal taxaEfetiva = taxaBase + proposta.SpreadAaPercentualDecimal;
 
         IReadOnlyList<EventoCronogramaGerado> eventos = ProjetarFluxo(
             proposta,
@@ -65,7 +72,13 @@ public static class CalculadoraCet
         decimal tirDiaria = CalcularTirDiaria(fluxos);
         decimal cetAa = AnualizarTaxaDiaria(tirDiaria, proposta.PrazoDias);
 
-        return Math.Round(cetAa * 100m, 6, MidpointRounding.AwayFromZero);
+        // CET tem floor em 0%: o rendimento da garantia (CDB cativo) reduz o custo
+        // do empréstimo mas não pode torná-lo lucrativo para o tomador — o rendimento
+        // pertence ao banco durante o bloqueio. Sem este floor, garantias ≥ 100% do
+        // principal produziam CET negativo (semanticamente errado). Ver SPEC §5.1.
+        decimal cetAjustado = Math.Max(0m, cetAa);
+
+        return Math.Round(cetAjustado * 100m, 6, MidpointRounding.AwayFromZero);
     }
 
     // ─── Helpers internos ───────────────────────────────────────────────────

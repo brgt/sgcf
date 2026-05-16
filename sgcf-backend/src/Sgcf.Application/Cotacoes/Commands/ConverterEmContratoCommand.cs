@@ -113,7 +113,13 @@ public sealed class ConverterEmContratoCommandHandler(
         }
 
         // ── 2. Calcular CET do contrato fechado ────────────────────────────────
-        decimal cetContrato = CalculadoraCet.CalcularCet(propostaAceita, cotacao.PtaxUsadaUsdBrl, dataContratacao);
+        // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
+        // como snapshot imutável e reflete corretamente a economia na transição (SPEC §5.2).
+        decimal cetContrato = CalculadoraCet.CalcularCet(
+            propostaAceita,
+            cotacao.PtaxUsadaUsdBrl,
+            dataContratacao,
+            taxaAaPercentualOverride: cmd.TaxaAa);
 
         // ── 3. Criar EconomiaNegociacao ────────────────────────────────────────
         decimal cetProposta = propostaAceita.CetCalculadoAaPercentual
