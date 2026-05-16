@@ -1,0 +1,30 @@
+meta {
+  name: Remover Banco
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/bancos/{{bancoId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Remove banco-alvo da cotação.
+  Política: Escrita
+  Restrição: apenas em status Rascunho ou EmCaptacao.
+
+  Retornos:
+  - 204: banco removido
+  - 404: cotação não encontrada
+  - 409: cotação em status que não permite remoção
+}

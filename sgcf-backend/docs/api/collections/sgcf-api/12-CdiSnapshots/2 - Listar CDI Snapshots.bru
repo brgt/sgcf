@@ -1,0 +1,31 @@
+meta {
+  name: Listar CDI Snapshots
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/cdi-snapshots?desde=2026-05-01&ate=2026-05-31
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Lista snapshots de CDI por período.
+  Política: Leitura
+
+  Query params:
+  - desde: data início (YYYY-MM-DD); opcional — padrão: últimos 30 dias
+  - ate: data fim (YYYY-MM-DD); opcional — padrão: hoje
+
+  Retornos:
+  - 200: lista de CdiSnapshotDto ordenada por data
+}

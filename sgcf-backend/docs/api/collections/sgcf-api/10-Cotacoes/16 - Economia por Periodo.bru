@@ -1,0 +1,33 @@
+meta {
+  name: Economia por Periodo
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/cotacoes/economia?de=2026-01&ate=2026-05
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Relatório de economia negociada agregada por período.
+  Política: Leitura
+
+  Query params:
+  - de: mês inicial no formato YYYY-MM (obrigatório)
+  - ate: mês final no formato YYYY-MM (obrigatório)
+  - bancoId: filtrar por banco (opcional)
+
+  Retornos:
+  - 200: EconomiaPeriodoDto com subtotais por mês (EconomiaMesDto[]) e totais gerais
+  - 400: formato de de/ate inválido
+}

@@ -140,3 +140,6 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymo
 app.MapControllers();
 
 await app.RunAsync();
+
+// Expõe Program para WebApplicationFactory nos testes de integração
+public partial class Program { }

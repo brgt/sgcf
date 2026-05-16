@@ -1,0 +1,32 @@
+meta {
+  name: Aceitar Proposta
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/propostas/{{propostaId}}/aceitar
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Aceita uma proposta. Registra AceitaPor com o sub do JWT do operador autenticado.
+  Política: Escrita
+
+  Invariante: apenas uma proposta pode ser aceita por cotação (SPEC §3.2 regra 4).
+  Cotação deve estar em status Comparada.
+
+  Retornos:
+  - 204: proposta aceita; cotação move para status Aceita
+  - 404: cotação ou proposta não encontrada
+  - 409: cotação não está em Comparada OU já existe outra proposta aceita
+}

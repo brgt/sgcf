@@ -33,6 +33,7 @@
   <ItemGroup Label="Assertions &amp; Fakes">
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Bogus" />
+    <PackageReference Include="NSubstitute" />
   </ItemGroup>
 
   <ItemGroup Label="Testcontainers">

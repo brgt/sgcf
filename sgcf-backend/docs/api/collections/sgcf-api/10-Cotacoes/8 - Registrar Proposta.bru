@@ -1,0 +1,64 @@
+meta {
+  name: Registrar Proposta
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/propostas
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "bancoId": "{{bancoId}}",
+    "moedaOriginal": "Usd",
+    "valorOferecido": 300000.00,
+    "taxaAa": 5.25,
+    "iofPct": 0.38,
+    "spreadAa": 0.50,
+    "prazoDias": 180,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "SemestralAniversario",
+    "exigeNdf": false,
+    "custoNdfAa": null,
+    "garantiaExigida": "CDB caucionado",
+    "valorGarantiaBrl": 1650000.00,
+    "garantiaEhCdbCativo": true,
+    "rendimentoCdbAa": 13.5
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("propostaId", res.body.id);
+  }
+}
+
+docs {
+  Registra proposta recebida de um banco. CET é calculado automaticamente.
+  Política: Escrita
+
+  Campos:
+  - moedaOriginal: Brl | Usd | Eur | Cny | Jpy
+  - estruturaAmortizacao: Bullet | Price | Sac
+  - periodicidadeJuros: Mensal | Trimestral | Semestral | SemestralAniversario | Anual | NaVencimento
+  - exigeNdf: se true, custoNdfAa é obrigatório
+  - garantiaEhCdbCativo: se true, rendimentoCdbAa é obrigatório (reduz CET)
+
+  Retornos:
+  - 201: proposta registrada com CET calculado em CetCalculadoAaPercentual
+  - 400: campos inválidos
+  - 404: cotação não encontrada
+  - 409: transição inválida (cotação não está em EmCaptacao ou Comparada)
+}

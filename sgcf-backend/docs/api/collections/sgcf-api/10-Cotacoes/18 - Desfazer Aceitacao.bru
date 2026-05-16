@@ -1,0 +1,32 @@
+meta {
+  name: Desfazer Aceitacao
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/propostas/{{propostaId}}/desfazer-aceitacao
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Reverte aceitação de proposta: Aceita → Comparada.
+  Política: Escrita
+
+  O propostaId na rota é informativo (cotação tem exatamente uma proposta aceita por vez).
+  Apenas disponível se cotação ainda não foi convertida em contrato.
+
+  Retornos:
+  - 204: aceitação revertida; cotação volta a Comparada
+  - 404: cotação não encontrada
+  - 409: cotação já foi convertida em contrato OU status inválido
+}

@@ -1,0 +1,42 @@
+meta {
+  name: Atualizar Cotacao
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "prazoMaximoDias": 210,
+    "observacoes": "Prazo estendido após negociação interna"
+  }
+}
+
+docs {
+  Atualiza campos básicos editáveis da cotação.
+  Política: Escrita
+  Restrição: apenas em status Rascunho.
+
+  Campos editáveis:
+  - prazoMaximoDias: novo prazo máximo (>= 1); null para não alterar
+  - observacoes: novo texto; null para não alterar
+
+  Retornos:
+  - 200: CotacaoDto atualizado
+  - 404: cotação não encontrada
+  - 409: cotação não está em Rascunho
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Buscar Cotacao por ID
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Retorna detalhe completo de uma cotação incluindo todas as propostas.
+  Política: Leitura
+
+  Retornos:
+  - 200: CotacaoDto com propostas aninhadas
+  - 404: cotação não encontrada
+}

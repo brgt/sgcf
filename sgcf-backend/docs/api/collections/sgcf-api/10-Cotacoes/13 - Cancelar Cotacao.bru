@@ -1,0 +1,39 @@
+meta {
+  name: Cancelar Cotacao
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/cancelar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "motivo": "Necessidade de captação cancelada por decisão da diretoria"
+  }
+}
+
+docs {
+  Cancela cotação com motivo explícito. Move para status Recusada.
+  Política: Escrita
+
+  Transições válidas: Rascunho → Recusada, EmCaptacao → Recusada, Comparada → Recusada.
+  Status finais (Convertida, Recusada) não podem ser cancelados novamente.
+
+  Retornos:
+  - 204: cotação cancelada
+  - 404: cotação não encontrada
+  - 409: cotação em status final (Convertida ou já Recusada)
+}

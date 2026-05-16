@@ -1,0 +1,35 @@
+meta {
+  name: Listar Cotacoes
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/cotacoes?page=1&pageSize=20&status=Rascunho
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Lista cotações com paginação e filtros opcionais.
+  Política: Leitura
+
+  Query params:
+  - status: Rascunho | EmCaptacao | Comparada | Aceita | Convertida | Recusada
+  - modalidade: Finimp
+  - desde: data de abertura mínima (YYYY-MM-DD)
+  - ate: data de abertura máxima (YYYY-MM-DD)
+  - page: número da página (padrão: 1)
+  - pageSize: itens por página (padrão: 20, máx: 100)
+
+  Retornos:
+  - 200: lista paginada de CotacaoDto com total, page, pageSize
+}

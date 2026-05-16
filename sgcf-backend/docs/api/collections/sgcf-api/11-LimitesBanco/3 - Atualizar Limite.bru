@@ -1,0 +1,38 @@
+meta {
+  name: Atualizar Limite Banco
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/limites-banco/{{limiteId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "novoValorLimiteBrl": 60000000.00
+  }
+}
+
+docs {
+  Atualiza valor do limite operacional existente.
+  Política: Admin
+
+  Campos:
+  - novoValorLimiteBrl: novo limite total em BRL (> 0)
+
+  Retornos:
+  - 200: LimiteBancoDto atualizado
+  - 404: limite não encontrado
+}

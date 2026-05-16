@@ -1,0 +1,36 @@
+meta {
+  name: Adicionar Banco
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/bancos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "bancoId": "{{bancoId}}"
+  }
+}
+
+docs {
+  Adiciona banco-alvo à cotação. Valida limite disponível do banco para a modalidade.
+  Política: Escrita
+
+  Retornos:
+  - 204: banco adicionado com sucesso
+  - 404: cotação ou banco não encontrado
+  - 409: banco sem limite cadastrado OU limite disponível insuficiente (< ValorAlvoBRL)
+}

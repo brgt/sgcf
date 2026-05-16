@@ -1,0 +1,31 @@
+meta {
+  name: Encerrar Captacao
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/encerrar-captacao
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Encerra captação de propostas: EmCaptacao → Comparada.
+  Política: Escrita
+
+  Após encerrar, a cotação fica disponível para comparativo e aceitação de proposta.
+
+  Retornos:
+  - 204: transição realizada
+  - 404: cotação não encontrada
+  - 409: cotação não está em EmCaptacao
+}

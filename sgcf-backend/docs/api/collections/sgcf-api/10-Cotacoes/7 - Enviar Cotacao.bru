@@ -1,0 +1,31 @@
+meta {
+  name: Enviar Cotacao
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/enviar
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Envia cotação aos bancos: Rascunho → EmCaptacao.
+  Política: Escrita
+
+  Requer ao menos um banco-alvo adicionado à cotação.
+
+  Retornos:
+  - 204: transição realizada com sucesso
+  - 404: cotação não encontrada
+  - 409: cotação não está em Rascunho ou não tem bancos
+}

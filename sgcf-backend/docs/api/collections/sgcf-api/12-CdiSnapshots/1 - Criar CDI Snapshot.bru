@@ -1,0 +1,46 @@
+meta {
+  name: Criar CDI Snapshot
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cdi-snapshots
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "data": "2026-05-16",
+    "cdiAaPercentual": 10.50
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("cdiSnapshotId", res.body.id);
+  }
+}
+
+docs {
+  Cadastra snapshot diário de CDI manualmente.
+  Política: Admin
+
+  O CDI é utilizado para:
+  1. Equalizar propostas com prazos diferentes no comparativo (SPEC §5.3)
+  2. Calcular economia ajustada em EconomiaNegociacao (SPEC §5.2)
+
+  Retornos:
+  - 201: CdiSnapshotDto criado
+  - 409: já existe snapshot para a data informada
+}

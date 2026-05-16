@@ -1,0 +1,32 @@
+meta {
+  name: Refresh Mercado
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/refresh-mercado
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Re-busca PTAX atual e invalida cache de CET de todas as propostas.
+  Política: Escrita
+
+  Deve ser chamado quando a PTAX mudar significativamente (alerta após 4h para NDF, 24h para demais).
+  Cotação deve estar em EmCaptacao ou Comparada.
+
+  Retornos:
+  - 200: CotacaoDto com PtaxUsadaUsdBrl atualizado
+  - 404: cotação não encontrada
+  - 409: PTAX atualizada não disponível OU status inválido
+}

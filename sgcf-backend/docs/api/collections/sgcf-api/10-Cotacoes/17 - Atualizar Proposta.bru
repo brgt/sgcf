@@ -1,0 +1,50 @@
+meta {
+  name: Atualizar Proposta
+  type: http
+  seq: 17
+}
+
+patch {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/propostas/{{propostaId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "moedaOriginal": "Usd",
+    "valorOferecido": 300000.00,
+    "taxaAa": 5.10,
+    "iofPct": 0.38,
+    "spreadAa": 0.45,
+    "prazoDias": 180,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "NaVencimento",
+    "exigeNdf": false,
+    "custoNdfAa": null,
+    "garantiaExigida": "CDB caucionado",
+    "valorGarantiaBrl": 1650000.00,
+    "garantiaEhCdbCativo": true,
+    "rendimentoCdbAa": 13.5
+  }
+}
+
+docs {
+  Atualiza proposta existente. Recalcula CET automaticamente.
+  Política: Escrita
+  Restrição: proposta deve estar em status Recebida (não aceita/recusada).
+
+  Retornos:
+  - 200: PropostaDto atualizado com CET recalculado
+  - 404: cotação ou proposta não encontrada
+  - 409: proposta não está em status Recebida
+}

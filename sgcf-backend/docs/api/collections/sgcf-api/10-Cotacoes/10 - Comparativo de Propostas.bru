@@ -1,0 +1,35 @@
+meta {
+  name: Comparativo de Propostas
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/comparativo
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Retorna tabela comparativa de propostas ordenada por custo total equivalente (menor = melhor).
+  Política: Leitura
+
+  Três métricas por proposta (SPEC §5.3):
+  1. taxaNominalAaPercentual — taxa + spread (o que o banco oferece de cara)
+  2. cetCalculadoAaPercentual — Custo Efetivo Total anualizado em BRL
+  3. custoTotalEquivalenteBrl — custo total equalizado ao prazo da cotação via CDI
+
+  A terceira coluna é a única que permite ranking matemático puro entre prazos diferentes.
+
+  Retornos:
+  - 200: lista de ComparativoDto ordenada por custoTotalEquivalenteBrl
+  - 404: cotação não encontrada
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Listar Limites Banco
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/limites-banco?bancoId={{bancoId}}&modalidade=Finimp
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Lista limites operacionais com filtros opcionais por banco e modalidade.
+  Política: Leitura
+
+  Query params:
+  - bancoId: filtrar por banco específico (opcional)
+  - modalidade: Finimp (opcional)
+
+  Cada LimiteBancoDto inclui:
+  - valorLimiteBrl: limite total configurado
+  - valorUtilizadoBrl: comprometido em contratos ativos
+  - valorDisponivelBrl: limite - utilizado (campo calculado)
+
+  Retornos:
+  - 200: lista de LimiteBancoDto
+}

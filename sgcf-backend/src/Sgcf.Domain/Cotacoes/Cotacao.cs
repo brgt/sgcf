@@ -395,6 +395,32 @@ public sealed class Cotacao : Entity, IAuditable
         }
     }
 
+    /// <summary>
+    /// Edita campos básicos da cotação (PrazoMaximoDias e/ou Observacoes).
+    /// Permitido apenas em Rascunho para garantir integridade antes do envio. SPEC §7.1.
+    /// </summary>
+    public void EditarCamposBasicos(int? prazoMaximoDias, string? observacoes, IClock clock)
+    {
+        ExigirStatus(StatusCotacao.Rascunho, nameof(EditarCamposBasicos));
+
+        if (prazoMaximoDias.HasValue)
+        {
+            if (prazoMaximoDias.Value < 1)
+            {
+                throw new ArgumentException("PrazoMaximoDias deve ser maior ou igual a 1.");
+            }
+
+            PrazoMaximoDias = prazoMaximoDias.Value;
+        }
+
+        if (observacoes is not null)
+        {
+            Observacoes = observacoes;
+        }
+
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
     /// <summary>Soft delete. Apenas em Rascunho (SPEC §12.3).</summary>
     public void Deletar(IClock clock)
     {

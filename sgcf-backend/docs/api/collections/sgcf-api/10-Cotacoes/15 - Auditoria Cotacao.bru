@@ -1,0 +1,34 @@
+meta {
+  name: Auditoria Cotacao
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/auditoria
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Trilha de auditoria da cotação: transições de estado, atores, timestamps.
+  Política: Auditoria (roles: contabilidade, auditor, admin)
+
+  Retorna até 200 eventos do audit_log para a cotação. SPEC §4.2.
+
+  Cada evento contém:
+  - entity: "Cotacao"
+  - operation: "STATE_TRANSITION"
+  - payload: { de, para, motivo, actor_sub }
+
+  Retornos:
+  - 200: lista de AuditEventoDto
+}

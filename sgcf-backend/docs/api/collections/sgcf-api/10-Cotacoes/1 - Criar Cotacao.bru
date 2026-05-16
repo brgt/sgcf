@@ -1,0 +1,55 @@
+meta {
+  name: Criar Cotacao
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "modalidade": "Finimp",
+    "valorAlvoBrl": 1500000.00,
+    "prazoMaximoDias": 180,
+    "dataAbertura": "2026-05-16",
+    "observacoes": "Importação de equipamentos industriais"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("cotacaoId", res.body.id);
+  }
+}
+
+docs {
+  Cria nova cotação em status Rascunho.
+  Política: Escrita
+
+  Requer PTAX D-1 cadastrada via /api/v1/parametros-cotacao antes de criar.
+
+  Campos:
+  - modalidade: Finimp (único valor no MVP)
+  - valorAlvoBrl: valor desejado em BRL (> 0)
+  - prazoMaximoDias: prazo máximo aceito (>= 1)
+  - dataAbertura: data de abertura (formato YYYY-MM-DD)
+  - observacoes: texto livre (opcional)
+
+  Retornos:
+  - 201: cotação criada com CodigoInterno gerado automaticamente (ex: COT-2026-00001)
+  - 400: campos inválidos
+  - 409: PTAX D-1 não cadastrada
+}

@@ -1,0 +1,54 @@
+meta {
+  name: Converter em Contrato
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/converter-em-contrato
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "numeroExternoContrato": "FINIMP-BB-2026-001",
+    "dataContratacao": "2026-05-20",
+    "dataVencimento": "2026-11-17",
+    "taxaAa": 5.25,
+    "observacoes": "Contrato gerado a partir de cotação COT-2026-00001",
+    "rofNumero": "ROF-2026-0042",
+    "exportadorNome": "Siemens AG",
+    "exportadorPais": "DE",
+    "produtoImportado": "Linha de produção CNC"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("contratoId", res.body.id);
+  }
+}
+
+docs {
+  Converte cotação aceita em contrato. Cria Contrato + EconomiaNegociacao atomicamente.
+  Política: Escrita
+
+  Requer cotação em status Aceita com proposta aceita definida.
+  EconomiaNegociacao é imutável após criação (SPEC §12.3).
+  Requer snapshot de CDI cadastrado para cálculo de economia ajustada.
+
+  Retornos:
+  - 201: ContratoDto do contrato criado
+  - 404: cotação não encontrada
+  - 409: cotação não está em Aceita, CDI não cadastrado ou CET não calculado
+}

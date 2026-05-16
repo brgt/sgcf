@@ -1,0 +1,53 @@
+meta {
+  name: Criar Limite Banco
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/limites-banco
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "bancoId": "{{bancoId}}",
+    "modalidade": "Finimp",
+    "valorLimiteBrl": 50000000.00,
+    "dataVigenciaInicio": "2026-01-01",
+    "dataVigenciaFim": null,
+    "observacoes": "Limite aprovado em comitê de crédito 2026"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("limiteId", res.body.id);
+  }
+}
+
+docs {
+  Cria novo limite operacional para banco/modalidade.
+  Política: Admin
+
+  Campos:
+  - modalidade: Finimp (único no MVP)
+  - valorLimiteBrl: limite máximo em BRL (> 0)
+  - dataVigenciaInicio: início de vigência (YYYY-MM-DD)
+  - dataVigenciaFim: fim de vigência, null = sem vencimento
+
+  Retornos:
+  - 201: LimiteBancoDto criado
+  - 400: campos inválidos
+  - 409: regra de negócio violada
+}
