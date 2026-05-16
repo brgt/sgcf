@@ -154,7 +154,7 @@ Cada endpoint exige uma política. Em desenvolvimento, o token `dev-token` já p
 | `Gerencial` | `gerente`, `diretor`, `admin` | DELETE, simulações executivas |
 | `Executivo` | `tesouraria`, `gerente`, `diretor`, `admin` | Painel, simulador |
 | `Auditoria` | `contabilidade`, `auditor`, `admin` | Plano de contas, lançamentos |
-| `Admin` | `admin` | Bancos (criação/config), parâmetros de cotação |
+| `Admin` | `admin` | Bancos (criação/config), parâmetros de cotação, limites de banco, CDI snapshots |
 
 Em produção, o JWT deve conter as roles como claims no campo `role` (array de strings). Exemplo de payload JWT:
 
@@ -253,6 +253,8 @@ Formato padrão com hífens: `3fa85f64-5717-4562-b3fc-2c963f66afa6`
 | `EscopoFeriado` | `Nacional`, `Estadual`, `Municipal` |
 | `TipoFeriado` | `FixoCalendario`, `MovelCalendario`, `Pontual` |
 | `FonteFeriado` | `Manual`, `Anbima` |
+| `StatusCotacao` | `Rascunho`, `EmCaptacao`, `Comparada`, `Aceita`, `Convertida`, `Recusada` |
+| `StatusProposta` | `Recebida`, `Aceita`, `Recusada`, `Expirada` |
 
 ---
 
@@ -462,6 +464,11 @@ docs/api/collections/sgcf-api/
 | `08-Simulador` | Cenário cambial + antecipação de portfólio |
 | `09-Feriados` | CRUD de feriados do calendário |
 | `10-Auditoria` | Log de auditoria imutável |
+| `10-Cotacoes` | Cotações: ciclo Rascunho → Convertida, propostas, comparativo, economia |
+| `11-LimitesBanco` | Limites operacionais por banco/modalidade |
+| `12-CdiSnapshots` | Snapshots diários de CDI (manuais no MVP) |
+
+> Os prefixos numéricos `10-Auditoria` e `10-Cotacoes` colidem propositadamente no filesystem; o Bruno usa os campos `seq` internos de cada `.bru` para ordenação. Renumerar é tarefa de organização futura.
 
 **Variáveis do ambiente Dev:**
 
@@ -475,6 +482,10 @@ docs/api/collections/sgcf-api/
 | `hedgeId` | *(preenchido pelos scripts)* | ID do hedge atual |
 | `planoContaId` | *(preenchido pelos scripts)* | ID da conta contábil atual |
 | `parametroCotacaoId` | *(preenchido pelos scripts)* | ID do parâmetro atual |
+| `cotacaoId` | *(preenchido pelos scripts)* | ID da cotação atual |
+| `propostaId` | *(preenchido pelos scripts)* | ID da proposta atual |
+| `limiteBancoId` | *(preenchido pelos scripts)* | ID do limite operacional atual |
+| `cdiSnapshotId` | *(preenchido pelos scripts)* | ID do snapshot de CDI atual |
 
 ---
 
@@ -501,9 +512,8 @@ docs/api/collections/sgcf-api/
 | `DELETE` | `/api/v1/contratos/{id}` | Gerencial | Excluir contrato (somente Rascunho) |
 | `POST` | `/api/v1/contratos/{id}/gerar-cronograma` | Escrita | Gerar cronograma automaticamente |
 | `POST` | `/api/v1/contratos/{id}/importar-cronograma` | Escrita | Importar parcelas manualmente (BalcaoCaixa) |
-| `GET` | `/api/v1/contratos/{id}/tabela-completa` | Executivo | Demonstrativo completo (JSON, PDF, Excel) |
-| `POST` | `/api/v1/contratos/{id}/simular-antecipacao-total` | Executivo | Simular liquidação total |
-| `POST` | `/api/v1/contratos/{id}/simular-antecipacao-parcial` | Executivo | Simular amortização parcial |
+| `GET` | `/api/v1/contratos/{id}/tabela-completa` | Leitura | Demonstrativo completo (JSON, PDF, Excel via `?formato=`) |
+| `POST` | `/api/v1/contratos/{id}/simular-antecipacao` | Leitura | Simular liquidação total ou parcial (via `body.tipoAntecipacao`) |
 
 ### Garantias — `/api/v1/contratos/{id}/garantias`
 
@@ -520,7 +530,7 @@ docs/api/collections/sgcf-api/
 |--------|------|----------|-----------|
 | `GET` | `/contratos/{id}/hedges` | Leitura | Listar hedges do contrato |
 | `POST` | `/contratos/{id}/hedges` | Escrita | Adicionar hedge forward |
-| `GET` | `/hedges/{hedgeId}/mtm` | Executivo | Calcular MTM |
+| `GET` | `/hedges/{hedgeId}/mtm` | Leitura | Calcular MTM |
 | `DELETE` | `/hedges/{hedgeId}` | Gerencial | Cancelar hedge |
 
 ### Painel — `/api/v1/painel`
@@ -573,8 +583,46 @@ docs/api/collections/sgcf-api/
 | `GET` | `/parametros-cotacao/{id}` | Leitura | Buscar por ID |
 | `POST` | `/parametros-cotacao` | Admin | Criar parâmetro |
 | `PUT` | `/parametros-cotacao/{id}` | Admin | Atualizar parâmetro |
-| `DELETE` | `/parametros-cotacao/{id}` | Admin | Excluir parâmetro |
 | `GET` | `/parametros-cotacao/resolve` | Leitura | Resolver tipo de cotação para banco/modalidade |
+
+### Cotações — `/api/v1/cotacoes`
+
+| Método | Path | Política | Descrição |
+|--------|------|----------|-----------|
+| `GET` | `/api/v1/cotacoes` | Leitura | Listar cotações (paginado, filtros `status`, `modalidade`, `desde`, `ate`) |
+| `POST` | `/api/v1/cotacoes` | Escrita | Criar cotação em `Rascunho` |
+| `GET` | `/api/v1/cotacoes/{id}` | Leitura | Detalhe com propostas |
+| `PATCH` | `/api/v1/cotacoes/{id}` | Escrita | Atualizar campos editáveis (apenas em `Rascunho`) |
+| `DELETE` | `/api/v1/cotacoes/{id}` | Escrita | Soft delete com motivo |
+| `POST` | `/api/v1/cotacoes/{id}/bancos` | Escrita | Adicionar banco-alvo (valida limite) |
+| `DELETE` | `/api/v1/cotacoes/{id}/bancos/{bancoId}` | Escrita | Remover banco-alvo |
+| `POST` | `/api/v1/cotacoes/{id}/enviar` | Escrita | `Rascunho → EmCaptacao` |
+| `POST` | `/api/v1/cotacoes/{id}/encerrar-captacao` | Escrita | `EmCaptacao → Comparada` |
+| `POST` | `/api/v1/cotacoes/{id}/cancelar` | Escrita | → `Recusada` com motivo |
+| `POST` | `/api/v1/cotacoes/{id}/refresh-mercado` | Escrita | Re-snapshot PTAX/NDF |
+| `GET` | `/api/v1/cotacoes/{id}/comparativo` | Leitura | Tabela comparativa (taxa nominal, CET, custo total BRL) |
+| `GET` | `/api/v1/cotacoes/{id}/auditoria` | Auditoria | Trilha de auditoria da cotação |
+| `GET` | `/api/v1/cotacoes/economia` | Leitura | Relatório de economia agregado (`?de=YYYY-MM&ate=YYYY-MM&bancoId=`) |
+| `POST` | `/api/v1/cotacoes/{id}/propostas` | Escrita | Registrar proposta recebida (calcula CET) |
+| `PATCH` | `/api/v1/cotacoes/{id}/propostas/{propostaId}` | Escrita | Atualizar proposta (recalcula CET) |
+| `POST` | `/api/v1/cotacoes/{id}/propostas/{propostaId}/aceitar` | Escrita | Aceitar proposta |
+| `POST` | `/api/v1/cotacoes/{id}/propostas/{propostaId}/desfazer-aceitacao` | Escrita | Reverter aceitação |
+| `POST` | `/api/v1/cotacoes/{id}/converter-em-contrato` | Escrita | Converter cotação aceita em contrato |
+
+### Limites de Banco — `/api/v1/limites-banco`
+
+| Método | Path | Política | Descrição |
+|--------|------|----------|-----------|
+| `GET` | `/api/v1/limites-banco` | Leitura | Listar limites (`?bancoId=`, `?modalidade=`) |
+| `POST` | `/api/v1/limites-banco` | Admin | Criar limite operacional |
+| `PATCH` | `/api/v1/limites-banco/{id}` | Admin | Atualizar valor do limite |
+
+### CDI Snapshots — `/api/v1/cdi-snapshots`
+
+| Método | Path | Política | Descrição |
+|--------|------|----------|-----------|
+| `GET` | `/api/v1/cdi-snapshots` | Leitura | Listar snapshots (`?desde=`, `?ate=`; padrão últimos 30 dias) |
+| `POST` | `/api/v1/cdi-snapshots` | Admin | Cadastrar snapshot manual de CDI |
 
 ---
 
@@ -606,5 +654,8 @@ Não requer autenticação. Use para verificar disponibilidade antes de iniciali
 | [parametros-cotacao.md](./parametros-cotacao.md) | Cotação PTAX/Spot e hierarquia de resolução |
 | [feriados.md](./feriados.md) | Calendário de feriados |
 | [auditoria.md](./auditoria.md) | Log de auditoria imutável |
+| [cotacoes.md](./cotacoes.md) | Cotações de captação, propostas, comparativo e economia |
+| [limites-banco.md](./limites-banco.md) | Limites operacionais por banco/modalidade |
+| [cdi-snapshots.md](./cdi-snapshots.md) | Snapshots diários de CDI |
 | [schemas.md](./schemas.md) | Todos os DTOs, enums e tipos compartilhados |
 | [getting-started.md](./getting-started.md) | Fluxo OAuth completo passo a passo |

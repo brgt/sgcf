@@ -153,6 +153,30 @@ Tipos, enums e DTOs usados em múltiplos endpoints da SGCF API.
 
 ---
 
+### StatusCotacao
+
+| Valor | Descrição |
+|-------|-----------|
+| `Rascunho` | Cotação recém criada; editável |
+| `EmCaptacao` | Enviada aos bancos; aceita propostas |
+| `Comparada` | Captação encerrada; habilita aceitação |
+| `Aceita` | Proposta vencedora aceita; aguardando conversão |
+| `Convertida` | Contrato gerado (estado final) |
+| `Recusada` | Cotação cancelada com motivo (estado final) |
+
+---
+
+### StatusProposta
+
+| Valor | Descrição |
+|-------|-----------|
+| `Recebida` | Proposta cadastrada; editável e elegível para aceitação |
+| `Aceita` | Proposta vencedora (única por cotação) |
+| `Recusada` | Descartada explicitamente |
+| `Expirada` | `dataValidadeMercado` ultrapassada |
+
+---
+
 ## DTOs
 
 ### ContratoDto
@@ -479,5 +503,154 @@ Tipos, enums e DTOs usados em múltiplos endpoints da SGCF API.
 {
   "numeroContrato": "string",
   "percentualCobertura": "decimal"
+}
+```
+
+---
+
+## DTOs — Cotações
+
+### CotacaoDto
+
+```json
+{
+  "id": "guid",
+  "codigoInterno": "string",
+  "modalidade": "Finimp",
+  "valorAlvoBrl": "decimal",
+  "prazoMaximoDias": "int",
+  "dataAbertura": "YYYY-MM-DD",
+  "dataPtaxReferencia": "YYYY-MM-DD",
+  "ptaxUsadaUsdBrl": "decimal",
+  "status": "Rascunho | EmCaptacao | Comparada | Aceita | Convertida | Recusada",
+  "propostaAceitaId": "guid | null",
+  "contratoGeradoId": "guid | null",
+  "aceitaPor": "string | null",
+  "dataAceitacao": "DateTimeOffset | null",
+  "observacoes": "string | null",
+  "createdAt": "DateTimeOffset",
+  "updatedAt": "DateTimeOffset",
+  "bancosAlvo": "guid[]",
+  "propostas": "PropostaDto[]"
+}
+```
+
+### PropostaDto
+
+```json
+{
+  "id": "guid",
+  "cotacaoId": "guid",
+  "bancoId": "guid",
+  "moedaOriginal": "Brl | Usd | Eur | Jpy | Cny",
+  "valorOferecidoMoedaOriginal": "decimal",
+  "taxaAaPercentual": "decimal",
+  "iofPercentual": "decimal",
+  "spreadAaPercentual": "decimal",
+  "prazoDias": "int",
+  "estruturaAmortizacao": "Bullet | Price | Sac",
+  "periodicidadeJuros": "Bullet | Mensal | Bimestral | Trimestral | Semestral | Anual",
+  "exigeNdf": "bool",
+  "custoNdfAaPercentual": "decimal | null",
+  "garantiaExigida": "string",
+  "valorGarantiaExigidaBrl": "decimal",
+  "garantiaEhCdbCativo": "bool",
+  "rendimentoCdbAaPercentual": "decimal | null",
+  "cetCalculadoAaPercentual": "decimal | null",
+  "valorTotalEstimadoBrl": "decimal | null",
+  "dataCaptura": "YYYY-MM-DD",
+  "dataValidadeMercado": "YYYY-MM-DD | null",
+  "status": "Recebida | Aceita | Recusada | Expirada",
+  "motivoRecusa": "string | null"
+}
+```
+
+### ComparativoDto
+
+```json
+{
+  "propostaId": "guid",
+  "bancoId": "guid",
+  "moedaOriginal": "string",
+  "prazoDias": "int",
+  "taxaNominalAaPercentual": "decimal",
+  "cetAaPercentual": "decimal",
+  "custoTotalEquivalenteBrl": "decimal",
+  "exigeNdf": "bool",
+  "garantiaExigida": "string",
+  "valorGarantiaExigidaBrl": "decimal",
+  "status": "string"
+}
+```
+
+### EconomiaNegociacaoDto
+
+```json
+{
+  "id": "guid",
+  "cotacaoId": "guid",
+  "contratoId": "guid",
+  "cetPropostaAaPercentual": "decimal",
+  "cetContratoAaPercentual": "decimal",
+  "economiaBrl": "decimal",
+  "economiaAjustadaCdiBrl": "decimal",
+  "dataReferenciaCdi": "YYYY-MM-DD",
+  "createdAt": "DateTimeOffset"
+}
+```
+
+### EconomiaPeriodoDto
+
+```json
+{
+  "porMes": [
+    {
+      "ano": "int",
+      "mes": "int",
+      "quantidadeOperacoes": "int",
+      "economiaBrutaBrl": "decimal",
+      "economiaAjustadaCdiBrl": "decimal"
+    }
+  ],
+  "porBanco": [
+    {
+      "bancoId": "guid",
+      "quantidadeOperacoes": "int",
+      "economiaBrutaBrl": "decimal",
+      "economiaAjustadaCdiBrl": "decimal"
+    }
+  ],
+  "totalEconomiaBrutaBrl": "decimal",
+  "totalEconomiaAjustadaCdiBrl": "decimal",
+  "totalOperacoes": "int"
+}
+```
+
+### LimiteBancoDto
+
+```json
+{
+  "id": "guid",
+  "bancoId": "guid",
+  "modalidade": "Finimp | Lei4131 | Refinimp | Nce | BalcaoCaixa | Fgi",
+  "valorLimiteBrl": "decimal",
+  "valorUtilizadoBrl": "decimal",
+  "valorDisponivelBrl": "decimal",
+  "dataVigenciaInicio": "YYYY-MM-DD",
+  "dataVigenciaFim": "YYYY-MM-DD | null",
+  "observacoes": "string | null",
+  "createdAt": "DateTimeOffset",
+  "updatedAt": "DateTimeOffset"
+}
+```
+
+### CdiSnapshotDto
+
+```json
+{
+  "id": "guid",
+  "data": "YYYY-MM-DD",
+  "cdiAaPercentual": "decimal",
+  "createdAt": "DateTimeOffset"
 }
 ```

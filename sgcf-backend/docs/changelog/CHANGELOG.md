@@ -11,6 +11,121 @@
 
 ---
 
+## [0.5.0] — 2026-05-16
+
+### Resumo executivo
+
+Lançamento do módulo de **Cotações de Captação** (MVP, modalidade FINIMP). Três novos controllers entram em produção (`CotacoesController`, `LimitesBancoController`, `CdiSnapshotsController`), totalizando 24 novos endpoints. O módulo cobre o ciclo completo: registro de propostas multi-banco, cálculo automático de CET, comparação lado a lado, aceitação rastreada e conversão em contrato com mensuração de economia ajustada por CDI. Acompanha 5 cenários de golden dataset, coleção Bruno completa e nova migration `S3Cotacoes`.
+
+Detalhes da especificação em [`docs/specs/cotacoes/SPEC.md`](../specs/cotacoes/SPEC.md). Documentação operacional em [`docs/api/cotacoes.md`](../api/cotacoes.md), [`docs/api/limites-banco.md`](../api/limites-banco.md) e [`docs/api/cdi-snapshots.md`](../api/cdi-snapshots.md).
+
+---
+
+### ADDITIVE — Cotações (`/api/v1/cotacoes`)
+
+**Novo controller:** `CotacoesController`
+
+**Endpoints adicionados (19):**
+
+| Método | Path | Política |
+|--------|------|----------|
+| `GET` | `/api/v1/cotacoes` | Leitura |
+| `POST` | `/api/v1/cotacoes` | Escrita |
+| `GET` | `/api/v1/cotacoes/{id}` | Leitura |
+| `PATCH` | `/api/v1/cotacoes/{id}` | Escrita |
+| `DELETE` | `/api/v1/cotacoes/{id}` | Escrita |
+| `POST` | `/api/v1/cotacoes/{id}/bancos` | Escrita |
+| `DELETE` | `/api/v1/cotacoes/{id}/bancos/{bancoId}` | Escrita |
+| `POST` | `/api/v1/cotacoes/{id}/enviar` | Escrita |
+| `POST` | `/api/v1/cotacoes/{id}/encerrar-captacao` | Escrita |
+| `POST` | `/api/v1/cotacoes/{id}/cancelar` | Escrita |
+| `POST` | `/api/v1/cotacoes/{id}/refresh-mercado` | Escrita |
+| `GET` | `/api/v1/cotacoes/{id}/comparativo` | Leitura |
+| `GET` | `/api/v1/cotacoes/{id}/auditoria` | Auditoria |
+| `GET` | `/api/v1/cotacoes/economia` | Leitura |
+| `POST` | `/api/v1/cotacoes/{id}/propostas` | Escrita |
+| `PATCH` | `/api/v1/cotacoes/{id}/propostas/{propostaId}` | Escrita |
+| `POST` | `/api/v1/cotacoes/{id}/propostas/{propostaId}/aceitar` | Escrita |
+| `POST` | `/api/v1/cotacoes/{id}/propostas/{propostaId}/desfazer-aceitacao` | Escrita |
+| `POST` | `/api/v1/cotacoes/{id}/converter-em-contrato` | Escrita |
+
+**DTOs adicionados:** `CotacaoDto`, `PropostaDto`, `ComparativoDto`, `EconomiaNegociacaoDto`, `EconomiaPeriodoDto` (+ `EconomiaMesDto`, `EconomiaPorBancoDto`).
+
+**Enums adicionados:** `StatusCotacao` (`Rascunho`, `EmCaptacao`, `Comparada`, `Aceita`, `Convertida`, `Recusada`), `StatusProposta` (`Recebida`, `Aceita`, `Recusada`, `Expirada`).
+
+**Regras críticas:**
+- Apenas uma proposta por cotação pode estar `Aceita`.
+- `DataPtaxReferencia` deve ser dia útil anterior à `DataAbertura`; falha se PTAX D-1 ausente.
+- Adicionar banco-alvo valida `valorAlvoBrl ≤ valorDisponivelBrl` do `LimiteBanco` do par banco/modalidade.
+- Conversão em contrato cria `Contrato` + `EconomiaNegociacao` atomicamente e incrementa `ValorUtilizadoBrl` do limite.
+- CET é recalculado automaticamente em `RegistrarPropostaCommand`, `AtualizarPropostaCommand` e `RefreshCotacaoMercadoCommand`.
+
+---
+
+### ADDITIVE — Limites de Banco (`/api/v1/limites-banco`)
+
+**Novo controller:** `LimitesBancoController`
+
+**Endpoints adicionados (3):**
+
+| Método | Path | Política |
+|--------|------|----------|
+| `GET` | `/api/v1/limites-banco` | Leitura |
+| `POST` | `/api/v1/limites-banco` | Admin |
+| `PATCH` | `/api/v1/limites-banco/{id}` | Admin |
+
+**DTO adicionado:** `LimiteBancoDto` com `valorLimiteBrl`, `valorUtilizadoBrl`, `valorDisponivelBrl` (computed), vigência por período.
+
+**Regras críticas:**
+- Não permite sobreposição de vigência para o mesmo par banco/modalidade.
+- `valorUtilizadoBrl` é mantido pela API ao converter cotações em contratos.
+
+---
+
+### ADDITIVE — CDI Snapshots (`/api/v1/cdi-snapshots`)
+
+**Novo controller:** `CdiSnapshotsController`
+
+**Endpoints adicionados (2):**
+
+| Método | Path | Política |
+|--------|------|----------|
+| `GET` | `/api/v1/cdi-snapshots` | Leitura |
+| `POST` | `/api/v1/cdi-snapshots` | Admin |
+
+**DTO adicionado:** `CdiSnapshotDto` com `data`, `cdiAaPercentual`, `createdAt`.
+
+**Notas:**
+- Cadastro manual no MVP (integração ANBIMA prevista para ondas futuras).
+- Snapshot é consultado pelo cálculo de `EconomiaAjustadaCdiBrl` na conversão da cotação em contrato.
+- `GET` sem parâmetros retorna últimos 30 dias (timezone `America/Sao_Paulo`).
+
+---
+
+### INTERNAL — Migration `S3Cotacoes`
+
+Nova migration EF Core cria as tabelas `cotacoes`, `cotacao_propostas`, `cotacao_bancos_alvo`, `limites_banco`, `economia_negociacao`, `cdi_snapshots`. Soft delete habilitado para `cotacoes` via coluna `deleted_at` e filtro global. Indexes em `(bancoId, modalidade, dataVigenciaInicio, dataVigenciaFim)` para resolução do limite vigente; em `(data)` único para `cdi_snapshots`; em `(cotacaoId, status)` para `cotacao_propostas`.
+
+---
+
+### INTERNAL — Refactor `Cotacoes` → `Cambio`
+
+O módulo anterior chamado `Cotacoes` (que tratava de PTAX/Spot) foi renomeado para `Cambio` (`Sgcf.Domain.Cambio`, `Sgcf.Application.Cambio`) para liberar o nome ao novo módulo de cotações de captação. Os endpoints `/api/v1/parametros-cotacao` permanecem inalterados na URL pública.
+
+---
+
+### Golden dataset
+
+Cinco cenários de regressão adicionados em `tests/Sgcf.GoldenDataset/data/cotacoes/`:
+
+1. FINIMP simples USD/BRL — CET sem NDF.
+2. FINIMP com NDF — verificação de custo do hedge.
+3. FINIMP com CDB cativo — verificação de rendimento subtraindo do CET.
+4. Comparativo de 3 propostas com prazos diferentes — coluna 3 (custo total equivalente).
+5. Economia negociada ajustada por CDI — VPL de fluxos com prazos distintos.
+
+---
+
 ## [0.4.0] — 2026-05-14
 
 ### Resumo executivo
