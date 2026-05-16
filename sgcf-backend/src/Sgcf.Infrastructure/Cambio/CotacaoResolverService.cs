@@ -1,10 +1,10 @@
 using NodaTime;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 
-namespace Sgcf.Infrastructure.Cotacoes;
+namespace Sgcf.Infrastructure.Cambio;
 
 internal sealed class CotacaoResolverService(
     IParametroCotacaoRepository parametroRepo,

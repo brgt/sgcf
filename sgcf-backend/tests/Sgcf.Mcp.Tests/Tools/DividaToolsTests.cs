@@ -8,11 +8,11 @@ using NodaTime;
 
 using NSubstitute;
 
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Painel.Queries;
 using Sgcf.Domain.Common;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using Sgcf.Mcp.Tools;
 
 using Xunit;

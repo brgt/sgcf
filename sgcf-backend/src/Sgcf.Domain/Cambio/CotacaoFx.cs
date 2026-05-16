@@ -1,7 +1,7 @@
 using NodaTime;
 using Sgcf.Domain.Common;
 
-namespace Sgcf.Domain.Cotacoes;
+namespace Sgcf.Domain.Cambio;
 
 public sealed class CotacaoFx : Entity
 {

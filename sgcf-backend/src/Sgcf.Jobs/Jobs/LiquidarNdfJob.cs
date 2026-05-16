@@ -2,9 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Application.Hedge;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Hedge;
 
 namespace Sgcf.Jobs.Jobs;
@@ -103,7 +103,7 @@ internal sealed partial class LiquidarNdfJob(
     {
         Domain.Common.Moeda moedaBase = hedge.MoedaBase;
 
-        Domain.Cotacoes.CotacaoFx? ptax = await cotacaoRepo.GetMaisRecenteAsync(
+        Domain.Cambio.CotacaoFx? ptax = await cotacaoRepo.GetMaisRecenteAsync(
             moedaBase, TipoCotacao.PtaxD0, hoje, cancellationToken);
 
         if (ptax is null)

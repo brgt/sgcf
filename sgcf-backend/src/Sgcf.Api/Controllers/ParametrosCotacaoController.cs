@@ -2,11 +2,11 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sgcf.Application.Authorization;
-using Sgcf.Application.Cotacoes;
-using Sgcf.Application.Cotacoes.Commands;
-using Sgcf.Application.Cotacoes.Queries;
+using Sgcf.Application.Cambio;
+using Sgcf.Application.Cambio.Commands;
+using Sgcf.Application.Cambio.Queries;
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 
 namespace Sgcf.Api.Controllers;
 

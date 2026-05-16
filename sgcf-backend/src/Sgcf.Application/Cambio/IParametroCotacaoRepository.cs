@@ -1,6 +1,6 @@
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 
-namespace Sgcf.Application.Cotacoes;
+namespace Sgcf.Application.Cambio;
 
 public interface IParametroCotacaoRepository
 {

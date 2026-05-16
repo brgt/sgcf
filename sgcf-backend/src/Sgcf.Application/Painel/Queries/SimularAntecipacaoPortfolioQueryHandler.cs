@@ -2,12 +2,12 @@ using MediatR;
 using NodaTime;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Domain.Antecipacao;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 
 namespace Sgcf.Application.Painel.Queries;
 

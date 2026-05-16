@@ -1,8 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Domain.Common;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using Sgcf.Infrastructure.Persistence;
 
 namespace Sgcf.Infrastructure.Persistence.Repositories;

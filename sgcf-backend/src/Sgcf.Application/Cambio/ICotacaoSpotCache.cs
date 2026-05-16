@@ -1,6 +1,6 @@
 using Sgcf.Domain.Common;
 
-namespace Sgcf.Application.Cotacoes;
+namespace Sgcf.Application.Cambio;
 
 public interface ICotacaoSpotCache
 {

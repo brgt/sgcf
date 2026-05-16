@@ -6,7 +6,7 @@ using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Contabilidade;
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Cronograma;
 using Sgcf.Domain.Hedge;
 using Sgcf.Domain.Painel;

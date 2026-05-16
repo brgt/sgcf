@@ -2,10 +2,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Application.Hedge;
 using Sgcf.Domain.Common;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Hedge;
 
 namespace Sgcf.Jobs.Jobs;

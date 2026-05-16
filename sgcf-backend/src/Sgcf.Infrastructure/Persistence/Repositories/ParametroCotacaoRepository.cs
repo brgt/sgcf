@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
-using Sgcf.Application.Cotacoes;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Application.Cambio;
+using Sgcf.Domain.Cambio;
 
 namespace Sgcf.Infrastructure.Persistence.Repositories;
 

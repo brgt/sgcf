@@ -1,11 +1,11 @@
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Contratos;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Application.Hedge;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Hedge;
 
 namespace Sgcf.Application.Painel.Queries;

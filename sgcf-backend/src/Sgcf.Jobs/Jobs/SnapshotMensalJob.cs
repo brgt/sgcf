@@ -4,10 +4,10 @@ using Microsoft.Extensions.Logging;
 using NodaTime;
 using NodaTime.TimeZones;
 using Sgcf.Application.Contratos;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Application.Painel;
 using Sgcf.Domain.Common;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Painel;
 
 namespace Sgcf.Jobs.Jobs;

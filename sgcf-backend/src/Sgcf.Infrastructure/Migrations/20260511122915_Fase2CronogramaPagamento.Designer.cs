@@ -719,7 +719,7 @@ namespace Sgcf.Infrastructure.Migrations
                     b.ToTable("parcela", "sgcf");
                 });
 
-            modelBuilder.Entity("Sgcf.Domain.Cotacoes.CotacaoFx", b =>
+            modelBuilder.Entity("Sgcf.Domain.Cambio.CotacaoFx", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
@@ -767,7 +767,7 @@ namespace Sgcf.Infrastructure.Migrations
                     b.ToTable("cotacao_fx", "sgcf");
                 });
 
-            modelBuilder.Entity("Sgcf.Domain.Cotacoes.ParametroCotacao", b =>
+            modelBuilder.Entity("Sgcf.Domain.Cambio.ParametroCotacao", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")

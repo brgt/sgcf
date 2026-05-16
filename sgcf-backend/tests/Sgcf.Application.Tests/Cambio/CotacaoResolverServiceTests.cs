@@ -1,11 +1,11 @@
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
-using Sgcf.Infrastructure.Cotacoes;
+using Sgcf.Domain.Cambio;
+using Sgcf.Infrastructure.Cambio;
 using Xunit;
 
 namespace Sgcf.Application.Tests.Cotacoes;

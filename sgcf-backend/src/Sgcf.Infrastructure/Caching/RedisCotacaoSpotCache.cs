@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using NodaTime;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Domain.Common;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using System.Globalization;
 
 namespace Sgcf.Infrastructure.Caching;

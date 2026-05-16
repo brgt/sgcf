@@ -2,7 +2,7 @@ using NodaTime;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 
-namespace Sgcf.Domain.Cotacoes;
+namespace Sgcf.Domain.Cambio;
 
 public sealed class ParametroCotacao : Entity
 {

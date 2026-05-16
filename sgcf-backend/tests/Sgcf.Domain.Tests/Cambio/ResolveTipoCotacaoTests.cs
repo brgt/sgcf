@@ -5,7 +5,7 @@ using NodaTime;
 using NSubstitute;
 
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 
 using Xunit;
 

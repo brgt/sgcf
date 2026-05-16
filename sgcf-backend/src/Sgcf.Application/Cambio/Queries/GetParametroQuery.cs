@@ -1,7 +1,7 @@
 using MediatR;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 
-namespace Sgcf.Application.Cotacoes.Queries;
+namespace Sgcf.Application.Cambio.Queries;
 
 public sealed record GetParametroQuery(Guid Id) : IRequest<ParametroCotacaoDto>;
 

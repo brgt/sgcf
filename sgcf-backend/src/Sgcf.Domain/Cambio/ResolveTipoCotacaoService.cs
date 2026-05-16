@@ -1,6 +1,6 @@
 using Sgcf.Domain.Contratos;
 
-namespace Sgcf.Domain.Cotacoes;
+namespace Sgcf.Domain.Cambio;
 
 public static class ResolveTipoCotacaoService
 {

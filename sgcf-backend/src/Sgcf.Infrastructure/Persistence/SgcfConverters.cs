@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contabilidade;
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Hedge;
 
 namespace Sgcf.Infrastructure.Persistence;
@@ -72,14 +72,14 @@ internal static class SgcfConverters
 
     internal static readonly ValueConverter<TipoCotacao, string> TipoCotacao =
         new(
-            t => t == Domain.Cotacoes.TipoCotacao.PtaxD0 ? "PTAX_D0"
-               : t == Domain.Cotacoes.TipoCotacao.PtaxD1 ? "PTAX_D1"
-               : t == Domain.Cotacoes.TipoCotacao.SpotIntraday ? "SPOT_INTRADAY"
+            t => t == Domain.Cambio.TipoCotacao.PtaxD0 ? "PTAX_D0"
+               : t == Domain.Cambio.TipoCotacao.PtaxD1 ? "PTAX_D1"
+               : t == Domain.Cambio.TipoCotacao.SpotIntraday ? "SPOT_INTRADAY"
                : "FIXING",
-            s => s == "PTAX_D0" ? Domain.Cotacoes.TipoCotacao.PtaxD0
-               : s == "PTAX_D1" ? Domain.Cotacoes.TipoCotacao.PtaxD1
-               : s == "SPOT_INTRADAY" ? Domain.Cotacoes.TipoCotacao.SpotIntraday
-               : Domain.Cotacoes.TipoCotacao.Fixing);
+            s => s == "PTAX_D0" ? Domain.Cambio.TipoCotacao.PtaxD0
+               : s == "PTAX_D1" ? Domain.Cambio.TipoCotacao.PtaxD1
+               : s == "SPOT_INTRADAY" ? Domain.Cambio.TipoCotacao.SpotIntraday
+               : Domain.Cambio.TipoCotacao.Fixing);
 
     internal static readonly ValueConverter<BaseCalculo, short> BaseCalculo =
         new(b => (short)(int)b, s => (Domain.Common.BaseCalculo)(int)s);

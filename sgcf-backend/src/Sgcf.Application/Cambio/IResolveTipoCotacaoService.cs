@@ -1,9 +1,9 @@
 using NodaTime;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 
-namespace Sgcf.Application.Cotacoes;
+namespace Sgcf.Application.Cambio;
 
 public sealed record ResultadoCotacao(
     Money ValorMidRate,

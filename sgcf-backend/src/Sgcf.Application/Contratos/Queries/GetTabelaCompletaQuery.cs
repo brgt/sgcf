@@ -1,6 +1,6 @@
 using MediatR;
 using NodaTime;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Domain.Calculo;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;

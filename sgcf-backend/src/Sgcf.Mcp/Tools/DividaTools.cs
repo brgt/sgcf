@@ -4,10 +4,10 @@ using System.Text.Json;
 using MediatR;
 using ModelContextProtocol.Server;
 using NodaTime;
-using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cambio;
 using Sgcf.Application.Painel.Queries;
 using Sgcf.Domain.Common;
-using Sgcf.Domain.Cotacoes;
+using Sgcf.Domain.Cambio;
 
 namespace Sgcf.Mcp.Tools;
 
