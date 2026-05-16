@@ -1,0 +1,955 @@
+{
+  "info": {
+    "name": "SGCF API — Completa",
+    "description": "Sistema de Gestão de Contratos de Financiamento — Collection com todos os endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            },
+            "description": "Verifica disponibilidade da API. Não requer autenticação."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bancos",
+      "item": [
+        {
+          "name": "Listar Bancos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bancos?search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "bancos"],
+              "query": [{"key": "search", "value": ""}]
+            },
+            "description": "Listar bancos. Política: Leitura"
+          }
+        },
+        {
+          "name": "Buscar Banco por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bancos/{{bancoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "bancos", "{{bancoId}}"]
+            },
+            "description": "Buscar banco por UUID. Política: Leitura"
+          }
+        },
+        {
+          "name": "Buscar Banco por Código/Apelido",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bancos/Santander",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "bancos", "Santander"]
+            },
+            "description": "Buscar banco por codigoCompe, apelido ou texto parcial. Política: Leitura"
+          }
+        },
+        {
+          "name": "Criar Banco",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigoCompe\": \"999\",\n  \"razaoSocial\": \"Banco Teste\",\n  \"apelido\": \"Teste\",\n  \"aceitaLiquidacaoTotal\": true,\n  \"aceitaLiquidacaoParcial\": true,\n  \"exigeAnuenciaExpressa\": false,\n  \"exigeParcelaInteira\": false,\n  \"avisoPrevioMinDiasUteis\": 5\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bancos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "bancos"]
+            },
+            "description": "Criar novo banco. Política: Admin"
+          }
+        },
+        {
+          "name": "Atualizar Config de Antecipação",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"valorMinimoParcialPct\": 50,\n  \"breakFundingFeePct\": 0.5,\n  \"tlaPctSobreSaldo\": 1.0,\n  \"tlaPctPorMesRemanescente\": 0.1,\n  \"observacoesAntecipacao\": \"Limite de TLA configurado\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/bancos/{{bancoId}}/config-antecipacao",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "bancos", "{{bancoId}}", "config-antecipacao"]
+            },
+            "description": "Atualizar regras de antecipação do banco. Política: Admin"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contratos",
+      "item": [
+        {
+          "name": "Listar Contratos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos?page=1&pageSize=25",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "pageSize", "value": "25"},
+                {"key": "bancoId", "value": "", "disabled": true},
+                {"key": "modalidade", "value": "", "disabled": true},
+                {"key": "status", "value": "", "disabled": true}
+              ]
+            },
+            "description": "Listar contratos com paginação e multi-filtro. Política: Leitura"
+          }
+        },
+        {
+          "name": "Buscar Contrato por ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}"]
+            },
+            "description": "Buscar contrato específico. Política: Leitura"
+          }
+        },
+        {
+          "name": "Criar Contrato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"},
+              {"key": "Idempotency-Key", "value": "{{$randomUUID}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bancoId\": \"{{bancoId}}\",\n  \"numeroExterno\": \"FINIMP-2026-001\",\n  \"modalidade\": \"Finimp\",\n  \"moeda\": \"Usd\",\n  \"valorPrincipal\": 500000.00,\n  \"dataContratacao\": \"2026-01-10\",\n  \"dataVencimento\": \"2027-01-10\",\n  \"taxaAa\": 6.5,\n  \"baseCalculo\": \"Dias360\",\n  \"createdBy\": \"sistema\",\n  \"finimpDetail\": {\n    \"numeroCcex\": \"FINIMP-123\",\n    \"bancoCorrespondenteSwift\": \"CITIUS33\",\n    \"bancoCorrespondenteNome\": \"Citibank NY\",\n    \"paisOrigemRecursos\": \"US\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos"]
+            },
+            "description": "Criar novo contrato. Política: Escrita"
+          }
+        },
+        {
+          "name": "Atualizar Contrato (Parcial)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"periodicidade\": \"Mensal\",\n  \"estruturaAmortizacao\": \"Price\",\n  \"quantidadeParcelas\": 12,\n  \"dataPrimeiroVencimento\": \"2026-06-15\",\n  \"anchorDiaMes\": 15,\n  \"periodicidadeJuros\": \"Mensal\",\n  \"convencaoDataNaoUtil\": \"PróximoDiaÚtil\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}"]
+            },
+            "description": "Atualizar contrato parcialmente. Política: Escrita"
+          }
+        },
+        {
+          "name": "Excluir Contrato",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}"]
+            },
+            "description": "Excluir contrato (somente Rascunho). Política: Gerencial"
+          }
+        },
+        {
+          "name": "Gerar Cronograma",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/gerar-cronograma",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "gerar-cronograma"]
+            },
+            "description": "Gerar cronograma automaticamente. Política: Escrita"
+          }
+        },
+        {
+          "name": "Importar Cronograma (BalcaoCaixa)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parcelas\": [\n    {\n      \"numeroSequencia\": 1,\n      \"dataVencimento\": \"2026-06-15\",\n      \"valorPrincipal\": 41666.67,\n      \"valorJuros\": 2500.00\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/importar-cronograma",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "importar-cronograma"]
+            },
+            "description": "Importar parcelas manualmente. Política: Escrita"
+          }
+        },
+        {
+          "name": "Tabela Completa (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/tabela-completa?format=json",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "tabela-completa"],
+              "query": [{"key": "format", "value": "json"}]
+            },
+            "description": "Demonstrativo completo em JSON. Política: Executivo"
+          }
+        },
+        {
+          "name": "Simular Antecipação Total",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataSimulacao\": \"2026-05-15\",\n  \"taxaCdiAnualPct\": 14.75\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/simular-antecipacao-total",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "simular-antecipacao-total"]
+            },
+            "description": "Simular liquidação total. Política: Executivo"
+          }
+        },
+        {
+          "name": "Simular Antecipação Parcial",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataSimulacao\": \"2026-05-15\",\n  \"valorAmortizar\": 100000.00,\n  \"taxaCdiAnualPct\": 14.75\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/simular-antecipacao-parcial",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "simular-antecipacao-parcial"]
+            },
+            "description": "Simular amortização parcial. Política: Executivo"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Garantias",
+      "item": [
+        {
+          "name": "Listar Garantias do Contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/garantias",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "garantias"]
+            },
+            "description": "Listar garantias do contrato. Política: Leitura"
+          }
+        },
+        {
+          "name": "Adicionar Garantia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipo\": \"Sblc\",\n  \"descricao\": \"SBLC Citibank\",\n  \"valorBrl\": 250000.00,\n  \"percentualCobertura\": 50.0\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/garantias",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "garantias"]
+            },
+            "description": "Adicionar garantia ao contrato. Política: Escrita"
+          }
+        },
+        {
+          "name": "Indicadores de Cobertura",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/garantias/indicadores",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "garantias", "indicadores"]
+            },
+            "description": "Cobertura total e alertas. Política: Leitura"
+          }
+        },
+        {
+          "name": "Cancelar Garantia",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/garantias/{{garantiaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "garantias", "{{garantiaId}}"]
+            },
+            "description": "Cancelar garantia. Política: Gerencial"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hedges",
+      "item": [
+        {
+          "name": "Listar Hedges do Contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/hedges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "hedges"]
+            },
+            "description": "Listar hedges do contrato. Política: Leitura"
+          }
+        },
+        {
+          "name": "Adicionar Hedge Forward",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataOperacao\": \"2026-05-15\",\n  \"moedaOrigem\": \"Usd\",\n  \"moedaDestino\": \"Brl\",\n  \"taxaForward\": 5.25,\n  \"valorNoticional\": 100000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/contratos/{{contratoId}}/hedges",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "contratos", "{{contratoId}}", "hedges"]
+            },
+            "description": "Adicionar hedge forward. Política: Escrita"
+          }
+        },
+        {
+          "name": "Calcular MTM de Hedge",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hedges/{{hedgeId}}/mtm?dataValuacao=2026-05-15&taxaSpotAtual=5.15",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hedges", "{{hedgeId}}", "mtm"],
+              "query": [
+                {"key": "dataValuacao", "value": "2026-05-15"},
+                {"key": "taxaSpotAtual", "value": "5.15"}
+              ]
+            },
+            "description": "Calcular Mark-to-Market. Política: Executivo"
+          }
+        },
+        {
+          "name": "Cancelar Hedge",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/hedges/{{hedgeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "hedges", "{{hedgeId}}"]
+            },
+            "description": "Cancelar hedge. Política: Gerencial"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Painel",
+      "item": [
+        {
+          "name": "Dívida Consolidada",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/painel/divida?bancoId=&modalidade=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "painel", "divida"],
+              "query": [
+                {"key": "bancoId", "value": ""},
+                {"key": "modalidade", "value": ""}
+              ]
+            },
+            "description": "Dívida total por moeda, banco, modalidade. Política: Leitura"
+          }
+        },
+        {
+          "name": "Cobertura de Garantias",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/painel/garantias",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "painel", "garantias"]
+            },
+            "description": "Distribuição de garantias. Política: Leitura"
+          }
+        },
+        {
+          "name": "Calendário de Vencimentos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/painel/vencimentos?ano=2026&cdiAnualPct=14.75",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "painel", "vencimentos"],
+              "query": [
+                {"key": "ano", "value": "2026"},
+                {"key": "cdiAnualPct", "value": "14.75"}
+              ]
+            },
+            "description": "Agenda de vencimentos com projeção CDI. Política: Leitura"
+          }
+        },
+        {
+          "name": "KPIs Executivos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/painel/kpis",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "painel", "kpis"]
+            },
+            "description": "KPIs executivos do dashboard. Política: Executivo"
+          }
+        },
+        {
+          "name": "Registrar EBITDA Mensal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ano\": 2026,\n  \"mes\": 5,\n  \"valorBrl\": 1500000.00\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/painel/ebitda",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "painel", "ebitda"]
+            },
+            "description": "Registrar EBITDA mensal (upsert). Política: Auditoria"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Simulador",
+      "item": [
+        {
+          "name": "Cenário Cambial",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataSimulacao\": \"2026-05-15\",\n  \"variacaoCambialPct\": 10.0,\n  \"bancoId\": null,\n  \"modalidade\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/simulador/cenario-cambial",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "simulador", "cenario-cambial"]
+            },
+            "description": "Impacto de variação cambial no portfólio. Política: Executivo"
+          }
+        },
+        {
+          "name": "Antecipação de Portfólio",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dataSimulacao\": \"2026-05-15\",\n  \"contratoIds\": [],\n  \"taxaCdiAnualPct\": 14.75\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/simulador/antecipacao-portfolio",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "simulador", "antecipacao-portfolio"]
+            },
+            "description": "Custo de antecipar múltiplos contratos. Política: Executivo"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Plano de Contas",
+      "item": [
+        {
+          "name": "Listar Contas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/plano-contas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "plano-contas"]
+            },
+            "description": "Listar contas contábeis. Política: Leitura"
+          }
+        },
+        {
+          "name": "Buscar Conta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/plano-contas/{{planoContaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "plano-contas", "{{planoContaId}}"]
+            },
+            "description": "Buscar conta contábil. Política: Leitura"
+          }
+        },
+        {
+          "name": "Criar Conta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"1.1.1.001\",\n  \"descricao\": \"Caixa - BRL\",\n  \"natureza\": \"Devedora\",\n  \"ativa\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/plano-contas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "plano-contas"]
+            },
+            "description": "Criar conta contábil. Política: Auditoria"
+          }
+        },
+        {
+          "name": "Atualizar Conta",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descricao\": \"Caixa - BRL - Atualizado\",\n  \"ativa\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/plano-contas/{{planoContaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "plano-contas", "{{planoContaId}}"]
+            },
+            "description": "Atualizar conta contábil. Política: Auditoria"
+          }
+        },
+        {
+          "name": "Criar Lançamento Contábil",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contratoId\": \"{{contratoId}}\",\n  \"data\": \"2026-05-14\",\n  \"origem\": \"CRONOGRAMA\",\n  \"valorDecimal\": 12345.67,\n  \"moeda\": \"Usd\",\n  \"descricao\": \"Juros parcela 3/12 — FINIMP-2026-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/plano-contas/{{planoContaId}}/lancamentos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "plano-contas", "{{planoContaId}}", "lancamentos"]
+            },
+            "description": "Registrar lançamento contábil. Política: Escrita"
+          }
+        },
+        {
+          "name": "Listar Lançamentos da Conta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/plano-contas/{{planoContaId}}/lancamentos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "plano-contas", "{{planoContaId}}", "lancamentos"]
+            },
+            "description": "Listar lançamentos da conta. Política: Auditoria"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Feriados",
+      "item": [
+        {
+          "name": "Listar Feriados",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/feriados?ano=2026&escopo=Nacional",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "feriados"],
+              "query": [
+                {"key": "ano", "value": "2026"},
+                {"key": "escopo", "value": "Nacional"}
+              ]
+            },
+            "description": "Listar feriados com filtros. Política: Leitura"
+          }
+        },
+        {
+          "name": "Criar Feriado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"data\": \"2026-11-20\",\n  \"descricao\": \"Dia da Consciência Negra\",\n  \"abrangencia\": \"Nacional\",\n  \"tipo\": \"FixoCalendario\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/feriados",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "feriados"]
+            },
+            "description": "Criar feriado manual. Política: Admin"
+          }
+        },
+        {
+          "name": "Excluir Feriado",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/feriados/{{feriadoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "feriados", "{{feriadoId}}"]
+            },
+            "description": "Excluir feriado (somente Manual). Política: Admin"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auditoria",
+      "item": [
+        {
+          "name": "Listar Eventos de Auditoria",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/audit/eventos?page=1&pageSize=50&entity=&source=",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit", "eventos"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "pageSize", "value": "50"},
+                {"key": "entity", "value": ""},
+                {"key": "entityId", "value": "", "disabled": true},
+                {"key": "source", "value": ""},
+                {"key": "operation", "value": "", "disabled": true},
+                {"key": "de", "value": "", "disabled": true},
+                {"key": "ate", "value": "", "disabled": true}
+              ]
+            },
+            "description": "Listar log de auditoria imutável. Política: Auditoria"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Parâmetros de Cotação",
+      "item": [
+        {
+          "name": "Listar Parâmetros",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/parametros-cotacao",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "parametros-cotacao"]
+            },
+            "description": "Listar parâmetros de cotação. Política: Leitura"
+          }
+        },
+        {
+          "name": "Buscar Parâmetro",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/parametros-cotacao/{{parametroCotacaoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "parametros-cotacao", "{{parametroCotacaoId}}"]
+            },
+            "description": "Buscar parâmetro por ID. Política: Leitura"
+          }
+        },
+        {
+          "name": "Criar Parâmetro",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bancoId\": \"{{bancoId}}\",\n  \"modalidade\": \"Finimp\",\n  \"tipoCotacao\": \"PtaxD0\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/parametros-cotacao",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "parametros-cotacao"]
+            },
+            "description": "Criar parâmetro de cotação. Política: Admin"
+          }
+        },
+        {
+          "name": "Atualizar Parâmetro",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tipoCotacao\": \"PtaxD1\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/parametros-cotacao/{{parametroCotacaoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "parametros-cotacao", "{{parametroCotacaoId}}"]
+            },
+            "description": "Atualizar parâmetro. Política: Admin"
+          }
+        },
+        {
+          "name": "Excluir Parâmetro",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/parametros-cotacao/{{parametroCotacaoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "parametros-cotacao", "{{parametroCotacaoId}}"]
+            },
+            "description": "Excluir parâmetro. Política: Admin"
+          }
+        },
+        {
+          "name": "Resolver Tipo de Cotação",
+          "request": {
+            "method": "GET",
+            "header": [
+              {"key": "Accept", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/parametros-cotacao/resolve?modalidade=Finimp",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "parametros-cotacao", "resolve"],
+              "query": [{"key": "modalidade", "value": "Finimp"}]
+            },
+            "description": "Resolver tipo de cotação para banco/modalidade. Política: Leitura"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "baseUrl", "value": "http://localhost:5000", "type": "string"},
+    {"key": "token", "value": "dev-mock-token", "type": "string"},
+    {"key": "bancoId", "value": "", "type": "string"},
+    {"key": "contratoId", "value": "", "type": "string"},
+    {"key": "garantiaId", "value": "", "type": "string"},
+    {"key": "hedgeId", "value": "", "type": "string"},
+    {"key": "planoContaId", "value": "", "type": "string"},
+    {"key": "parametroCotacaoId", "value": "", "type": "string"},
+    {"key": "feriadoId", "value": "", "type": "string"}
+  ]
+}
