@@ -1,0 +1,26 @@
+{
+  "descricao": "Saída esperada — SPEC §10.2 cenário 4. Tolerância CET: ±0,01 p.p. Valores: ±1,00 BRL.",
+  "toleranciaCetPercentualPontos": 0.01,
+  "toleranciaValorBrl": 1.00,
+  "propostas": [
+    {
+      "banco": "BancoA",
+      "taxaNominalAaPercentual": 6.0,
+      "cetAaPercentual": 6.900903,
+      "custoTotalEquivalenteBrl": 84974.42,
+      "nota_custo": "VPL(custo 180d) descontado a CDI=11.15% para o prazo da cotacao (180d)"
+    },
+    {
+      "banco": "BancoB",
+      "taxaNominalAaPercentual": 5.8,
+      "cetAaPercentual": 6.380303,
+      "custoTotalEquivalenteBrl": 114814.54,
+      "nota_custo": "VPL(custo 270d) descontado a CDI=11.15% — prazo maior eleva VPL absoluto"
+    }
+  ],
+  "assertivas": [
+    "BancoB tem CET menor (6.38 vs 6.90) mas custo total equivalente MAIOR (prazo mais longo)",
+    "BancoA vence no custo total equivalente equalizado para prazo da cotacao (180d)",
+    "Taxa nominal BancoA (6.0%) > BancoB (5.8%) — sem equalizar, BancoB pareceria melhor"
+  ]
+}

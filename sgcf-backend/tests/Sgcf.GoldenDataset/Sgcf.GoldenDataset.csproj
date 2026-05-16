@@ -36,6 +36,11 @@
     <PackageReference Include="FluentAssertions" />
   </ItemGroup>
 
+  <ItemGroup Label="Fakes">
+    <!-- NSubstitute: usado para criar IClock fixo nos golden tests de Cotacoes -->
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
   <!-- Copy all JSON golden files to the output directory -->
   <ItemGroup>
     <None Update="data\**\*.json">

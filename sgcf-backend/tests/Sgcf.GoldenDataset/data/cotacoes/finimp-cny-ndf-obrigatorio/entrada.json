@@ -1,0 +1,31 @@
+{
+  "descricao": "FINIMP CNY com NDF obrigatório — custo NDF entra no CET. SPEC §10.2 cenário 2.",
+  "nota_cross_rate": "MVP usa ptaxUsdBrl como taxa única para converter qualquer moeda não-BRL (CalculadoraCet.cs linha 82). Valor CNY registrado como 'USD-equivalente' no motor. Limitação documentada para Onda 2.",
+  "cotacao": {
+    "codigoInterno": "COT-2026-00002",
+    "modalidade": "Finimp",
+    "valorAlvoBrl": 3000000.00,
+    "prazoMaximoDias": 180,
+    "dataAbertura": "2026-05-15",
+    "dataPtaxReferencia": "2026-05-14",
+    "ptaxUsadaUsdBrl": 5.20
+  },
+  "dataDesembolso": "2026-05-15",
+  "proposta": {
+    "banco": "ABC China",
+    "moedaOriginal": "Cny",
+    "nota_valor": "CNY tratado como USD-equivalente no MVP. 576923.07 * 5.20 = 3_000_000 BRL.",
+    "valorOferecidoUsd": 576923.07,
+    "taxaAaPercentual": 5.0,
+    "spreadAaPercentual": 0.0,
+    "iofPercentual": 0.38,
+    "prazoDias": 180,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "Bullet",
+    "exigeNdf": true,
+    "custoNdfAaPercentual": 1.5,
+    "garantiaExigida": "Carta de Crédito",
+    "valorGarantiaExigidaBrl": 3000000.00,
+    "garantiaEhCdbCativo": false
+  }
+}

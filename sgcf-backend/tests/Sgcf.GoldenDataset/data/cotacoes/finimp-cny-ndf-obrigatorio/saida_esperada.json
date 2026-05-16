@@ -1,0 +1,11 @@
+{
+  "descricao": "Saída esperada — SPEC §10.2 cenário 2. Tolerância CET: ±0,01 p.p.",
+  "toleranciaCetPercentualPontos": 0.01,
+  "cetSemNdfAaPercentual": 5.865549,
+  "cetComNdfAaPercentual": 7.477774,
+  "adicionalNdfPercentualPontos": 1.612225,
+  "assertivas": [
+    "cetComNdf deve ser maior que cetSemNdf",
+    "adicional NDF deve ser >= 1.0 p.p. (custo 1,5% a.a. por 180 dias)"
+  ]
+}

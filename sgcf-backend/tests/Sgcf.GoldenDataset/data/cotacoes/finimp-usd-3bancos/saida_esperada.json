@@ -1,0 +1,26 @@
+{
+  "descricao": "Saída esperada — SPEC §10.2 cenário 1. Tolerância CET: ±0,01 p.p. Valores: ±0,01 BRL.",
+  "toleranciaCetPercentualPontos": 0.01,
+  "toleranciaValorBrl": 1.00,
+  "cets": [
+    {
+      "banco": "BB",
+      "cetAaPercentual": 6.589768
+    },
+    {
+      "banco": "Bradesco",
+      "cetAaPercentual": 6.279086
+    },
+    {
+      "banco": "Santander",
+      "cetAaPercentual": 6.900903
+    }
+  ],
+  "rankingPorCet": [ "Bradesco", "BB", "Santander" ],
+  "economia": {
+    "nota": "Proposta aceita Bradesco CET=6.279086% vs contrato fechado CET=6.072217% (taxa 4.7%).",
+    "cetContratoAaPercentual": 6.072217,
+    "economiaBrutaBrl": 5171.73,
+    "economiaAjustadaCdiBrl": 4898.63
+  }
+}

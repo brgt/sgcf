@@ -1,0 +1,66 @@
+{
+  "descricao": "FINIMP USD 3 bancos — ranking por CET. SPEC §10.2 cenário 1.",
+  "cotacao": {
+    "codigoInterno": "COT-2026-00001",
+    "modalidade": "Finimp",
+    "valorAlvoBrl": 5000000.00,
+    "prazoMaximoDias": 180,
+    "dataAbertura": "2026-05-15",
+    "dataPtaxReferencia": "2026-05-14",
+    "ptaxUsadaUsdBrl": 5.20
+  },
+  "dataDesembolso": "2026-05-15",
+  "taxaCdiAaPercentual": 11.15,
+  "propostas": [
+    {
+      "banco": "BB",
+      "moedaOriginal": "Usd",
+      "valorOferecidoUsd": 961538.46,
+      "taxaAaPercentual": 5.2,
+      "spreadAaPercentual": 0.5,
+      "iofPercentual": 0.38,
+      "prazoDias": 180,
+      "estruturaAmortizacao": "Bullet",
+      "periodicidadeJuros": "Bullet",
+      "exigeNdf": false,
+      "garantiaExigida": "Aval",
+      "valorGarantiaExigidaBrl": 2600000.00,
+      "garantiaEhCdbCativo": false
+    },
+    {
+      "banco": "Bradesco",
+      "moedaOriginal": "Usd",
+      "valorOferecidoUsd": 961538.46,
+      "taxaAaPercentual": 4.9,
+      "spreadAaPercentual": 0.5,
+      "iofPercentual": 0.38,
+      "prazoDias": 180,
+      "estruturaAmortizacao": "Bullet",
+      "periodicidadeJuros": "Bullet",
+      "exigeNdf": false,
+      "garantiaExigida": "Aval",
+      "valorGarantiaExigidaBrl": 2600000.00,
+      "garantiaEhCdbCativo": false
+    },
+    {
+      "banco": "Santander",
+      "moedaOriginal": "Usd",
+      "valorOferecidoUsd": 961538.46,
+      "taxaAaPercentual": 5.5,
+      "spreadAaPercentual": 0.5,
+      "iofPercentual": 0.38,
+      "prazoDias": 180,
+      "estruturaAmortizacao": "Bullet",
+      "periodicidadeJuros": "Bullet",
+      "exigeNdf": false,
+      "garantiaExigida": "Aval",
+      "valorGarantiaExigidaBrl": 2600000.00,
+      "garantiaEhCdbCativo": false
+    }
+  ],
+  "cenarioEconomia": {
+    "nota": "Bradesco vence com CET menor. Após negociação, taxa reduzida em 0,2 p.p. (de 4.9 para 4.7).",
+    "propostaCetAaPercentual": 6.279086,
+    "contratoTaxaAaPercentual": 4.7
+  }
+}

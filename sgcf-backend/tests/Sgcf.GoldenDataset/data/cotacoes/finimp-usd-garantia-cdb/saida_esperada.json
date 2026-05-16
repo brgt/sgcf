@@ -1,0 +1,12 @@
+{
+  "descricao": "Saída esperada — SPEC §10.2 cenário 3. Tolerância CET: ±0,01 p.p.",
+  "toleranciaCetPercentualPontos": 0.01,
+  "cetSemCdbAaPercentual": 7.420469,
+  "cetComCdbAaPercentual": 4.102704,
+  "reducaoCetPercentualPontos": 3.317765,
+  "assertivas": [
+    "cetComCdb deve ser menor que cetSemCdb",
+    "cetComCdb deve ser positivo (rendimento CDB 30% garantia nao supera custo total)",
+    "reducao CET deve ser >= 3 p.p. (rendimento 10.5% sobre 30% do principal)"
+  ]
+}

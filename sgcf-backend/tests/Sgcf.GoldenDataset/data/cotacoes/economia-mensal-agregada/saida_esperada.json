@@ -1,0 +1,39 @@
+{
+  "descricao": "Saída esperada — SPEC §10.2 cenário 5. Tolerância: ±0,01 BRL.",
+  "toleranciaValorBrl": 0.01,
+  "porMes": [
+    {
+      "ano": 2026,
+      "mes": 4,
+      "quantidadeOperacoes": 3,
+      "economiaBrutaBrl": 12740.00,
+      "economiaAjustadaCdiBrl": 12010.24
+    }
+  ],
+  "porBanco": [
+    {
+      "banco": "BB",
+      "quantidadeOperacoes": 1,
+      "economiaBrutaBrl": 7800.00,
+      "economiaAjustadaCdiBrl": 7388.11
+    },
+    {
+      "banco": "Bradesco",
+      "quantidadeOperacoes": 1,
+      "economiaBrutaBrl": 2600.00,
+      "economiaAjustadaCdiBrl": 2462.70
+    },
+    {
+      "banco": "Santander",
+      "quantidadeOperacoes": 1,
+      "economiaBrutaBrl": 2340.00,
+      "economiaAjustadaCdiBrl": 2159.42
+    }
+  ],
+  "totais": {
+    "totalOperacoes": 3,
+    "totalEconomiaBrutaBrl": 12740.00,
+    "totalEconomiaAjustadaCdiBrl": 12010.24
+  },
+  "nota_total_ajustada": "Soma aritmética das 3 economias ajustadas individuais, cada uma calculada com seu próprio prazo via CalculadoraEconomia.Calcular."
+}

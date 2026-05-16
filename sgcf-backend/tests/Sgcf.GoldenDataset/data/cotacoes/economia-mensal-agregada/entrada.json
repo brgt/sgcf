@@ -1,0 +1,41 @@
+{
+  "descricao": "Economia mensal agregada — 3 cotações convertidas em abril de 2026. SPEC §10.2 cenário 5.",
+  "periodo": "2026-04",
+  "taxaCdiAaPercentual": 11.15,
+  "nota_cdi": "CDI fixo para reprodutibilidade.",
+  "economias": [
+    {
+      "cotacaoId": "00000000-0000-0000-0000-000000000001",
+      "contratoId": "00000000-0000-0000-0000-000000000011",
+      "banco": "BB",
+      "dataReferenciaCdi": "2026-04-10",
+      "cetPropostaAaPercentual": 6.8,
+      "cetContratoAaPercentual": 6.5,
+      "valorPrincipalBrl": 5200000.00,
+      "prazoProposta": 180,
+      "prazoContrato": 180
+    },
+    {
+      "cotacaoId": "00000000-0000-0000-0000-000000000002",
+      "contratoId": "00000000-0000-0000-0000-000000000012",
+      "banco": "Bradesco",
+      "dataReferenciaCdi": "2026-04-17",
+      "cetPropostaAaPercentual": 7.2,
+      "cetContratoAaPercentual": 7.0,
+      "valorPrincipalBrl": 2600000.00,
+      "prazoProposta": 180,
+      "prazoContrato": 180
+    },
+    {
+      "cotacaoId": "00000000-0000-0000-0000-000000000003",
+      "contratoId": "00000000-0000-0000-0000-000000000013",
+      "banco": "Santander",
+      "dataReferenciaCdi": "2026-04-25",
+      "cetPropostaAaPercentual": 7.5,
+      "cetContratoAaPercentual": 7.2,
+      "valorPrincipalBrl": 1040000.00,
+      "prazoProposta": 270,
+      "prazoContrato": 270
+    }
+  ]
+}

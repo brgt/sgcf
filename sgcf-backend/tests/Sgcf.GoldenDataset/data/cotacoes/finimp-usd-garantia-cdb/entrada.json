@@ -1,0 +1,46 @@
+{
+  "descricao": "FINIMP USD com garantia CDB cativo — rendimento reduz CET efetivo. SPEC §10.2 cenário 3.",
+  "cotacao": {
+    "codigoInterno": "COT-2026-00003",
+    "modalidade": "Finimp",
+    "valorAlvoBrl": 1040000.00,
+    "prazoMaximoDias": 180,
+    "dataAbertura": "2026-05-15",
+    "dataPtaxReferencia": "2026-05-14",
+    "ptaxUsadaUsdBrl": 5.20
+  },
+  "dataDesembolso": "2026-05-15",
+  "propostaSemCdb": {
+    "banco": "Itaú",
+    "moedaOriginal": "Usd",
+    "valorOferecidoUsd": 200000.0,
+    "taxaAaPercentual": 6.0,
+    "spreadAaPercentual": 0.5,
+    "iofPercentual": 0.38,
+    "prazoDias": 180,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "Bullet",
+    "exigeNdf": false,
+    "garantiaExigida": "Aval",
+    "valorGarantiaExigidaBrl": 312000.00,
+    "garantiaEhCdbCativo": false,
+    "rendimentoCdbAaPercentual": null
+  },
+  "propostaComCdb": {
+    "banco": "Itaú",
+    "moedaOriginal": "Usd",
+    "valorOferecidoUsd": 200000.0,
+    "taxaAaPercentual": 6.0,
+    "spreadAaPercentual": 0.5,
+    "iofPercentual": 0.38,
+    "prazoDias": 180,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "Bullet",
+    "exigeNdf": false,
+    "garantiaExigida": "CDB Cativo",
+    "valorGarantiaExigidaBrl": 312000.00,
+    "nota_garantia": "30% do valor da operação em BRL (200_000 × 5.20 × 0.30 = 312_000)",
+    "garantiaEhCdbCativo": true,
+    "rendimentoCdbAaPercentual": 10.5
+  }
+}

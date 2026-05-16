@@ -1,0 +1,47 @@
+{
+  "descricao": "Comparação com prazos diferentes — equalização via CDI. SPEC §10.2 cenário 4.",
+  "cotacao": {
+    "codigoInterno": "COT-2026-00004",
+    "modalidade": "Finimp",
+    "valorAlvoBrl": 2600000.00,
+    "prazoMaximoDias": 180,
+    "dataAbertura": "2026-05-15",
+    "dataPtaxReferencia": "2026-05-14",
+    "ptaxUsadaUsdBrl": 5.20
+  },
+  "dataDesembolso": "2026-05-15",
+  "taxaCdiAaPercentual": 11.15,
+  "nota_cdi": "CDI fixo para reprodutibilidade. Fonte: cadastro manual (SPEC §13 decisão 2).",
+  "propostas": [
+    {
+      "banco": "BancoA",
+      "moedaOriginal": "Usd",
+      "valorOferecidoUsd": 500000.0,
+      "taxaAaPercentual": 5.5,
+      "spreadAaPercentual": 0.5,
+      "iofPercentual": 0.38,
+      "prazoDias": 180,
+      "estruturaAmortizacao": "Bullet",
+      "periodicidadeJuros": "Bullet",
+      "exigeNdf": false,
+      "garantiaExigida": "Aval",
+      "valorGarantiaExigidaBrl": 1300000.00,
+      "garantiaEhCdbCativo": false
+    },
+    {
+      "banco": "BancoB",
+      "moedaOriginal": "Usd",
+      "valorOferecidoUsd": 500000.0,
+      "taxaAaPercentual": 5.3,
+      "spreadAaPercentual": 0.5,
+      "iofPercentual": 0.38,
+      "prazoDias": 270,
+      "estruturaAmortizacao": "Bullet",
+      "periodicidadeJuros": "Bullet",
+      "exigeNdf": false,
+      "garantiaExigida": "Aval",
+      "valorGarantiaExigidaBrl": 1300000.00,
+      "garantiaEhCdbCativo": false
+    }
+  ]
+}
