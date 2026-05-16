@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Domain.Alertas;
 using Sgcf.Domain.Antecipacao;
 using Sgcf.Domain.Auditoria;
@@ -8,6 +9,7 @@ using Sgcf.Domain.Contabilidade;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Cronograma;
+using Sgcf.Domain.Cotacoes;
 using Sgcf.Domain.Hedge;
 using Sgcf.Domain.Painel;
 
@@ -47,6 +49,11 @@ public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(
     public DbSet<LancamentoContabil> LancamentosContabeis => Set<LancamentoContabil>();
     public DbSet<Feriado> Feriados => Set<Feriado>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<Cotacao> Cotacoes => Set<Cotacao>();
+    public DbSet<Proposta> Propostas => Set<Proposta>();
+    public DbSet<LimiteBanco> LimitesBanco => Set<LimiteBanco>();
+    public DbSet<EconomiaNegociacao> EconomiasNegociacao => Set<EconomiaNegociacao>();
+    public DbSet<CdiSnapshot> CdiSnapshots => Set<CdiSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -11,6 +11,7 @@ using Sgcf.Application.Common;
 using Sgcf.Application.Contabilidade;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Hedge;
 using Sgcf.Application.Painel;
 using Sgcf.Infrastructure.Antecipacao;
@@ -73,6 +74,10 @@ public static class DependencyInjection
         services.AddScoped<ILancamentoContabilRepository, LancamentoContabilRepository>();
         services.AddScoped<IFeriadoRepository, FeriadoRepository>();
         services.AddScoped<IBusinessDayCalendar, BusinessDayCalendar>();
+        services.AddScoped<ICotacaoRepository, CotacaoRepository>();
+        services.AddScoped<ILimiteBancoRepository, LimiteBancoRepository>();
+        services.AddScoped<IEconomiaRepository, EconomiaRepository>();
+        services.AddScoped<ICdiSnapshotRepository, CdiSnapshotRepository>();
 
         return services;
     }
