@@ -163,10 +163,75 @@ public sealed class Cotacao : Entity, IAuditable
     // ─── Gestão de propostas ─────────────────────────────────────────────────
 
     /// <summary>
+    /// Cria e registra proposta recebida de um banco. Apenas em EmCaptacao ou Comparada.
+    /// CET será calculado pela Application após a criação via <see cref="AtualizarCetProposta"/>.
+    /// Retorna a proposta criada para que a Application possa calcular e setar o CET.
+    /// SPEC §3.3, §5.1.
+    /// </summary>
+    public Proposta AdicionarProposta(
+        Guid bancoId,
+        Moeda moedaOriginal,
+        Money valorOferecidoMoedaOriginal,
+        decimal taxaAaPercentual,
+        decimal iofPercentual,
+        decimal spreadAaPercentual,
+        int prazoDias,
+        EstruturaAmortizacao estruturaAmortizacao,
+        Periodicidade periodicidadeJuros,
+        bool exigeNdf,
+        decimal? custoNdfAaPercentual,
+        string garantiaExigida,
+        Money valorGarantiaExigidaBrl,
+        bool garantiaEhCdbCativo,
+        decimal? rendimentoCdbAaPercentual,
+        LocalDate dataCaptura,
+        LocalDate? dataValidadeMercado = null)
+    {
+        if (Status is not StatusCotacao.EmCaptacao and not StatusCotacao.Comparada)
+        {
+            throw new InvalidOperationException(
+                $"Não é possível registrar proposta em cotação com status '{Status}'.");
+        }
+
+        Proposta proposta = new(
+            Id,
+            bancoId,
+            moedaOriginal,
+            valorOferecidoMoedaOriginal,
+            taxaAaPercentual,
+            iofPercentual,
+            spreadAaPercentual,
+            prazoDias,
+            estruturaAmortizacao,
+            periodicidadeJuros,
+            exigeNdf,
+            custoNdfAaPercentual,
+            garantiaExigida,
+            valorGarantiaExigidaBrl,
+            garantiaEhCdbCativo,
+            rendimentoCdbAaPercentual,
+            dataCaptura,
+            dataValidadeMercado);
+
+        _propostas.Add(proposta);
+        return proposta;
+    }
+
+    /// <summary>
+    /// Atualiza cache de CET e valor total de uma proposta existente.
+    /// Chamado pela Application após calcular o CET via CalculadoraCet.
+    /// </summary>
+    public void AtualizarCetProposta(Guid propostaId, decimal cetAaPercentual, Money valorTotalEstimadoBrl)
+    {
+        Proposta proposta = EncontrarPropostaPorId(propostaId);
+        proposta.AtualizarCacheCalculos(cetAaPercentual, valorTotalEstimadoBrl);
+    }
+
+    /// <summary>
     /// Registra proposta recebida de um banco. Apenas em EmCaptacao ou Comparada.
     /// Invalida cache de CET na proposta após registro.
     /// </summary>
-    public void RegistrarProposta(Proposta proposta)
+    internal void RegistrarProposta(Proposta proposta)
     {
         ArgumentNullException.ThrowIfNull(proposta);
 
