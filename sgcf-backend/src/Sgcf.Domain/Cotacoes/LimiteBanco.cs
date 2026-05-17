@@ -33,12 +33,19 @@ public sealed class LimiteBanco : Entity, IAuditable
     public Instant UpdatedAt { get; private set; }
 
     private readonly List<GarantiaExigidaLimite> _garantiasExigidas = new();
+    private readonly List<LimiteBancoHistorico> _historico = new();
 
     /// <summary>
     /// Coleção de garantias exigidas pelo banco para liberar esta linha.
     /// Vazia = linha "no aval" implícito / sem requisitos formais de garantia.
     /// </summary>
     public IReadOnlyCollection<GarantiaExigidaLimite> GarantiasExigidas => _garantiasExigidas.AsReadOnly();
+
+    /// <summary>
+    /// Histórico de alterações do valor do limite concedido pelo banco.
+    /// Cada mudança de <see cref="ValorLimiteBrl"/> registra uma entrada para análise de tendência.
+    /// </summary>
+    public IReadOnlyCollection<LimiteBancoHistorico> Historico => _historico.AsReadOnly();
 
     /// <summary>Construtor privado para EF Core.</summary>
     private LimiteBanco() { }
@@ -87,6 +94,13 @@ public sealed class LimiteBanco : Entity, IAuditable
             CreatedAt = now,
             UpdatedAt = now,
         };
+
+        limite._historico.Add(LimiteBancoHistorico.Criar(
+            limiteBancoId: limite.Id,
+            valorAnteriorBrl: null,
+            valorNovoBrl: valorLimiteBrl,
+            registradoEm: now,
+            observacoes: "Criação do limite"));
 
         if (garantiasExigidas is not null)
         {
@@ -206,7 +220,17 @@ public sealed class LimiteBanco : Entity, IAuditable
                     $"Novo limite (BRL {novoLimiteBrl.Value.Valor:F2}) é menor que o valor já utilizado (BRL {ValorUtilizadoBrlDecimal:F2}).");
             }
 
-            ValorLimiteBrlDecimal = novoLimiteBrl.Value.Valor;
+            if (novoLimiteBrl.Value.Valor != ValorLimiteBrlDecimal)
+            {
+                var valorAnterior = new Money(ValorLimiteBrlDecimal, Moeda.Brl);
+                ValorLimiteBrlDecimal = novoLimiteBrl.Value.Valor;
+                _historico.Add(LimiteBancoHistorico.Criar(
+                    limiteBancoId: Id,
+                    valorAnteriorBrl: valorAnterior,
+                    valorNovoBrl: novoLimiteBrl.Value,
+                    registradoEm: clock.GetCurrentInstant(),
+                    observacoes: observacoes));
+            }
         }
 
         LocalDate vigenciaInicio = novaDataVigenciaInicio ?? DataVigenciaInicio;
