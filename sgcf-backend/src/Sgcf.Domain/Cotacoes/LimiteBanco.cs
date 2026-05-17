@@ -32,6 +32,14 @@ public sealed class LimiteBanco : Entity, IAuditable
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
 
+    private readonly List<GarantiaExigidaLimite> _garantiasExigidas = new();
+
+    /// <summary>
+    /// Coleção de garantias exigidas pelo banco para liberar esta linha.
+    /// Vazia = linha "no aval" implícito / sem requisitos formais de garantia.
+    /// </summary>
+    public IReadOnlyCollection<GarantiaExigidaLimite> GarantiasExigidas => _garantiasExigidas.AsReadOnly();
+
     /// <summary>Construtor privado para EF Core.</summary>
     private LimiteBanco() { }
 
@@ -46,7 +54,8 @@ public sealed class LimiteBanco : Entity, IAuditable
         LocalDate dataVigenciaInicio,
         IClock clock,
         LocalDate? dataVigenciaFim = null,
-        string? observacoes = null)
+        string? observacoes = null,
+        IEnumerable<GarantiaExigidaLimiteSpec>? garantiasExigidas = null)
     {
         if (valorLimiteBrl.Moeda != Moeda.Brl)
         {
@@ -66,7 +75,7 @@ public sealed class LimiteBanco : Entity, IAuditable
         }
 
         var now = clock.GetCurrentInstant();
-        return new LimiteBanco
+        var limite = new LimiteBanco
         {
             BancoId = bancoId,
             Modalidade = modalidade,
@@ -78,6 +87,94 @@ public sealed class LimiteBanco : Entity, IAuditable
             CreatedAt = now,
             UpdatedAt = now,
         };
+
+        if (garantiasExigidas is not null)
+        {
+            foreach (var spec in garantiasExigidas)
+            {
+                limite.AdicionarInterno(spec, clock);
+            }
+        }
+
+        return limite;
+    }
+
+    /// <summary>
+    /// Adiciona uma garantia exigida. Invariante: não pode haver duas garantias do mesmo Tipo.
+    /// </summary>
+    public void AdicionarGarantiaExigida(GarantiaExigidaLimiteSpec spec, IClock clock)
+    {
+        AdicionarInterno(spec, clock);
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Remove uma garantia exigida pelo Id. Lança se não encontrada.
+    /// </summary>
+    public void RemoverGarantiaExigida(Guid garantiaId, IClock clock)
+    {
+        var existente = _garantiasExigidas.FirstOrDefault(g => g.Id == garantiaId)
+            ?? throw new InvalidOperationException(
+                $"Garantia exigida {garantiaId} não encontrada no limite {Id}.");
+
+        _garantiasExigidas.Remove(existente);
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Substitui a coleção inteira de garantias exigidas (semântica replace-all).
+    /// </summary>
+    public void SubstituirGarantiasExigidas(IEnumerable<GarantiaExigidaLimiteSpec> novas, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(novas);
+
+        var lista = novas.ToList();
+        ValidarSemDuplicadosPorTipo(lista);
+
+        _garantiasExigidas.Clear();
+        foreach (var spec in lista)
+        {
+            AdicionarInterno(spec, clock);
+        }
+
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    private void AdicionarInterno(GarantiaExigidaLimiteSpec spec, IClock clock)
+    {
+        ArgumentNullException.ThrowIfNull(spec);
+
+        if (_garantiasExigidas.Any(g => g.Tipo == spec.Tipo))
+        {
+            throw new InvalidOperationException(
+                $"Garantia exigida do tipo {spec.Tipo} já está cadastrada (duplicada) no limite {Id}.");
+        }
+
+        var garantia = GarantiaExigidaLimite.Criar(
+            limiteBancoId: Id,
+            tipo: spec.Tipo,
+            percentualSobreLimite: spec.PercentualSobreLimite,
+            valorFixoBrl: spec.ValorFixoBrl,
+            obrigatoria: spec.Obrigatoria,
+            observacoes: spec.Observacoes,
+            clock: clock);
+
+        _garantiasExigidas.Add(garantia);
+    }
+
+    private static void ValidarSemDuplicadosPorTipo(IEnumerable<GarantiaExigidaLimiteSpec> specs)
+    {
+        var tiposDuplicados = specs
+            .GroupBy(s => s.Tipo)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (tiposDuplicados.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"Garantia exigida duplicada para o(s) tipo(s): {string.Join(", ", tiposDuplicados)}.");
+        }
     }
 
     /// <summary>
