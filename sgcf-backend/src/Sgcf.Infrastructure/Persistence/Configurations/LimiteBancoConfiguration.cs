@@ -81,6 +81,23 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
             .HasForeignKey(l => l.BancoId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // Coleção de garantias exigidas: cascade delete (filhas acompanham o limite).
+        builder.HasMany(l => l.GarantiasExigidas)
+            .WithOne()
+            .HasForeignKey(g => g.LimiteBancoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        // Histórico de valores concedidos: cascade delete (filhas acompanham o limite).
+        builder.HasMany(l => l.Historico)
+            .WithOne()
+            .HasForeignKey(h => h.LimiteBancoId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Metadata.FindNavigation(nameof(LimiteBanco.GarantiasExigidas))!
+            .SetPropertyAccessMode(PropertyAccessMode.Field);
+        builder.Metadata.FindNavigation(nameof(LimiteBanco.Historico))!
+            .SetPropertyAccessMode(PropertyAccessMode.Field);
+
         // Propriedades computadas não são persistidas.
         builder.Ignore(l => l.ValorLimiteBrl);
         builder.Ignore(l => l.ValorUtilizadoBrl);

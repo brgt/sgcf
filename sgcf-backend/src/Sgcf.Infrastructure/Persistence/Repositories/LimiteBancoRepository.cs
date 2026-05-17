@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -16,6 +17,8 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
 
     public Task<LimiteBanco?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.LimitesBanco
+            .Include(l => l.GarantiasExigidas)
+            .Include(l => l.Historico)
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
 
@@ -35,12 +38,38 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
                   && l.DataVigenciaFim == null,
                 cancellationToken);
 
+    /// <summary>
+    /// Retorna o primeiro limite que se sobrepõe ao período [inicio, fim] para o par bancoId+modalidade.
+    /// Overlap: existente.Inicio &lt;= fim (ou fim é null) AND inicio &lt;= existente.Fim (ou existente.Fim é null).
+    /// </summary>
+    public Task<LimiteBanco?> FindOverlappingAsync(
+        Guid bancoId,
+        ModalidadeContrato modalidade,
+        LocalDate inicio,
+        LocalDate? fim,
+        Guid? excluirId = null,
+        CancellationToken cancellationToken = default) =>
+        context.LimitesBanco
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                l => l.BancoId == bancoId
+                  && l.Modalidade == modalidade
+                  && (excluirId == null || l.Id != excluirId.Value)
+                  // l.Inicio <= fim (null fim = +∞, always true)
+                  && (fim == null || l.DataVigenciaInicio <= fim.Value)
+                  // inicio <= l.Fim (null l.Fim = +∞, always true)
+                  && (l.DataVigenciaFim == null || inicio <= l.DataVigenciaFim.Value),
+                cancellationToken);
+
     public async Task<IReadOnlyList<LimiteBanco>> ListAsync(
         Guid? bancoId,
         ModalidadeContrato? modalidade,
         CancellationToken cancellationToken = default)
     {
-        IQueryable<LimiteBanco> q = context.LimitesBanco.AsNoTracking();
+        IQueryable<LimiteBanco> q = context.LimitesBanco
+            .Include(l => l.GarantiasExigidas)
+            .Include(l => l.Historico)
+            .AsNoTracking();
 
         if (bancoId.HasValue)
         {
