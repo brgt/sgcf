@@ -13,8 +13,18 @@ namespace Sgcf.Api.Controllers;
 
 // ── Corpos de requisição ──────────────────────────────────────────────────────
 
-/// <summary>Corpo para adicionar banco-alvo a uma cotação.</summary>
-public sealed record AdicionarBancoRequest(Guid BancoId);
+/// <summary>
+/// Corpo para adicionar banco-alvo a uma cotação.
+/// Os campos opcionais são usados para comparação com o pré-preenchimento automático
+/// e geração de alertas de coerência (Task 4.2).
+/// </summary>
+public sealed record AdicionarBancoRequest(
+    Guid BancoId,
+    bool PreencherGarantiaAutomaticamente = true,
+    string? GarantiaExigidaManual = null,
+    decimal? ValorGarantiaExigidaBrlManual = null,
+    bool? GarantiaEhCdbCativoManual = null,
+    decimal? RendimentoCdbAaPercentual = null);
 
 /// <summary>Corpo para cancelar cotação com motivo obrigatório.</summary>
 public sealed record CancelarCotacaoRequest(string Motivo);
@@ -165,10 +175,13 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
 
     /// <summary>
     /// Adiciona banco-alvo à cotação. Valida limite disponível do banco.
-    /// Retorna 409 se limite insuficiente ou banco já incluso.
+    /// Retorna 200 com template de garantia pré-preenchido quando o limite possui garantias
+    /// exigidas e <c>preencherGarantiaAutomaticamente = true</c>.
+    /// Retorna 409 se limite insuficiente, banco já incluso ou CDB cativo sem rendimento.
     /// </summary>
     [HttpPost("{id:guid}/bancos")]
     [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType<AdicionarBancoNaCotacaoResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -179,8 +192,22 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     {
         try
         {
-            await mediator.Send(new AdicionarBancoNaCotacaoCommand(id, body.BancoId), cancellationToken);
-            return NoContent();
+            AdicionarBancoNaCotacaoResponse resultado = await mediator.Send(
+                new AdicionarBancoNaCotacaoCommand(
+                    CotacaoId: id,
+                    BancoId: body.BancoId,
+                    PreencherGarantiaAutomaticamente: body.PreencherGarantiaAutomaticamente,
+                    GarantiaExigidaManual: body.GarantiaExigidaManual,
+                    ValorGarantiaExigidaBrlManual: body.ValorGarantiaExigidaBrlManual,
+                    GarantiaEhCdbCativoManual: body.GarantiaEhCdbCativoManual,
+                    RendimentoCdbAaPercentual: body.RendimentoCdbAaPercentual),
+                cancellationToken);
+
+            // Retorna 200 com body quando há dados de garantia pré-preenchida ou alertas;
+            // caso contrário 204 para manter compatibilidade com os callers existentes.
+            return resultado.Proposta is not null || resultado.Alertas.Count > 0
+                ? Ok(resultado)
+                : NoContent();
         }
         catch (KeyNotFoundException)
         {
