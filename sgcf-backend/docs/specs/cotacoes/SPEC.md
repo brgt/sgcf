@@ -114,6 +114,31 @@ Hoje as cotações de FINIMP são feitas por planilha/email, sem rastreabilidade
 │  - DataVigenciaInicio, DataVigenciaFim?             │
 │  - Observacoes                                      │
 │  - CreatedAt, UpdatedAt                             │
+│  - GarantiasExigidas: List<GarantiaExigidaLimite>   │
+│  - Historico: List<LimiteBancoHistorico>            │
+└────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────┐
+│         GarantiaExigidaLimite                       │
+│  (child entity de LimiteBanco)                      │
+│  - Id, LimiteBancoId                                │
+│  - Tipo (TipoGarantia: CdbCativo, Sblc, Aval, ...)  │
+│  - PercentualSobreLimite? (decimal 0–100)           │
+│  - ValorFixoBRL? (Money)                            │
+│  - Obrigatoria (bool)                               │
+│  - Observacoes?                                     │
+│  - CreatedAt, UpdatedAt                             │
+└────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────┐
+│         LimiteBancoHistorico                        │
+│  (append-only, registrado em cada alteração de      │
+│   ValorLimiteBRL — usado para análise de tendência) │
+│  - Id, LimiteBancoId                                │
+│  - ValorAnteriorBRL? (null na entrada inicial)      │
+│  - ValorNovoBRL                                     │
+│  - RegistradoEm (Instant)                           │
+│  - Observacoes?                                     │
 └────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────┐
@@ -153,6 +178,31 @@ Hoje as cotações de FINIMP são feitas por planilha/email, sem rastreabilidade
 5. Se `GarantiaEhCdbCativo = true`, `RendimentoCdbAaPercentual` é obrigatório.
 6. `CetCalculadoAaPercentual` é recalculado em toda alteração da proposta (cache invalidado).
 7. Status `Aceita` só é permitido se a `Cotacao` parent não tem outra proposta aceita.
+
+### 3.4. Invariantes de `GarantiaExigidaLimite`
+
+1. Cada item pertence a exatamente um `LimiteBanco`.
+2. Não há duas garantias do mesmo `Tipo` no mesmo limite (UNIQUE(`LimiteBancoId`, `Tipo`)).
+3. `PercentualSobreLimite` e `ValorFixoBRL` são mutuamente exclusivos.
+4. Para `Tipo = Aval`, ambos podem ser nulos (representa exigência implícita de aval pelos sócios cobrindo 100% da exposição). Para qualquer outro tipo, exatamente um dos dois deve estar presente.
+5. Quando `PercentualSobreLimite` está presente, deve estar em `(0, 100]`.
+6. Quando `ValorFixoBRL` está presente, deve ser `> 0` e em BRL.
+
+### 3.5. Pré-preenchimento de garantia em `AdicionarBancoNaCotacao`
+
+Quando um banco é adicionado a uma cotação via `POST /cotacoes/{id}/bancos` com `preencherGarantiaAutomaticamente = true` (padrão) e o `LimiteBanco` selecionado possui `GarantiasExigidas` não vazia, o handler **deriva** os campos planos de garantia que devem ser usados ao registrar a `Proposta`:
+
+| Campo de `Proposta` | Fórmula |
+|---------------------|---------|
+| `GarantiaExigida` (string descritiva) | Concatenação dos itens via `FormatadorGarantiaExigida` (ex.: `"CDB cativo 20% (obrigatório) + Aval (obrigatório)"`) |
+| `ValorGarantiaExigidaBRL` | Σ(`ValorFixoBRL` de cada item) + Σ(`PercentualSobreLimite × cotacao.ValorAlvoBRL`). Itens sem percentual nem valor fixo (Aval) contribuem 0. |
+| `GarantiaEhCdbCativo` | `true` ⇔ existe item com `Tipo = CdbCativo` |
+
+**Invariante crítico (cruza §3.3 regra 5):** quando o pré-preenchimento resultar em `GarantiaEhCdbCativo = true`, o caller é obrigado a informar `RendimentoCdbAaPercentual` no próprio comando `AdicionarBancoNaCotacao`. Ausente, o handler rejeita com `InvalidOperationException` (HTTP 409) — mensagem orienta o caller a fornecer o rendimento ou desabilitar o pré-preenchimento (`preencherGarantiaAutomaticamente = false`) e informar todos os campos manualmente no `RegistrarProposta`.
+
+**Override manual e alertas:** o caller pode passar `garantiaExigidaManual` / `valorGarantiaExigidaBrlManual` / `garantiaEhCdbCativoManual`. Cada divergência contra o valor derivado gera uma entrada em `alertas` na resposta (informativo, não bloqueia). Os valores manuais são ignorados ao popular a `Proposta` — quem registra a proposta decide se usa o template sugerido ou os próprios valores.
+
+**Trilha histórica:** alterações no `ValorLimiteBRL` (via `Atualizar`) são gravadas automaticamente em `LimiteBancoHistorico` (entrada inicial na criação; uma entrada por mudança subsequente). A coleção `Historico` é exposta no `LimiteBancoDto` para análise posterior de bancos que aumentam ou reduzem a linha concedida.
 
 ---
 

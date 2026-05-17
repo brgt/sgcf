@@ -168,16 +168,83 @@ Autorização: Escrita
 
 Inclui banco-alvo na cotação. Valida limite operacional disponível: o `valorAlvoBrl` da cotação deve ser ≤ `ValorDisponivelBrl` do [LimiteBanco](./limites-banco.md) para a modalidade da cotação.
 
+Quando o `LimiteBanco` selecionado possui [garantias exigidas](./limites-banco.md#garantias-exigidas) e `preencherGarantiaAutomaticamente = true` (padrão), o handler deriva automaticamente um template de garantia para a futura `Proposta` e o devolve no campo `proposta` da resposta. Esse template é uma sugestão — não altera nenhuma `Proposta` existente. O caller pode comparar o template com valores manuais passando os campos opcionais `garantiaExigidaManual` / `valorGarantiaExigidaBrlManual` / `garantiaEhCdbCativoManual`; divergências geram entradas em `alertas` (informativo, não bloqueia).
+
 **Request Body:**
 
 ```json
-{ "bancoId": "guid" }
+{
+  "bancoId": "guid",
+  "preencherGarantiaAutomaticamente": true,
+  "garantiaExigidaManual": "string | null",
+  "valorGarantiaExigidaBrlManual": "decimal | null",
+  "garantiaEhCdbCativoManual": "boolean | null",
+  "rendimentoCdbAaPercentual": "decimal | null"
+}
 ```
 
+| Campo | Tipo | Default | Descrição |
+|-------|------|---------|-----------|
+| `bancoId` | guid | — | Banco a adicionar como alvo. Obrigatório. |
+| `preencherGarantiaAutomaticamente` | boolean | `true` | Quando `true` e o limite tem garantias exigidas, deriva o template de garantia. Quando `false`, ignora as garantias do limite e retorna `204`. |
+| `garantiaExigidaManual` | string \| null | `null` | Valor descritivo manual; gera alerta se diverge do calculado. |
+| `valorGarantiaExigidaBrlManual` | decimal \| null | `null` | Valor BRL manual; gera alerta se diverge do calculado. |
+| `garantiaEhCdbCativoManual` | boolean \| null | `null` | Flag manual; gera alerta se diverge do calculado. |
+| `rendimentoCdbAaPercentual` | decimal \| null | `null` | Rendimento anual do CDB cativo em pontos percentuais. **Obrigatório** quando o pré-preenchimento resulta em `garantiaEhCdbCativo = true` (SPEC §3.3) — ausente nesse caso retorna `409`. |
+
 **Responses:**
-- `204 No Content`
-- `404 Not Found` — Cotação ou banco inexistente
-- `409 Conflict` — Banco já incluso, limite insuficiente ou status não permite alteração
+- `200 OK` — [AdicionarBancoNaCotacaoResponse](#adicionarbanconacotacaoresponse) com `proposta` populada (limite tinha garantias exigidas) ou com `alertas` (divergências contra valores manuais).
+- `204 No Content` — Banco adicionado sem template de garantia (limite sem garantias exigidas, ou `preencherGarantiaAutomaticamente = false`).
+- `404 Not Found` — Cotação ou banco inexistente.
+- `409 Conflict` — Banco já incluso, limite insuficiente, status não permite alteração, ou CDB cativo exigido sem `rendimentoCdbAaPercentual`.
+
+**Exemplo — limite com 20% CDB cativo + Aval, com rendimento fornecido:**
+
+```json
+// POST /api/v1/cotacoes/{id}/bancos
+{
+  "bancoId": "8c6a...",
+  "preencherGarantiaAutomaticamente": true,
+  "rendimentoCdbAaPercentual": 12.5
+}
+
+// 200 OK
+{
+  "bancoId": "8c6a...",
+  "cotacaoId": "0193...",
+  "proposta": {
+    "garantiaExigida": "CDB cativo 20% (obrigatório) + Aval (obrigatório)",
+    "valorGarantiaExigidaBrl": 200000.00,
+    "garantiaEhCdbCativo": true
+  },
+  "alertas": []
+}
+```
+
+**Exemplo — divergência manual:**
+
+```json
+// POST /api/v1/cotacoes/{id}/bancos
+{
+  "bancoId": "8c6a...",
+  "valorGarantiaExigidaBrlManual": 150000.00,
+  "rendimentoCdbAaPercentual": 12.5
+}
+
+// 200 OK
+{
+  "bancoId": "8c6a...",
+  "cotacaoId": "0193...",
+  "proposta": {
+    "garantiaExigida": "CDB cativo 20% (obrigatório)",
+    "valorGarantiaExigidaBrl": 200000.00,
+    "garantiaEhCdbCativo": true
+  },
+  "alertas": [
+    "O campo 'valorGarantiaExigidaBrl' informado manualmente (150000.00) diverge do valor calculado automaticamente (200000.00)."
+  ]
+}
+```
 
 ---
 
@@ -477,6 +544,37 @@ Cria atomicamente um novo `Contrato` a partir da proposta aceita, registra um `E
 ---
 
 ## Schemas
+
+### AdicionarBancoNaCotacaoResponse
+
+```json
+{
+  "bancoId": "guid",
+  "cotacaoId": "guid",
+  "proposta": "GarantiaPreenchidaDto | null",
+  "alertas": ["string"]
+}
+```
+
+`proposta` é `null` quando o limite não tem garantias exigidas ou quando `preencherGarantiaAutomaticamente = false`. `alertas` é sempre presente (pode ser array vazio).
+
+### GarantiaPreenchidaDto
+
+Template de garantia derivado das `garantiasExigidas` do [LimiteBanco](./limites-banco.md#garantias-exigidas). Esses valores são uma sugestão para o campo correspondente em `PropostaDto` no registro da proposta — não modificam o `LimiteBanco`.
+
+```json
+{
+  "garantiaExigida": "string",
+  "valorGarantiaExigidaBrl": 200000.00,
+  "garantiaEhCdbCativo": true
+}
+```
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `garantiaExigida` | string | Descrição formatada da coleção de garantias do limite. Ex.: `"CDB cativo 20% (obrigatório) + Aval (obrigatório)"`. |
+| `valorGarantiaExigidaBrl` | decimal | Soma de cada `valorFixoBrl` + cada `percentualSobreLimite × cotacao.valorAlvoBrl`. Itens sem valor nem percentual (ex.: Aval) contribuem zero. |
+| `garantiaEhCdbCativo` | boolean | `true` quando qualquer item tem `tipo = "CdbCativo"`. |
 
 ### CotacaoDto
 
