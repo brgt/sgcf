@@ -13,20 +13,39 @@ public sealed record LimiteBancoDto(
     DateOnly? DataVigenciaFim,
     string? Observacoes,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    IReadOnlyList<GarantiaExigidaLimiteDto> GarantiasExigidas,
+    IReadOnlyList<LimiteBancoHistoricoDto> Historico)
 {
-    public static LimiteBancoDto From(LimiteBanco l) => new(
-        l.Id,
-        l.BancoId,
-        l.Modalidade.ToString(),
-        l.ValorLimiteBrl.Valor,
-        l.ValorUtilizadoBrl.Valor,
-        l.ValorDisponivelBrl.Valor,
-        new DateOnly(l.DataVigenciaInicio.Year, l.DataVigenciaInicio.Month, l.DataVigenciaInicio.Day),
-        l.DataVigenciaFim.HasValue
-            ? new DateOnly(l.DataVigenciaFim.Value.Year, l.DataVigenciaFim.Value.Month, l.DataVigenciaFim.Value.Day)
-            : null,
-        l.Observacoes,
-        l.CreatedAt.ToDateTimeOffset(),
-        l.UpdatedAt.ToDateTimeOffset());
+    public static LimiteBancoDto From(LimiteBanco l)
+    {
+        List<GarantiaExigidaLimiteDto> garantias = new(l.GarantiasExigidas.Count);
+        foreach (GarantiaExigidaLimite g in l.GarantiasExigidas)
+        {
+            garantias.Add(GarantiaExigidaLimiteDto.From(g));
+        }
+
+        List<LimiteBancoHistoricoDto> historico = new(l.Historico.Count);
+        foreach (LimiteBancoHistorico h in l.Historico.OrderBy(h => h.RegistradoEm))
+        {
+            historico.Add(LimiteBancoHistoricoDto.From(h));
+        }
+
+        return new LimiteBancoDto(
+            l.Id,
+            l.BancoId,
+            l.Modalidade.ToString(),
+            l.ValorLimiteBrl.Valor,
+            l.ValorUtilizadoBrl.Valor,
+            l.ValorDisponivelBrl.Valor,
+            new DateOnly(l.DataVigenciaInicio.Year, l.DataVigenciaInicio.Month, l.DataVigenciaInicio.Day),
+            l.DataVigenciaFim.HasValue
+                ? new DateOnly(l.DataVigenciaFim.Value.Year, l.DataVigenciaFim.Value.Month, l.DataVigenciaFim.Value.Day)
+                : null,
+            l.Observacoes,
+            l.CreatedAt.ToDateTimeOffset(),
+            l.UpdatedAt.ToDateTimeOffset(),
+            garantias.AsReadOnly(),
+            historico.AsReadOnly());
+    }
 }
