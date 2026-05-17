@@ -1,5 +1,5 @@
 meta {
-  name: Atualizar Limite Banco
+  name: Atualizar Limite Banco (valor + garantias)
   type: http
   seq: 3
 }
@@ -21,18 +21,42 @@ headers {
 
 body:json {
   {
-    "novoValorLimiteBrl": 60000000.00
+    "novoValorLimiteBrl": 60000000.00,
+    "garantiasExigidas": [
+      {
+        "tipo": "CdbCativo",
+        "percentualSobreLimite": 20.0,
+        "obrigatoria": true,
+        "observacoes": "CDB cativo mantido no próprio banco"
+      },
+      {
+        "tipo": "Aval",
+        "obrigatoria": false,
+        "observacoes": "Aval dos sócios negociável"
+      }
+    ]
   }
 }
 
 docs {
-  Atualiza valor do limite operacional existente.
+  Atualiza valor e substitui integralmente as garantias exigidas (replace-all).
   Política: Admin
 
-  Campos:
-  - novoValorLimiteBrl: novo limite total em BRL (> 0)
+  Semântica PATCH:
+  - novoValorLimiteBrl null → preserva valor atual
+  - garantiasExigidas null → preserva garantias atuais (omitir o campo tem o mesmo efeito)
+  - garantiasExigidas [] → remove todas as garantias
+  - garantiasExigidas [itens] → substitui toda a coleção (replace-all)
+
+  Quando novoValorLimiteBrl difere do valor atual, o sistema registra uma nova
+  entrada no histórico com valorAnteriorBrl preenchido.
+
+  Tipo Aval: percentualSobreLimite e valorFixoBrl podem ser ambos nulos.
+  Para outros tipos, exatamente um dos dois deve ser informado.
 
   Retornos:
-  - 200: LimiteBancoDto atualizado
+  - 200: LimiteBancoDto atualizado (inclui garantiasExigidas e historico)
+  - 400: campo inválido, percentual fora de (0, 100] ou valor abaixo do utilizado
   - 404: limite não encontrado
+  - 409: tipo de garantia duplicado na lista enviada
 }

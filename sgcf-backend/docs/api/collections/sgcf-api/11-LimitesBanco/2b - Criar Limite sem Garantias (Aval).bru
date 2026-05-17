@@ -1,0 +1,56 @@
+meta {
+  name: Criar Limite Banco sem Garantias (Aval)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/limites-banco
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "bancoId": "{{bancoId}}",
+    "modalidade": "Finimp",
+    "valorLimiteBrl": 30000000.00,
+    "dataVigenciaInicio": "2026-01-01",
+    "dataVigenciaFim": null,
+    "observacoes": "Linha no aval — sem requisitos formais de garantia",
+    "garantiasExigidas": []
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("limiteId", res.body.id);
+  }
+}
+
+docs {
+  Cria limite operacional sem garantias formais (linha no aval implícito).
+  Política: Admin
+
+  Enviar garantiasExigidas como array vazio [] registra o limite sem requisitos
+  formais de garantia — equivalente à linha "no aval" dos sócios.
+
+  Omitir o campo garantiasExigidas por completo produz o mesmo resultado.
+
+  A resposta retornará garantiasExigidas: [] e historico com uma entrada inicial
+  (valorAnteriorBrl = null).
+
+  Retornos:
+  - 201: LimiteBancoDto criado
+  - 400: campos inválidos
+  - 409: sobreposição de vigência para o par banco/modalidade
+}

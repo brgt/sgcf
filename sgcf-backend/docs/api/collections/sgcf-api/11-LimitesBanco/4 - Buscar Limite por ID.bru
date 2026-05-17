@@ -1,0 +1,35 @@
+meta {
+  name: Buscar Limite por ID
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/limites-banco/{{limiteId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Retorna o limite operacional pelo ID com garantias exigidas e histórico de valores.
+  Política: Leitura
+
+  O limiteId é capturado automaticamente pelo post-response script do request "Criar Limite Banco".
+
+  Resposta inclui:
+  - garantiasExigidas: lista de GarantiaExigidaLimiteDto (pode ser vazia)
+  - historico: entradas de LimiteBancoHistoricoDto ordenadas por registradoEm asc
+    (primeira entrada: valorAnteriorBrl = null, representa a criação)
+
+  Retornos:
+  - 200: LimiteBancoDto completo
+  - 404: limite não encontrado
+}
