@@ -121,16 +121,20 @@ Tipos, enums e DTOs usados em múltiplos endpoints da SGCF API.
 
 ### TipoGarantia
 
-| Valor | Descrição |
-|-------|-----------|
-| `CDB` | Certificado de Depósito Bancário |
-| `SBLC` | Stand-by Letter of Credit |
-| `AVAL` | Aval de sócio/empresa |
-| `ALIENACAO` | Alienação fiduciária |
-| `DUPLICATAS` | Caução de duplicatas |
-| `RECEBIVEIS` | Cessão de recebíveis |
-| `BOLETO` | Caução de boletos |
-| `FGI` | Garantia do Fundo de Garantia p/ Investimentos |
+Usado em garantias de contratos (`GarantiaDto`) e em garantias exigidas por limites de banco (`GarantiaExigidaLimiteDto`).
+
+| Valor (string) | Int | Descrição |
+|----------------|-----|-----------|
+| `CdbCativo` | 1 | CDB cativo no banco credor |
+| `Sblc` | 2 | Stand-by Letter of Credit |
+| `Aval` | 3 | Aval de sócio/empresa |
+| `AlienacaoFiduciaria` | 4 | Alienação fiduciária de bem |
+| `Duplicatas` | 5 | Caução de duplicatas |
+| `RecebiveisCartao` | 6 | Cessão de recebíveis de cartão |
+| `BoletoBancario` | 7 | Caução de boletos bancários |
+| `Fgi` | 8 | Cobertura pelo Fundo de Garantia para Investimentos |
+
+> A API serializa e aceita o nome textual (ex.: `"CdbCativo"`). Valores case-insensitive na entrada.
 
 ---
 
@@ -640,9 +644,93 @@ Tipos, enums e DTOs usados em múltiplos endpoints da SGCF API.
   "dataVigenciaFim": "YYYY-MM-DD | null",
   "observacoes": "string | null",
   "createdAt": "DateTimeOffset",
+  "updatedAt": "DateTimeOffset",
+  "garantiasExigidas": [GarantiaExigidaLimiteDto],
+  "historico": [LimiteBancoHistoricoDto]
+}
+```
+
+> `garantiasExigidas` e `historico` estão presentes em todas as respostas de `LimiteBancoDto`. O `historico` é ordenado por `registradoEm` crescente.
+
+---
+
+### GarantiaExigidaLimiteDto
+
+Projeção de uma garantia exigida pelo banco para liberar uma linha de crédito.
+
+```json
+{
+  "id": "guid",
+  "tipo": "CdbCativo | Sblc | Aval | AlienacaoFiduciaria | Duplicatas | RecebiveisCartao | BoletoBancario | Fgi",
+  "percentualSobreLimite": "decimal | null",
+  "valorFixoBrl": "decimal | null",
+  "obrigatoria": "bool",
+  "observacoes": "string | null",
+  "createdAt": "DateTimeOffset",
   "updatedAt": "DateTimeOffset"
 }
 ```
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | guid | Identificador da garantia |
+| `tipo` | string | Nome do enum `TipoGarantia` |
+| `percentualSobreLimite` | decimal? | Percentual sobre o valor do limite; (0, 100]; exclusivo com `valorFixoBrl` |
+| `valorFixoBrl` | decimal? | Valor fixo em BRL; exclusivo com `percentualSobreLimite`; null para `Aval` |
+| `obrigatoria` | bool | `true` = banco exige; `false` = banco negocia |
+| `observacoes` | string? | Texto livre |
+| `createdAt` | DateTimeOffset | Instante de criação (UTC) |
+| `updatedAt` | DateTimeOffset | Instante da última atualização (UTC) |
+
+---
+
+### LimiteBancoHistoricoDto
+
+Entrada de histórico do valor concedido pelo banco. Gerada automaticamente pelo sistema a cada criação ou alteração do `valorLimiteBrl`.
+
+```json
+{
+  "id": "guid",
+  "limiteBancoId": "guid",
+  "valorAnteriorBrl": "decimal | null",
+  "valorNovoBrl": "decimal",
+  "registradoEm": "DateTimeOffset",
+  "observacoes": "string | null"
+}
+```
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `id` | guid | Identificador da entrada de histórico |
+| `limiteBancoId` | guid | Limite ao qual esta entrada pertence |
+| `valorAnteriorBrl` | decimal? | Valor anterior em BRL; `null` na entrada de criação do limite |
+| `valorNovoBrl` | decimal | Novo valor do limite em BRL |
+| `registradoEm` | DateTimeOffset | Instante em que a alteração ocorreu (UTC) |
+| `observacoes` | string? | Texto livre; preenchido automaticamente com `"Criação do limite"` na entrada inicial |
+
+---
+
+### CriarGarantiaExigidaLimiteRequest
+
+Estrutura de entrada para declarar uma garantia ao criar (`POST`) ou atualizar (`PATCH`) um limite. Não carrega identidade — o sistema atribui o `id` ao persistir.
+
+```json
+{
+  "tipo": "CdbCativo",
+  "percentualSobreLimite": 20.0,
+  "valorFixoBrl": null,
+  "obrigatoria": true,
+  "observacoes": "string | null"
+}
+```
+
+| Campo | Tipo | Default | Descrição |
+|-------|------|---------|-----------|
+| `tipo` | string | — | Nome do enum `TipoGarantia` (case-insensitive). Obrigatório. |
+| `percentualSobreLimite` | decimal? | `null` | Percentual sobre o limite; (0, 100]; exclusivo com `valorFixoBrl` |
+| `valorFixoBrl` | decimal? | `null` | Valor fixo em BRL; > 0; exclusivo com `percentualSobreLimite` |
+| `obrigatoria` | bool | `true` | `true` = banco exige; `false` = banco negocia |
+| `observacoes` | string? | `null` | Texto livre |
 
 ### CdiSnapshotDto
 
