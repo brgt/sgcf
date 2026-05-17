@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -26,12 +27,16 @@ public sealed class CotacoesFluxoTests(CotacoesApiFixture fixture)
     /// </summary>
     private static async Task<Guid> SeedPreRequistosAsync(HttpClient client)
     {
+        // Gera codigoCompe único de 3 dígitos para evitar conflito entre testes na mesma fixture
+        string codigoCompe = Random.Shared.Next(100, 999).ToString(CultureInfo.InvariantCulture);
+
         // Cria banco
         HttpResponseMessage bancRes = await client.PostAsJsonAsync("/api/v1/bancos", new
         {
-            codigo = "001",
-            nome = "Banco do Brasil",
-            identificador = "001"
+            codigoCompe,
+            razaoSocial = $"Banco Fluxo {codigoCompe} S.A.",
+            apelido = $"BF{codigoCompe}",
+            padraoAntecipacao = "A"
         });
         bancRes.IsSuccessStatusCode.Should().BeTrue($"seed banco falhou: {bancRes.StatusCode}");
         JsonElement bancBody = await bancRes.Content.ReadFromJsonAsync<JsonElement>(JsonOpts);
@@ -122,7 +127,7 @@ public sealed class CotacoesFluxoTests(CotacoesApiFixture fixture)
                 spreadAa = 0.50m,
                 prazoDias = 180,
                 estruturaAmortizacao = "Bullet",
-                periodicidadeJuros = "NaVencimento",
+                periodicidadeJuros = "Bullet",
                 exigeNdf = false,
                 custoNdfAa = (decimal?)null,
                 garantiaExigida = "CDB caucionado",
@@ -146,7 +151,7 @@ public sealed class CotacoesFluxoTests(CotacoesApiFixture fixture)
                 spreadAa = 0.40m,
                 prazoDias = 180,
                 estruturaAmortizacao = "Bullet",
-                periodicidadeJuros = "NaVencimento",
+                periodicidadeJuros = "Bullet",
                 exigeNdf = false,
                 custoNdfAa = (decimal?)null,
                 garantiaExigida = "CDB caucionado",
@@ -300,14 +305,14 @@ public sealed class CotacoesFluxoTests(CotacoesApiFixture fixture)
         // Verificar presença das 3 métricas obrigatórias (SPEC §5.3)
         primeira.TryGetProperty("taxaNominalAaPercentual", out _).Should().BeTrue(
             "métrica 1: taxa nominal anualizada");
-        primeira.TryGetProperty("cetCalculadoAaPercentual", out _).Should().BeTrue(
+        primeira.TryGetProperty("cetAaPercentual", out _).Should().BeTrue(
             "métrica 2: CET anualizado");
         primeira.TryGetProperty("custoTotalEquivalenteBrl", out _).Should().BeTrue(
             "métrica 3: custo total equalizado para o prazo da cotação");
 
         // CET deve ser >= taxa nominal (invariante do cálculo)
         decimal taxaNominal = primeira.GetProperty("taxaNominalAaPercentual").GetDecimal();
-        decimal cet = primeira.GetProperty("cetCalculadoAaPercentual").GetDecimal();
+        decimal cet = primeira.GetProperty("cetAaPercentual").GetDecimal();
         cet.Should().BeGreaterThanOrEqualTo(taxaNominal,
             "CET não pode ser menor que a taxa nominal (invariante SPEC §10.3)");
     }
@@ -376,7 +381,7 @@ public sealed class CotacoesFluxoTests(CotacoesApiFixture fixture)
                 spreadAa = 0.50m,
                 prazoDias = 180,
                 estruturaAmortizacao = "Bullet",
-                periodicidadeJuros = "NaVencimento",
+                periodicidadeJuros = "Bullet",
                 exigeNdf = false,
                 custoNdfAa = (decimal?)null,
                 garantiaExigida = "CDB caucionado",

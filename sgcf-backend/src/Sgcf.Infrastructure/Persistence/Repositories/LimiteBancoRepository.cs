@@ -32,12 +32,15 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
     /// <summary>
     /// Retorna o limite vigente (sem data_vigencia_fim) para a combinação banco+modalidade.
     /// "Vigente" é definido como DataVigenciaFim == null (sem encerramento programado).
+    /// GarantiasExigidas é carregado eagerly para que o pré-preenchimento automático
+    /// de garantia (Task 4.1) funcione sem lazy-loading.
     /// </summary>
     public Task<LimiteBanco?> GetByBancoModalidadeAsync(
         Guid bancoId,
         ModalidadeContrato modalidade,
         CancellationToken cancellationToken = default) =>
         context.LimitesBanco
+            .Include(l => l.GarantiasExigidas)
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 l => l.BancoId == bancoId

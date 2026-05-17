@@ -4,6 +4,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NodaTime;
 using NSubstitute;
+using Sgcf.Application.Cambio;
+using Sgcf.Domain.Cambio;
+using Sgcf.Domain.Common;
 using Sgcf.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 using Xunit;
@@ -60,6 +63,22 @@ public sealed class CotacoesApiFixture : IAsyncLifetime
         using IServiceScope scope = Factory.Services.CreateScope();
         SgcfDbContext ctx = scope.ServiceProvider.GetRequiredService<SgcfDbContext>();
         await ctx.Database.MigrateAsync();
+
+        // Seed CotacaoFx PTAX D-1 para dataAbertura 2026-05-16.
+        // CriarCotacaoCommand busca PTAX com dataMaxima = dataAbertura - 1 dia útil.
+        // Não existe endpoint HTTP para criar CotacaoFx — PtaxIngestor é o único produtor
+        // em produção. Em testes, semeamos diretamente via repositório.
+        // Momento 2026-05-15T23:00Z satisfaz GetMaisRecenteAsync(dataMaxima = 2026-05-15).
+        ICotacaoFxRepository cotacaoFxRepo =
+            scope.ServiceProvider.GetRequiredService<ICotacaoFxRepository>();
+        CotacaoFx ptax = CotacaoFx.Criar(
+            Moeda.Usd,
+            TipoCotacao.PtaxD1,
+            new Money(5.15m, Moeda.Brl),
+            new Money(5.20m, Moeda.Brl),
+            fonte: "BACEN-seed-e2e",
+            momento: InstanteFixo - Duration.FromHours(13)); // 2026-05-15T23:00Z
+        await cotacaoFxRepo.UpsertAsync(ptax);
     }
 
     public async Task DisposeAsync()
