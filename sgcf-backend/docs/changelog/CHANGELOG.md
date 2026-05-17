@@ -11,6 +11,135 @@
 
 ---
 
+## [0.6.0] — 2026-05-16
+
+### Resumo executivo
+
+Extensão do módulo Limites de Banco com duas novas capacidades analíticas e operacionais: **Garantias Exigidas** (modelo de colateral por tipo, com validações XOR e unicidade por tipo) e **Histórico de Valor Concedido** (versionamento automático do `valorLimiteBrl` para análise de tendência). Novo endpoint `GET /{id}` expõe o DTO completo incluindo ambas as coleções. Acompanha migration `S5_GarantiasExigidasLimite`, 9 testes de integração e coleção Bruno atualizada.
+
+---
+
+### ADDITIVE — Limites de Banco — Garantias Exigidas
+
+Cada `LimiteBanco` passa a suportar zero ou mais garantias exigidas pelo banco para liberar a linha de crédito.
+
+**Entidade nova:** `GarantiaExigidaLimite`
+
+- Propriedades: `Tipo` (enum `TipoGarantia`), `PercentualSobreLimite` (decimal?), `ValorFixoBrl` (Money?), `Obrigatoria` (bool), `Observacoes` (string?), `CreatedAt`, `UpdatedAt`.
+- `Obrigatoria = true` indica que o banco exige a garantia; `false` indica que negocia.
+
+**Validações de domínio:**
+
+- `PercentualSobreLimite` e `ValorFixoBrl` são mutuamente exclusivos. Ambos preenchidos lança `ArgumentException` (→ 400).
+- Para todos os tipos exceto `Aval`, ao menos um dos dois deve ser informado. Nenhum dos dois lança `ArgumentException` (→ 400).
+- Para `Aval`, ambos podem ser nulos (representa exigência implícita de aval dos sócios cobrindo 100% da exposição).
+- `PercentualSobreLimite` deve estar no intervalo (0, 100].
+- Não podem existir duas garantias com o mesmo `TipoGarantia` no mesmo limite. Duplicata lança `InvalidOperationException` (→ 409).
+
+**Endpoints estendidos:**
+
+| Endpoint | Mudança |
+|----------|---------|
+| `POST /api/v1/limites-banco` | Campo opcional `garantiasExigidas: CriarGarantiaExigidaLimiteRequest[]` |
+| `PATCH /api/v1/limites-banco/{id}` | Campo opcional `garantiasExigidas`: `null` = preservar; `[]` = remover todas; itens = replace-all |
+
+**DTOs novos:** `GarantiaExigidaLimiteDto`, `CriarGarantiaExigidaLimiteRequest`.
+
+**DTO estendido:** `LimiteBancoDto` agora inclui `garantiasExigidas: GarantiaExigidaLimiteDto[]`.
+
+---
+
+### ADDITIVE — Limites de Banco — Histórico de Valor Concedido
+
+O campo `valorLimiteBrl` passa a ser versionado automaticamente. Toda alteração de valor via `PATCH` registra uma entrada em `LimiteBancoHistorico` com o valor anterior e o novo. A criação do limite registra a entrada inicial com `valorAnteriorBrl = null` e `observacoes = "Criação do limite"`.
+
+O histórico serve à análise de tendência: permite identificar bancos que aumentam ou reduzem o limite ao longo do tempo, apoiando decisões de diversificação de captação.
+
+**Entidade nova:** `LimiteBancoHistorico`
+
+- Propriedades: `LimiteBancoId`, `ValorAnteriorBrl` (Money?), `ValorNovoBrl` (Money), `RegistradoEm` (Instant), `Observacoes` (string?).
+- `ValorAnteriorBrl` é `null` exclusivamente na entrada de criação.
+
+**DTO novo:** `LimiteBancoHistoricoDto`.
+
+**DTO estendido:** `LimiteBancoDto` agora inclui `historico: LimiteBancoHistoricoDto[]`, ordenado por `registradoEm` crescente.
+
+---
+
+### ADDITIVE — Limites de Banco — Endpoint GET /{id}
+
+Novo endpoint para busca individual de limite operacional pelo identificador.
+
+```
+GET /api/v1/limites-banco/{id}
+Autorização: Leitura
+```
+
+**Resposta:** `LimiteBancoDto` completo com `garantiasExigidas` e `historico` populados.
+
+**Erros:**
+- `404 Not Found` — limite não encontrado.
+
+O endpoint `GET /api/v1/limites-banco` (listagem) também inclui `garantiasExigidas` e `historico` no DTO retornado, pois o mapper `LimiteBancoDto.From` é compartilhado.
+
+---
+
+### INTERNAL — Migration `S5_GarantiasExigidasLimite`
+
+**Tabelas criadas:**
+
+| Tabela | Schema | Descrição |
+|--------|--------|-----------|
+| `limite_banco_garantia_exigida` | `sgcf` | Garantias exigidas por limite |
+| `limite_banco_historico` | `sgcf` | Histórico de valores concedidos |
+
+**Colunas principais — `limite_banco_garantia_exigida`:**
+
+| Coluna | Tipo PG | Notas |
+|--------|---------|-------|
+| `id` | `uuid` | PK |
+| `limite_banco_id` | `uuid` | FK → `limite_banco.id` (CASCADE DELETE) |
+| `tipo` | `integer` | Enum `TipoGarantia` como inteiro |
+| `percentual_sobre_limite` | `numeric(7,4)` | Nullable |
+| `valor_fixo_brl` | `numeric(20,6)` | Nullable |
+| `obrigatoria` | `boolean` | — |
+| `observacoes` | `text` | Nullable |
+| `created_at` / `updated_at` | `timestamptz` | — |
+
+**CHECK constraints — `limite_banco_garantia_exigida`:**
+
+| Nome | Regra |
+|------|-------|
+| `ck_garantia_exigida_percentual_intervalo` | `percentual_sobre_limite IS NULL OR (percentual_sobre_limite > 0 AND percentual_sobre_limite <= 100)` |
+| `ck_garantia_exigida_percentual_xor_valor` | XOR entre percentual e valor fixo, com exceção para `tipo = 3` (Aval) |
+| `ck_garantia_exigida_valor_fixo_positivo` | `valor_fixo_brl IS NULL OR valor_fixo_brl > 0` |
+
+**Colunas principais — `limite_banco_historico`:**
+
+| Coluna | Tipo PG | Notas |
+|--------|---------|-------|
+| `id` | `uuid` | PK |
+| `limite_banco_id` | `uuid` | FK → `limite_banco.id` (CASCADE DELETE) |
+| `valor_anterior_brl` | `numeric(20,6)` | Nullable (null = entrada de criação) |
+| `valor_novo_brl` | `numeric(20,6)` | NOT NULL |
+| `registrado_em` | `timestamptz` | — |
+| `observacoes` | `text` | Nullable |
+
+**Índices:**
+
+| Nome | Tabela | Colunas | Tipo |
+|------|--------|---------|------|
+| `ix_garantia_exigida_limite_banco` | `limite_banco_garantia_exigida` | `limite_banco_id` | B-tree |
+| `ux_garantia_exigida_limite_tipo` | `limite_banco_garantia_exigida` | `(limite_banco_id, tipo)` | Unique |
+| `ix_limite_banco_historico_limite` | `limite_banco_historico` | `limite_banco_id` | B-tree |
+| `ix_limite_banco_historico_limite_registrado_em` | `limite_banco_historico` | `(limite_banco_id, registrado_em)` | B-tree |
+
+O índice único `ux_garantia_exigida_limite_tipo` reforça em nível de banco de dados a invariante de não duplicação por tipo, complementando a validação do domínio.
+
+Ambas as tabelas usam `CASCADE DELETE` referenciando `limite_banco.id`.
+
+---
+
 ## [0.5.0] — 2026-05-16
 
 ### Resumo executivo
