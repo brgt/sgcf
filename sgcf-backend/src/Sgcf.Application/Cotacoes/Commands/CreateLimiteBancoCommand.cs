@@ -14,7 +14,8 @@ public sealed record CreateLimiteBancoCommand(
     decimal ValorLimiteBrl,
     DateOnly DataVigenciaInicio,
     DateOnly? DataVigenciaFim = null,
-    string? Observacoes = null) : IRequest<LimiteBancoDto>;
+    string? Observacoes = null,
+    IReadOnlyList<CriarGarantiaExigidaLimiteRequest>? GarantiasExigidas = null) : IRequest<LimiteBancoDto>;
 
 public sealed class CreateLimiteBancoCommandValidator : AbstractValidator<CreateLimiteBancoCommand>
 {
@@ -30,6 +31,17 @@ public sealed class CreateLimiteBancoCommandValidator : AbstractValidator<Create
         RuleFor(c => c.ValorLimiteBrl)
             .GreaterThan(0m)
             .WithMessage("ValorLimiteBrl deve ser maior que zero.");
+
+        // Validate that each Tipo string maps to a known enum value.
+        // XOR (percentual×valorFixo) is NOT validated here — domain handles it and
+        // surfaces ArgumentException (→ 400) or InvalidOperationException (→ 409).
+        RuleForEach(c => c.GarantiasExigidas)
+            .ChildRules(g =>
+                g.RuleFor(r => r.Tipo)
+                 .NotEmpty()
+                 .Must(v => Enum.TryParse<TipoGarantia>(v, ignoreCase: true, out _))
+                 .WithMessage(r => $"Tipo de garantia inválido: '{r.Tipo}'. Valores aceitos: {string.Join(", ", Enum.GetNames<TipoGarantia>())}."))
+            .When(c => c.GarantiasExigidas is not null);
     }
 }
 
@@ -44,7 +56,26 @@ public sealed class CreateLimiteBancoCommandHandler(ILimiteBancoRepository repo,
             ? new LocalDate(cmd.DataVigenciaFim.Value.Year, cmd.DataVigenciaFim.Value.Month, cmd.DataVigenciaFim.Value.Day)
             : null;
 
+        // GAP-001: rejeitar sobreposição de vigência para o mesmo par bancoId×modalidade.
+        LimiteBanco? conflito = await repo.FindOverlappingAsync(
+            cmd.BancoId, modalidade, inicio, fim, cancellationToken: cancellationToken);
+
+        if (conflito is not null)
+        {
+            string fimConflito = conflito.DataVigenciaFim.HasValue
+                ? conflito.DataVigenciaFim.Value.ToString("uuuu-MM-dd", null)
+                : "em aberto";
+
+            throw new InvalidOperationException(
+                $"Já existe o limite '{conflito.Id}' para banco '{cmd.BancoId}' / modalidade '{modalidade}' " +
+                $"com vigência de {conflito.DataVigenciaInicio:uuuu-MM-dd} até {fimConflito}, " +
+                $"que se sobrepõe ao período solicitado.");
+        }
+
         Money valorLimite = new(cmd.ValorLimiteBrl, Moeda.Brl);
+
+        IEnumerable<GarantiaExigidaLimiteSpec>? specs = cmd.GarantiasExigidas?
+            .Select(r => r.ParaSpec());
 
         LimiteBanco limite = LimiteBanco.Criar(
             cmd.BancoId,
@@ -53,7 +84,8 @@ public sealed class CreateLimiteBancoCommandHandler(ILimiteBancoRepository repo,
             inicio,
             clock,
             fim,
-            cmd.Observacoes);
+            cmd.Observacoes,
+            garantiasExigidas: specs);
 
         repo.Add(limite);
         await repo.SaveChangesAsync(cancellationToken);

@@ -35,6 +35,26 @@ public sealed class LimitesBancoController(IMediator mediator) : ControllerBase
     }
 
     /// <summary>
+    /// Retorna um limite operacional pelo seu identificador.
+    /// </summary>
+    [HttpGet("{id:guid}")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<LimiteBancoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            LimiteBancoDto result = await mediator.Send(new GetLimiteBancoByIdQuery(id), cancellationToken);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>
     /// Cria novo limite operacional para banco/modalidade. Política: Admin.
     /// </summary>
     [HttpPost]
@@ -49,22 +69,29 @@ public sealed class LimitesBancoController(IMediator mediator) : ControllerBase
         try
         {
             LimiteBancoDto result = await mediator.Send(command, cancellationToken);
-            return CreatedAtAction(nameof(List), new { bancoId = result.BancoId }, result);
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
         catch (InvalidOperationException ex)
         {
             return Conflict(new { error = ex.Message });
         }
+        catch (ArgumentException ex)
+        {
+            // ArgumentOutOfRangeException is a subtype — handled here as well.
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     /// <summary>
-    /// Atualiza valor do limite operacional existente. Política: Admin.
+    /// Atualiza o limite operacional existente (semântica PATCH).
+    /// Garante e substitui garantias exigidas quando fornecidas. Política: Admin.
     /// </summary>
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = Policies.Admin)]
     [ProducesResponseType<LimiteBancoDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Atualizar(
         Guid id,
         [FromBody] UpdateLimiteBancoCommand command,
@@ -80,6 +107,15 @@ public sealed class LimitesBancoController(IMediator mediator) : ControllerBase
         catch (KeyNotFoundException)
         {
             return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            // ArgumentOutOfRangeException is a subtype — handled here as well.
+            return BadRequest(new { error = ex.Message });
         }
     }
 }

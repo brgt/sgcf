@@ -1,3 +1,4 @@
+using NodaTime;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
 
@@ -18,12 +19,33 @@ public interface ILimiteBancoRepository
         ModalidadeContrato modalidade,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Retorna o primeiro limite do par bancoId+modalidade cujo período [DataVigenciaInicio, DataVigenciaFim]
+    /// se sobrepõe ao período [inicio, fim], ou null se não houver sobreposição.
+    /// Sobreposição: <c>inicio &lt;= existente.Fim AND existente.Inicio &lt;= fim</c>.
+    /// Trata DataVigenciaFim == null como "infinito" (aberto).
+    /// Exclui opcionalmente o próprio limite (para uso em updates).
+    /// </summary>
+    public Task<LimiteBanco?> FindOverlappingAsync(
+        Guid bancoId,
+        ModalidadeContrato modalidade,
+        LocalDate inicio,
+        LocalDate? fim,
+        Guid? excluirId = null,
+        CancellationToken cancellationToken = default);
+
     public Task<IReadOnlyList<LimiteBanco>> ListAsync(
         Guid? bancoId,
         ModalidadeContrato? modalidade,
         CancellationToken cancellationToken = default);
 
     public Task<LimiteBanco?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retorna o limite por id com tracking habilitado (para uso em comandos de atualização).
+    /// Faz eager-load de GarantiasExigidas e Historico.
+    /// </summary>
+    public Task<LimiteBanco?> GetByIdTrackingAsync(Guid id, CancellationToken cancellationToken = default);
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

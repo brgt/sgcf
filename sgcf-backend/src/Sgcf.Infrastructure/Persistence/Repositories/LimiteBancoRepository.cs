@@ -22,6 +22,13 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
 
+    /// <inheritdoc/>
+    public Task<LimiteBanco?> GetByIdTrackingAsync(Guid id, CancellationToken cancellationToken = default) =>
+        context.LimitesBanco
+            .Include(l => l.GarantiasExigidas)
+            .Include(l => l.Historico)
+            .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
+
     /// <summary>
     /// Retorna o limite vigente (sem data_vigencia_fim) para a combinação banco+modalidade.
     /// "Vigente" é definido como DataVigenciaFim == null (sem encerramento programado).
