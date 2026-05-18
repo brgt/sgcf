@@ -3,25 +3,7 @@ using Sgcf.Domain.Contratos;
 
 namespace Sgcf.Application.Cotacoes.Conversores;
 
-/// <summary>
-/// Stub do conversor REFINIMP. Implementação completa entregue na Onda 1 (REFINIMP).
-/// Registrado em DI para garantir que <see cref="ConverterEmContratoCommandHandler"/>
-/// não lança InvalidOperationException se uma cotação REFINIMP chegar prematuramente.
-/// A NotImplementedException daqui é mais descritiva e rastreável.
-/// </summary>
-public sealed class ConversorRefinimp : IConversorModalidade
-{
-    /// <inheritdoc/>
-    public ModalidadeContrato Modalidade => ModalidadeContrato.Refinimp;
-
-    /// <inheritdoc/>
-    public Task<(Entity, Entity?)> CriarDetailAsync(
-        ConverterEmContratoContext ctx,
-        CancellationToken cancellationToken) =>
-        throw new NotImplementedException(
-            "Conversor da modalidade Refinimp será entregue na Onda 1. " +
-            "Veja docs/specs/cotacoes/modalidades/refinimp.md.");
-}
+// ConversorRefinimp foi migrado para ConversorRefinimp.cs (Onda 1 — implementação real).
 
 /// <summary>
 /// Stub do conversor Lei 4131. Implementação completa entregue na Onda 4.

@@ -12,9 +12,21 @@ using Entity = Sgcf.Domain.Common.Entity;
 namespace Sgcf.Application.Cotacoes.Commands;
 
 /// <summary>
+/// Inputs específicos da modalidade REFINIMP para o command de conversão.
+/// SPEC §4.5, §5.3 — Onda 1.
+/// </summary>
+/// <param name="PercentualRefinanciado">
+/// Percentual declarado de cobertura sobre o mãe imediato (fração 0..1].
+/// Serve como auditoria de intenção — o valor armazenado no RefinimpDetail
+/// é calculado como valorPrincipal / ancestral.ValorPrincipal (fonte da verdade monetária).
+/// </param>
+public sealed record RefinimpInputs(decimal PercentualRefinanciado);
+
+/// <summary>
 /// Converte cotação aceita em contrato.
 /// Cria Contrato + EconomiaNegociacao atomicamente (único SaveChanges no final).
 /// Atualiza ValorUtilizadoBRL do LimiteBanco. SPEC §4.1, §5.2.
+/// Onda 1: aceita <see cref="RefinimpInputs"/> opcionais para modalidade REFINIMP.
 /// </summary>
 public sealed record ConverterEmContratoCommand(
     Guid CotacaoId,
@@ -27,7 +39,10 @@ public sealed record ConverterEmContratoCommand(
     string? RofNumero = null,
     string? ExportadorNome = null,
     string? ExportadorPais = null,
-    string? ProdutoImportado = null) : IRequest<ContratoDto>;
+    string? ProdutoImportado = null,
+    // Onda 1 REFINIMP — SPEC §5.3: percentual de intenção de cobertura (auditoria).
+    // Somente campos REFINIMP aqui — campos de outras modalidades adicionados em ondas paralelas.
+    RefinimpInputs? Refinimp = null) : IRequest<ContratoDto>;
 
 public sealed class ConverterEmContratoCommandValidator : AbstractValidator<ConverterEmContratoCommand>
 {

@@ -101,25 +101,7 @@ public sealed class ConversorStubsTests
         return new ConverterEmContratoContext(cotacao, proposta, contrato, command, clock);
     }
 
-    // ─── ConversorRefinimp ────────────────────────────────────────────────────
-
-    [Fact]
-    public void ConversorRefinimp_retorna_modalidade_Refinimp()
-    {
-        new ConversorRefinimp().Modalidade.Should().Be(ModalidadeContrato.Refinimp);
-    }
-
-    [Fact]
-    public async Task ConversorRefinimp_lanca_NotImplementedException_com_mensagem_referenciando_spec()
-    {
-        ConversorRefinimp conversor = new();
-        ConverterEmContratoContext ctx = CriarContexto(ModalidadeContrato.Refinimp);
-
-        Func<Task> act = () => conversor.CriarDetailAsync(ctx, CancellationToken.None);
-
-        await act.Should().ThrowAsync<NotImplementedException>()
-            .WithMessage("*Refinimp*");
-    }
+    // ConversorRefinimp: implementação real em Onda 1 — testes em ConversorRefinimpTests.cs.
 
     // ─── ConversorLei4131 ─────────────────────────────────────────────────────
 
