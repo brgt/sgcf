@@ -115,14 +115,12 @@ public sealed class ConverterEmContratoCommandHandler(
         // ── 2. Calcular CET do contrato fechado ────────────────────────────────
         // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
         // como snapshot imutável e reflete corretamente a economia na transição (SPEC §5.2).
-        // Onda 0 F0.1 adapter: CalculadoraCet.CalcularCet ainda espera decimal (apenas FINIMP chega aqui
-        // no MVP). Para modalidades BRL, passa 1m como sentinel — elas não chegam a este branch
-        // enquanto F0.2 (CalculadoraCet branches por modalidade) não for entregue.
-        // TODO: remover sentinel após F0.2 — ver docs/specs/cotacoes/modalidades/onda-0.md §4.
-        decimal ptaxParaCet = cotacao.PtaxUsadaUsdBrl ?? 1m;
+        // Onda 0 F0.2: CalcularCet aceita decimal? — passa PtaxUsadaUsdBrl diretamente.
+        // Para FINIMP/REFINIMP/Lei4131: ptax não-null → CalcularCetFinimp.
+        // Para modalidades BRL futuras: ptax null → NotImplementedException (Onda futura).
         decimal cetContrato = CalculadoraCet.CalcularCet(
             propostaAceita,
-            ptaxParaCet,
+            cotacao.PtaxUsadaUsdBrl,
             dataContratacao,
             taxaAaPercentualOverride: cmd.TaxaAa);
 
