@@ -348,6 +348,104 @@ public sealed class CotacoesFluxoTests(CotacoesApiFixture fixture)
         aceitaPor.Should().NotBeNullOrEmpty("AceitaPor deve ser preenchido após aceitação");
     }
 
+    // ─── Cenário 6: Dispatcher IConversorModalidade (Onda 0 F0.3 — regressão) ──
+
+    /// <summary>
+    /// Verifica que o fluxo FINIMP produz o mesmo resultado após a refatoração
+    /// do ConverterEmContratoCommand para usar o dispatcher IConversorModalidade.
+    /// Este teste é a prova de regressão zero: mesmos inputs, mesmo contrato criado.
+    /// Onda 0 F0.3 — docs/specs/cotacoes/modalidades/onda-0.md §5.
+    /// </summary>
+    [Fact]
+    public async Task ConverterFinimpViaDispatcher_FluxoCompleto_EndToEnd()
+    {
+        using HttpClient client = fixture.CreateAuthenticatedClient();
+        Guid bancoId = await SeedPreRequistosAsync(client);
+
+        // 1. Criar cotação FINIMP
+        HttpResponseMessage criarRes = await client.PostAsJsonAsync("/api/v1/cotacoes", new
+        {
+            modalidade = "Finimp",
+            valorAlvoBrl = 2_000_000m,
+            prazoMaximoDias = 360,
+            dataAbertura = "2026-05-16"
+        });
+        criarRes.StatusCode.Should().Be(HttpStatusCode.Created,
+            $"criar falhou: {await criarRes.Content.ReadAsStringAsync()}");
+
+        JsonElement cotacaoBody = await criarRes.Content.ReadFromJsonAsync<JsonElement>(JsonOpts);
+        Guid cotacaoId = cotacaoBody.GetProperty("id").GetGuid();
+
+        // 2. Adicionar banco + enviar
+        await client.PostAsJsonAsync($"/api/v1/cotacoes/{cotacaoId}/bancos", new { bancoId });
+        await client.PostAsync($"/api/v1/cotacoes/{cotacaoId}/enviar", null);
+
+        // 3. Registrar proposta USD
+        HttpResponseMessage propostaRes = await client.PostAsJsonAsync(
+            $"/api/v1/cotacoes/{cotacaoId}/propostas",
+            new
+            {
+                bancoId,
+                moedaOriginal = "Usd",
+                valorOferecido = 400_000m,
+                taxaAa = 5.50m,
+                iofPct = 0.38m,
+                spreadAa = 0.50m,
+                prazoDias = 360,
+                estruturaAmortizacao = "Bullet",
+                periodicidadeJuros = "Bullet",
+                exigeNdf = false,
+                custoNdfAa = (decimal?)null,
+                garantiaExigida = "Aval",
+                valorGarantiaBrl = 2_200_000m,
+                garantiaEhCdbCativo = false,
+                rendimentoCdbAa = (decimal?)null
+            });
+        propostaRes.StatusCode.Should().Be(HttpStatusCode.Created,
+            $"proposta falhou: {await propostaRes.Content.ReadAsStringAsync()}");
+
+        JsonElement propostaBody = await propostaRes.Content.ReadFromJsonAsync<JsonElement>(JsonOpts);
+        Guid propostaId = propostaBody.GetProperty("id").GetGuid();
+
+        // 4. Encerrar + aceitar proposta
+        await client.PostAsync($"/api/v1/cotacoes/{cotacaoId}/encerrar-captacao", null);
+        HttpResponseMessage aceitarRes = await client.PostAsync(
+            $"/api/v1/cotacoes/{cotacaoId}/propostas/{propostaId}/aceitar", null);
+        aceitarRes.StatusCode.Should().Be(HttpStatusCode.NoContent,
+            $"aceitar falhou: {await aceitarRes.Content.ReadAsStringAsync()}");
+
+        // 5. Converter via dispatcher — o comando agora roteia para ConversorFinimp
+        HttpResponseMessage convertRes = await client.PostAsJsonAsync(
+            $"/api/v1/cotacoes/{cotacaoId}/converter-em-contrato",
+            new
+            {
+                cotacaoId,
+                numeroExternoContrato = "FINIMP-DISPATCHER-E2E-001",
+                dataContratacao = "2026-05-20",
+                dataVencimento = "2027-05-20",
+                taxaAa = 5.50m,
+                rofNumero = "ROF-2026-DISPATCHER",
+                exportadorNome = "Exportador Teste Dispatcher",
+                exportadorPais = "DE",
+                produtoImportado = "Equipamento industrial",
+                observacoes = "Onda 0 F0.3 — regressão via dispatcher"
+            });
+        convertRes.StatusCode.Should().Be(HttpStatusCode.Created,
+            $"converter falhou: {await convertRes.Content.ReadAsStringAsync()}");
+
+        JsonElement contratoBody = await convertRes.Content.ReadFromJsonAsync<JsonElement>(JsonOpts);
+
+        // Verificar estrutura do contrato criado
+        contratoBody.TryGetProperty("id", out _).Should().BeTrue("contrato deve ter id");
+        contratoBody.GetProperty("modalidade").GetString().Should().Be("Finimp");
+
+        // Verificar que a cotação foi para status Convertida
+        HttpResponseMessage cotacaoFinalRes = await client.GetAsync($"/api/v1/cotacoes/{cotacaoId}");
+        JsonElement cotacaoFinal = await cotacaoFinalRes.Content.ReadFromJsonAsync<JsonElement>(JsonOpts);
+        cotacaoFinal.GetProperty("status").GetString().Should().Be("Convertida",
+            "cotação deve estar Convertida após o dispatcher FINIMP processar com sucesso");
+    }
+
     // ─── Helper: cria cotação no estado Comparada com 2 propostas ─────────────
 
     private static async Task<Guid> CriarCotacaoEmEstadoComparadaAsync(HttpClient client, Guid bancoId)
