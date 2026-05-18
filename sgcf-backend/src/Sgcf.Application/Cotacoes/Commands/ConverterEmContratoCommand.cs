@@ -135,9 +135,10 @@ public sealed class ConverterEmContratoCommandHandler(
             contratoRepo.AddDetail(detailSecundario);
         }
 
-        // Cast para FinimpDetail apenas quando a modalidade é FINIMP, para manter
-        // compatibilidade com ContratoDto.From que aceita FinimpDetail? como parâmetro opcional.
+        // Cast por modalidade — ContratoDto.From aceita detail específico por modalidade.
+        // Novos conversores adicionam o cast correspondente aqui ao serem implementados.
         FinimpDetail? finimpDetail = detailPrincipal as FinimpDetail;
+        RefinimpDetail? refinimpDetail = detailPrincipal as RefinimpDetail;
 
         // ── 2. Calcular CET do contrato fechado ────────────────────────────────
         // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
@@ -225,7 +226,7 @@ public sealed class ConverterEmContratoCommandHandler(
         // ── 6. Salvar tudo atomicamente (single UoW via SaveChanges) ───────────
         await contratoRepo.SaveChangesAsync(cancellationToken);
 
-        return ContratoDto.From(contrato, finimpDetail);
+        return ContratoDto.From(contrato, finimpDetail, refinimpDetail: refinimpDetail);
     }
 
     private static async Task<string> GerarCodigoInternoContratoAsync(
