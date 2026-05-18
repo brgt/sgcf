@@ -304,6 +304,139 @@ public sealed class CalculadoraCetTests
     }
 }
 
+// ─── Testes F0.2 — CalculadoraCet por modalidade ────────────────────────────
+
+/// <summary>
+/// F0.2: CalcularCetFinimp deve produzir resultado bit-a-bit idêntico ao CalcularCet legado
+/// quando invocado com os mesmos inputs. Garante que a extração da lógica não introduziu
+/// nenhuma divergência numérica. Onda 0 F0.2.
+/// </summary>
+public sealed class CalculadoraCetF02Tests
+{
+    private static readonly LocalDate DataDesembolso = new(2026, 5, 15);
+    private const decimal PtaxFixo = 5.20m;
+
+    [Fact]
+    public void CalcularCetFinimp_FromProposta_USD_NDF_resultado_consistente_com_legado()
+    {
+        // Arrange — cenário FINIMP USD com NDF (representativo do golden dataset)
+        var proposta = PropostaFactory.CriarProposta(
+            moedaOriginal: Moeda.Usd,
+            valorOferecido: 1_000_000m,
+            taxaAaPercentual: 6.5m,
+            iofPercentual: 0.38m,
+            spreadAaPercentual: 0.5m,
+            prazoDias: 180,
+            exigeNdf: true,
+            custoNdfAaPercentual: 1.2m);
+
+        // Act — resultado via fachada legada e via método especializado devem ser bit-a-bit iguais
+        decimal cetViaFachada = CalculadoraCet.CalcularCet(proposta, PtaxFixo, DataDesembolso);
+        decimal cetViaEspecializado = CalculadoraCet.CalcularCetFinimp(proposta, PtaxFixo, DataDesembolso);
+
+        // Assert — bit-a-bit idênticos: sem arredondamento adicional na extração
+        cetViaEspecializado.Should().Be(cetViaFachada,
+            "CalcularCetFinimp deve ser extração exata da lógica existente — zero divergência numérica");
+    }
+
+    [Fact]
+    public void CalcularCet_fachada_dispatcheia_Finimp_para_CalcularCetFinimp()
+    {
+        // Arrange — proposta FINIMP USD simples, ptax não-null
+        var proposta = PropostaFactory.CriarProposta(
+            moedaOriginal: Moeda.Usd,
+            valorOferecido: 500_000m,
+            taxaAaPercentual: 6m,
+            iofPercentual: 0.38m,
+            spreadAaPercentual: 0m,
+            prazoDias: 180);
+
+        decimal? ptaxNullable = 5.10m; // non-null → rota FINIMP
+
+        // Act
+        decimal cetFachada = CalculadoraCet.CalcularCet(proposta, ptaxNullable, DataDesembolso);
+        decimal cetEspecializado = CalculadoraCet.CalcularCetFinimp(proposta, ptaxNullable.Value, DataDesembolso);
+
+        // Assert — fachada deve produzir mesmo resultado que CalcularCetFinimp
+        cetFachada.Should().Be(cetEspecializado,
+            "fachada com ptax não-null deve despachar para CalcularCetFinimp e retornar resultado idêntico");
+    }
+
+    [Fact]
+    public void CalcularCetRefinimp_delega_para_CalcularCetFinimp()
+    {
+        // REFINIMP usa fórmula CET idêntica ao FINIMP (SPEC §4.2)
+        var proposta = PropostaFactory.CriarProposta(
+            moedaOriginal: Moeda.Usd,
+            valorOferecido: 750_000m,
+            taxaAaPercentual: 5.8m,
+            iofPercentual: 0.38m,
+            spreadAaPercentual: 0.2m,
+            prazoDias: 270);
+
+        decimal cetRefinimp = CalculadoraCet.CalcularCetRefinimp(proposta, PtaxFixo, DataDesembolso);
+        decimal cetFinimp = CalculadoraCet.CalcularCetFinimp(proposta, PtaxFixo, DataDesembolso);
+
+        cetRefinimp.Should().Be(cetFinimp,
+            "REFINIMP é FINIMP refinanciado — CET usa mesma fórmula, logo resultado deve ser idêntico");
+    }
+
+    [Fact]
+    public void CalcularCetLei4131_lanca_NotImplementedException()
+    {
+        var proposta = PropostaFactory.CriarProposta();
+
+        var act = () => CalculadoraCet.CalcularCetLei4131(proposta, PtaxFixo, DataDesembolso);
+
+        act.Should().Throw<NotImplementedException>("Lei 4131 será implementado em Onda futura");
+    }
+
+    [Fact]
+    public void CalcularCetNce_lanca_NotImplementedException()
+    {
+        var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
+
+        var act = () => CalculadoraCet.CalcularCetNce(proposta, DataDesembolso);
+
+        act.Should().Throw<NotImplementedException>("NCE será implementado em Onda futura");
+    }
+
+    [Fact]
+    public void CalcularCetCapitalDeGiro_lanca_NotImplementedException()
+    {
+        var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
+
+        var act = () => CalculadoraCet.CalcularCetCapitalDeGiro(proposta, DataDesembolso);
+
+        act.Should().Throw<NotImplementedException>("Capital de Giro será implementado em Onda futura");
+    }
+
+    [Fact]
+    public void CalcularCetFgi_lanca_NotImplementedException()
+    {
+        var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
+        var fgiInputs = new FgiInputs(TaxaFgiAaPercentual: 2.5m, PercentualCoberto: 80m);
+
+        var act = () => CalculadoraCet.CalcularCetFgi(proposta, DataDesembolso, fgiInputs);
+
+        act.Should().Throw<NotImplementedException>("FGI será implementado em Onda futura");
+    }
+
+    [Fact]
+    public void CalcularCet_fachada_modalidade_Nce_lanca_NotImplementedException()
+    {
+        // Fachada com ptax null representa modalidades BRL (NCE, CapitalDeGiro, FGI)
+        // que ainda não têm implementação nesta Onda.
+        var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
+        decimal? ptaxNull = null; // null → modalidade BRL → NotImplemented
+
+        var act = () => CalculadoraCet.CalcularCet(proposta, ptaxNull, DataDesembolso);
+
+        act.Should().Throw<NotImplementedException>(
+            "fachada com ptax null (modalidade BRL) deve lançar NotImplementedException até Onda futura implementar o branch");
+    }
+}
+
 /// <summary>Extension para criar Arbitrary a partir de Gen — compatível com FsCheck 2.x.</summary>
 internal static class GenExtensions
 {
