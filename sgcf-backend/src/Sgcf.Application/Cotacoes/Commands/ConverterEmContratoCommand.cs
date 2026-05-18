@@ -52,6 +52,16 @@ public sealed record Lei4131Inputs(
     decimal? AliquotaIrrfPercentual);
 
 /// <summary>
+/// Inputs específicos da modalidade Capital de Giro para o command de conversão.
+/// SPEC §5.3 — Onda 3b.
+/// </summary>
+/// <param name="NumeroOperacao">
+/// Número da operação no sistema interno do banco — opcional (SPEC EC-10).
+/// Quando não informado, <see cref="CapitalDeGiroDetail.NumeroOperacao"/> fica null.
+/// </param>
+public sealed record CapitalDeGiroInputs(string? NumeroOperacao);
+
+/// <summary>
 /// Converte cotação aceita em contrato.
 /// Cria Contrato + EconomiaNegociacao atomicamente (único SaveChanges no final).
 /// Atualiza ValorUtilizadoBRL do LimiteBanco. SPEC §4.1, §5.2.
@@ -74,7 +84,9 @@ public sealed record ConverterEmContratoCommand(
     // Onda 2 NCE — SPEC §6: campos específicos de NCE.
     NceInputs? Nce = null,
     // Onda 4 Lei 4131 — SPEC §5.3: campos específicos de Lei 4131/62.
-    Lei4131Inputs? Lei4131 = null) : IRequest<ContratoDto>;
+    Lei4131Inputs? Lei4131 = null,
+    // Onda 3b Capital de Giro — SPEC §5.3: campos específicos de Capital de Giro.
+    CapitalDeGiroInputs? CapitalDeGiro = null) : IRequest<ContratoDto>;
 
 public sealed class ConverterEmContratoCommandValidator : AbstractValidator<ConverterEmContratoCommand>
 {
@@ -171,7 +183,8 @@ public sealed class ConverterEmContratoCommandHandler(
         // Novos conversores adicionam o cast correspondente aqui ao serem implementados.
         FinimpDetail? finimpDetail = detailPrincipal as FinimpDetail;
         RefinimpDetail? refinimpDetail = detailPrincipal as RefinimpDetail;
-        NceDetail? nceDetail = detailPrincipal as NceDetail; // Onda 2
+        NceDetail? nceDetail = detailPrincipal as NceDetail;             // Onda 2
+        CapitalDeGiroDetail? capitalDeGiroDetail = detailPrincipal as CapitalDeGiroDetail; // Onda 3b
 
         // ── 2. Calcular CET do contrato fechado ────────────────────────────────
         // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
@@ -259,7 +272,12 @@ public sealed class ConverterEmContratoCommandHandler(
         // ── 6. Salvar tudo atomicamente (single UoW via SaveChanges) ───────────
         await contratoRepo.SaveChangesAsync(cancellationToken);
 
-        return ContratoDto.From(contrato, finimpDetail, refinimpDetail: refinimpDetail, nceDetail: nceDetail);
+        return ContratoDto.From(
+            contrato,
+            finimpDetail,
+            refinimpDetail: refinimpDetail,
+            nceDetail: nceDetail,
+            capitalDeGiroDetail: capitalDeGiroDetail);
     }
 
     private static async Task<string> GerarCodigoInternoContratoAsync(

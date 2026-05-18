@@ -55,10 +55,11 @@ public sealed record NceDetailDto(
     DateOnly? DataEmissao,
     string? BancoMandatario);
 
-public sealed record CapitalDeGiroDetailDto(
-    string? NumeroOperacao,
-    string? TipoProduto,
-    bool TemFgi);
+/// <summary>
+/// DTO de <see cref="CapitalDeGiroDetail"/> — Onda 3b.
+/// Campos TipoProduto e TemFgi foram removidos (SPEC §3.3 e §3.4).
+/// </summary>
+public sealed record CapitalDeGiroDetailDto(string? NumeroOperacao);
 
 public sealed record FgiDetailDto(
     string? NumeroOperacaoFgi,
@@ -184,10 +185,7 @@ public sealed record ContratoDto(
 
         CapitalDeGiroDetailDto? capitalDeGiroDto = capitalDeGiroDetail is null
             ? null
-            : new CapitalDeGiroDetailDto(
-                capitalDeGiroDetail.NumeroOperacao,
-                capitalDeGiroDetail.TipoProduto,
-                capitalDeGiroDetail.TemFgi);
+            : new CapitalDeGiroDetailDto(capitalDeGiroDetail.NumeroOperacao);
 
         FgiDetailDto? fgiDto = fgiDetail is null
             ? null

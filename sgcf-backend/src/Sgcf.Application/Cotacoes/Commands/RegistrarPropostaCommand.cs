@@ -116,6 +116,35 @@ public sealed class RegistrarPropostaCommandHandler(
                 nameof(cmd));
         }
 
+        // Onda 3b Capital de Giro — SPEC §3.2 (EC-2, EC-3):
+        // Capital de Giro é operação doméstica em BRL — rejeitar moeda diferente ou NDF.
+        if (cotacao.Modalidade == ModalidadeContrato.CapitalDeGiro)
+        {
+            if (moeda != Moeda.Brl)
+            {
+                throw new ArgumentException(
+                    "Proposta Capital de Giro deve ser em BRL — " +
+                    "modalidade não suporta conversão cambial (SPEC §3.2 EC-3).",
+                    nameof(cmd));
+            }
+
+            if (cmd.ExigeNdf)
+            {
+                throw new ArgumentException(
+                    "Proposta Capital de Giro não aceita NDF — " +
+                    "operação em BRL sem exposição cambial (SPEC §3.2 EC-2).",
+                    nameof(cmd));
+            }
+
+            if (cmd.CustoNdfAa.HasValue)
+            {
+                throw new ArgumentException(
+                    "Proposta Capital de Giro não aceita CustoNdfAa — " +
+                    "campo só é válido para modalidades com hedge cambial (SPEC §3.2).",
+                    nameof(cmd));
+            }
+        }
+
         // Onda 1 REFINIMP — SPEC §4.2: proposta deve ter mesma moeda do contrato mãe.
         if (cotacao.Modalidade == ModalidadeContrato.Refinimp && cotacao.ContratoMaeId.HasValue)
         {
