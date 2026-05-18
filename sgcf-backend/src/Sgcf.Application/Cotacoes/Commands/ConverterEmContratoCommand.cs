@@ -23,6 +23,35 @@ namespace Sgcf.Application.Cotacoes.Commands;
 public sealed record RefinimpInputs(decimal PercentualRefinanciado);
 
 /// <summary>
+/// Inputs específicos da modalidade NCE para o command de conversão.
+/// SPEC §6 — Onda 2.
+/// </summary>
+public sealed record NceInputs(
+    string? NceNumero,
+    DateOnly? DataEmissao,
+    string? BancoMandatario);
+
+/// <summary>
+/// Inputs específicos da modalidade Lei 4131/62 para o command de conversão.
+/// SPEC §5.3, §6 — Onda 4.
+/// </summary>
+/// <param name="SblcNumero">Número da SBLC (opcional — operações sem SBLC são "clean Lei 4131").</param>
+/// <param name="SblcBancoEmissor">Razão social do banco emissor da SBLC.</param>
+/// <param name="SblcValorUsd">Valor de face da SBLC em USD (informativo).</param>
+/// <param name="TemMarketFlex">Indica se o contrato possui cláusula de market flex.</param>
+/// <param name="BreakFundingFeePercentual">Break funding fee em percentual humano (ex: 1.5 para 1,5%).</param>
+/// <param name="PaisCredor">País do credor — ISO 3166-1 alpha-3 (ex: "JPN"). Não persistido no MVP.</param>
+/// <param name="AliquotaIrrfPercentual">Alíquota IRRF em percentual humano (ex: 15 para 15%). Informativo.</param>
+public sealed record Lei4131Inputs(
+    string? SblcNumero,
+    string? SblcBancoEmissor,
+    decimal? SblcValorUsd,
+    bool TemMarketFlex,
+    decimal? BreakFundingFeePercentual,
+    string? PaisCredor,
+    decimal? AliquotaIrrfPercentual);
+
+/// <summary>
 /// Converte cotação aceita em contrato.
 /// Cria Contrato + EconomiaNegociacao atomicamente (único SaveChanges no final).
 /// Atualiza ValorUtilizadoBRL do LimiteBanco. SPEC §4.1, §5.2.
@@ -41,8 +70,11 @@ public sealed record ConverterEmContratoCommand(
     string? ExportadorPais = null,
     string? ProdutoImportado = null,
     // Onda 1 REFINIMP — SPEC §5.3: percentual de intenção de cobertura (auditoria).
-    // Somente campos REFINIMP aqui — campos de outras modalidades adicionados em ondas paralelas.
-    RefinimpInputs? Refinimp = null) : IRequest<ContratoDto>;
+    RefinimpInputs? Refinimp = null,
+    // Onda 2 NCE — SPEC §6: campos específicos de NCE.
+    NceInputs? Nce = null,
+    // Onda 4 Lei 4131 — SPEC §5.3: campos específicos de Lei 4131/62.
+    Lei4131Inputs? Lei4131 = null) : IRequest<ContratoDto>;
 
 public sealed class ConverterEmContratoCommandValidator : AbstractValidator<ConverterEmContratoCommand>
 {
@@ -139,6 +171,7 @@ public sealed class ConverterEmContratoCommandHandler(
         // Novos conversores adicionam o cast correspondente aqui ao serem implementados.
         FinimpDetail? finimpDetail = detailPrincipal as FinimpDetail;
         RefinimpDetail? refinimpDetail = detailPrincipal as RefinimpDetail;
+        NceDetail? nceDetail = detailPrincipal as NceDetail; // Onda 2
 
         // ── 2. Calcular CET do contrato fechado ────────────────────────────────
         // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
@@ -226,7 +259,7 @@ public sealed class ConverterEmContratoCommandHandler(
         // ── 6. Salvar tudo atomicamente (single UoW via SaveChanges) ───────────
         await contratoRepo.SaveChangesAsync(cancellationToken);
 
-        return ContratoDto.From(contrato, finimpDetail, refinimpDetail: refinimpDetail);
+        return ContratoDto.From(contrato, finimpDetail, refinimpDetail: refinimpDetail, nceDetail: nceDetail);
     }
 
     private static async Task<string> GerarCodigoInternoContratoAsync(
