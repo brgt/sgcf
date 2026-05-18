@@ -59,15 +59,17 @@ internal sealed class CotacaoConfiguration : IEntityTypeConfiguration<Cotacao>
             .IsRequired();
         builder.HasIndex(c => c.DataAbertura).HasFilter("deleted_at IS NULL");
 
+        // Onda 0 F0.1: nullable — modalidades BRL puras (NCE, CapitalDeGiro, FGI) não têm PTAX.
+        // Migration S6_PtaxNullable altera as colunas de NOT NULL para nullable.
         builder.Property(c => c.DataPtaxReferencia)
             .HasColumnName("data_ptax_referencia")
             .HasColumnType("date")
-            .IsRequired();
+            .IsRequired(false);
 
         builder.Property(c => c.PtaxUsadaUsdBrl)
             .HasColumnName("ptax_usada_usd_brl")
             .HasColumnType("numeric(12,6)")
-            .IsRequired();
+            .IsRequired(false);
 
         builder.Property(c => c.Status)
             .HasColumnName("status")

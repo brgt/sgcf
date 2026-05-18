@@ -24,10 +24,18 @@ public sealed class Cotacao : Entity, IAuditable
 
     public int PrazoMaximoDias { get; private set; }
     public LocalDate DataAbertura { get; private set; }
-    public LocalDate DataPtaxReferencia { get; private set; }
 
-    /// <summary>PTAX D-1 usada como referência na conversão USD/BRL para cálculo de CET.</summary>
-    public decimal PtaxUsadaUsdBrl { get; private set; }
+    /// <summary>
+    /// Data de referência da PTAX usada. Null para modalidades BRL puras (NCE, BalcaoCaixa, FGI).
+    /// Onda 0 F0.1.
+    /// </summary>
+    public LocalDate? DataPtaxReferencia { get; private set; }
+
+    /// <summary>
+    /// PTAX D-1 usada como referência na conversão USD/BRL para cálculo de CET.
+    /// Null para modalidades BRL puras (NCE, BalcaoCaixa, FGI). Onda 0 F0.1.
+    /// </summary>
+    public decimal? PtaxUsadaUsdBrl { get; private set; }
 
     public StatusCotacao Status { get; private set; }
 
@@ -62,8 +70,23 @@ public sealed class Cotacao : Entity, IAuditable
     private Cotacao() { }
 
     /// <summary>
+    /// Retorna true para modalidades que operam em moeda estrangeira e, portanto, exigem PTAX.
+    /// Onda 0 F0.1 — SPEC docs/specs/cotacoes/modalidades/onda-0.md §3.2.
+    /// </summary>
+    /// <remarks>
+    /// Modalidades cambiais: FINIMP, REFINIMP, Lei 4131.
+    /// Modalidades BRL puras (NCE, BalcaoCaixa/CapitalDeGiro, FGI): PTAX não se aplica.
+    /// </remarks>
+    public static bool ExigeMoedaEstrangeira(ModalidadeContrato modalidade) =>
+        modalidade == ModalidadeContrato.Finimp
+        || modalidade == ModalidadeContrato.Refinimp
+        || modalidade == ModalidadeContrato.Lei4131;
+
+    /// <summary>
     /// Cria nova cotação em estado Rascunho.
     /// SPEC §3.2 — valida invariantes de criação.
+    /// Onda 0 F0.1: <paramref name="ptaxUsadaUsdBrl"/> e <paramref name="dataPtaxReferencia"/>
+    /// são null para modalidades BRL puras; obrigatórios para modalidades cambiais.
     /// </summary>
     public static Cotacao Criar(
         string codigoInterno,
@@ -71,8 +94,8 @@ public sealed class Cotacao : Entity, IAuditable
         Money valorAlvoBrl,
         int prazoMaximoDias,
         LocalDate dataAbertura,
-        LocalDate dataPtaxReferencia,
-        decimal ptaxUsadaUsdBrl,
+        LocalDate? dataPtaxReferencia,
+        decimal? ptaxUsadaUsdBrl,
         IClock clock,
         string? observacoes = null)
     {
@@ -96,14 +119,29 @@ public sealed class Cotacao : Entity, IAuditable
             throw new ArgumentOutOfRangeException(nameof(prazoMaximoDias), "PrazoMaximoDias deve ser maior ou igual a 1 (SPEC §3.2).");
         }
 
-        if (ptaxUsadaUsdBrl <= 0)
+        // Onda 0 F0.1: modalidades cambiais exigem PTAX; modalidades BRL puras rejeitam PTAX.
+        if (ExigeMoedaEstrangeira(modalidade) && ptaxUsadaUsdBrl is null)
+        {
+            throw new ArgumentException(
+                $"PTAX D-1 é obrigatória para modalidade {modalidade} (operação cambial). Onda 0 F0.1.",
+                nameof(ptaxUsadaUsdBrl));
+        }
+
+        if (!ExigeMoedaEstrangeira(modalidade) && ptaxUsadaUsdBrl is not null)
+        {
+            throw new ArgumentException(
+                $"PTAX não se aplica à modalidade {modalidade} (operação em BRL). Onda 0 F0.1.",
+                nameof(ptaxUsadaUsdBrl));
+        }
+
+        if (ptaxUsadaUsdBrl is not null && ptaxUsadaUsdBrl <= 0)
         {
             throw new ArgumentOutOfRangeException(nameof(ptaxUsadaUsdBrl), "PtaxUsadaUsdBrl deve ser positiva.");
         }
 
-        // SPEC §3.2 regra 7: DataPtaxReferencia deve ser anterior a DataAbertura.
+        // SPEC §3.2 regra 7: DataPtaxReferencia deve ser anterior a DataAbertura (apenas quando fornecida).
         // Dia útil anterior é validado externamente (Application), aqui validamos apenas a anterioridade.
-        if (dataPtaxReferencia >= dataAbertura)
+        if (dataPtaxReferencia is not null && dataPtaxReferencia >= dataAbertura)
         {
             throw new ArgumentException(
                 "DataPtaxReferencia deve ser anterior à DataAbertura (SPEC §3.2).",

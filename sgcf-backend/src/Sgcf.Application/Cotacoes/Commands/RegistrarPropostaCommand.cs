@@ -140,21 +140,25 @@ public sealed class RegistrarPropostaCommandHandler(
 
         if (moeda == Moeda.Usd)
         {
-            return cotacao.PtaxUsadaUsdBrl;
+            // ! null-forgiving seguro: este branch só é atingido para propostas USD,
+            // que só existem em cotações FINIMP/REFINIMP/Lei4131. O invariante de domínio
+            // garante PtaxUsadaUsdBrl não-null para essas modalidades.
+            return cotacao.PtaxUsadaUsdBrl!.Value;
         }
 
-        // Cross-rate: obtém cotação moeda/USD mais recente e multiplica pela PTAX USD/BRL
+        // Cross-rate: obtém cotação moeda/USD mais recente e multiplica pela PTAX USD/BRL.
+        // DataPtaxReferencia é garantidamente não-null aqui (mesma razão — modalidade cambial).
         CotacaoFx crossRate = await fxRepo.GetMaisRecenteAsync(
             moeda,
             TipoCotacao.PtaxD1,
-            cotacao.DataPtaxReferencia,
+            cotacao.DataPtaxReferencia!.Value,
             cancellationToken)
             ?? throw new InvalidOperationException(
                 $"Cross-rate {moeda}/USD não disponível para {cotacao.DataPtaxReferencia}. " +
                 "Cadastre a cotação FX antes de registrar proposta nessa moeda.");
 
         // crossRate.ValorVenda: moeda base (ex: EUR) expressa em USD
-        return Math.Round(crossRate.ValorVenda.Valor * cotacao.PtaxUsadaUsdBrl, 6, MidpointRounding.AwayFromZero);
+        return Math.Round(crossRate.ValorVenda.Valor * cotacao.PtaxUsadaUsdBrl!.Value, 6, MidpointRounding.AwayFromZero);
     }
 
     internal static decimal CalcularValorTotalBrl(

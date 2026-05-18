@@ -10,8 +10,9 @@ public sealed record CotacaoDto(
     decimal ValorAlvoBrl,
     int PrazoMaximoDias,
     DateOnly DataAbertura,
-    DateOnly DataPtaxReferencia,
-    decimal PtaxUsadaUsdBrl,
+    // Onda 0 F0.1: nullable para modalidades BRL puras (NCE, CapitalDeGiro, FGI).
+    DateOnly? DataPtaxReferencia,
+    decimal? PtaxUsadaUsdBrl,
     string Status,
     Guid? PropostaAceitaId,
     Guid? ContratoGeradoId,
@@ -31,6 +32,11 @@ public sealed record CotacaoDto(
             propostas.Add(PropostaDto.From(p));
         }
 
+        // DataPtaxReferencia é null para modalidades BRL — converter apenas quando presente.
+        DateOnly? dataPtax = c.DataPtaxReferencia.HasValue
+            ? new DateOnly(c.DataPtaxReferencia.Value.Year, c.DataPtaxReferencia.Value.Month, c.DataPtaxReferencia.Value.Day)
+            : null;
+
         return new CotacaoDto(
             c.Id,
             c.CodigoInterno,
@@ -38,7 +44,7 @@ public sealed record CotacaoDto(
             c.ValorAlvoBrl.Valor,
             c.PrazoMaximoDias,
             new DateOnly(c.DataAbertura.Year, c.DataAbertura.Month, c.DataAbertura.Day),
-            new DateOnly(c.DataPtaxReferencia.Year, c.DataPtaxReferencia.Month, c.DataPtaxReferencia.Day),
+            dataPtax,
             c.PtaxUsadaUsdBrl,
             c.Status.ToString(),
             c.PropostaAceitaId,

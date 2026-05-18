@@ -51,24 +51,33 @@ public sealed class CriarCotacaoCommandHandler(
     {
         LocalDate dataAbertura = new(cmd.DataAbertura.Year, cmd.DataAbertura.Month, cmd.DataAbertura.Day);
 
-        // PTAX D-1: busca o último registro de PTAX antes da data de abertura
-        LocalDate dataPtax = dataAbertura.PlusDays(-1);
-        CotacaoFx cotacaoFx = await fxRepo.GetMaisRecenteAsync(
-            Moeda.Usd,
-            TipoCotacao.PtaxD1,
-            dataPtax,
-            cancellationToken)
-            ?? throw new InvalidOperationException(
-                $"PTAX D-1 não disponível para a data {dataPtax}. Cadastre a cotação USD/BRL antes de criar a cotação.");
+        ModalidadeContrato modalidade = Enum.Parse<ModalidadeContrato>(cmd.Modalidade, true);
 
-        decimal ptax = cotacaoFx.ValorVenda.Valor;
+        // Onda 0 F0.1: busca PTAX apenas para modalidades cambiais (FINIMP, REFINIMP, Lei4131).
+        // Modalidades BRL puras (NCE, CapitalDeGiro/BalcaoCaixa, FGI) não requerem conversão cambial.
+        decimal? ptax = null;
+        LocalDate? dataPtaxReferencia = null;
+
+        if (Cotacao.ExigeMoedaEstrangeira(modalidade))
+        {
+            LocalDate dataPtax = dataAbertura.PlusDays(-1);
+            CotacaoFx cotacaoFx = await fxRepo.GetMaisRecenteAsync(
+                Moeda.Usd,
+                TipoCotacao.PtaxD1,
+                dataPtax,
+                cancellationToken)
+                ?? throw new InvalidOperationException(
+                    $"PTAX D-1 não disponível para a data {dataPtax}. Cadastre a cotação USD/BRL antes de criar a cotação.");
+
+            ptax = cotacaoFx.ValorVenda.Valor;
+            dataPtaxReferencia = cotacaoFx.Momento.InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
+        }
 
         // Gerar código interno se não informado
         string codigoInterno = cmd.CodigoInterno is not null && !string.IsNullOrWhiteSpace(cmd.CodigoInterno)
             ? cmd.CodigoInterno
             : await repo.GerarProximoCodigoInternoAsync(dataAbertura.Year, cancellationToken);
 
-        ModalidadeContrato modalidade = Enum.Parse<ModalidadeContrato>(cmd.Modalidade, true);
         Money valorAlvo = new(cmd.ValorAlvoBrl, Moeda.Brl);
 
         Cotacao cotacao = Cotacao.Criar(
@@ -77,7 +86,7 @@ public sealed class CriarCotacaoCommandHandler(
             valorAlvo,
             cmd.PrazoMaximoDias,
             dataAbertura,
-            dataPtaxReferencia: cotacaoFx.Momento.InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date,
+            dataPtaxReferencia: dataPtaxReferencia,
             ptaxUsadaUsdBrl: ptax,
             clock,
             cmd.Observacoes);

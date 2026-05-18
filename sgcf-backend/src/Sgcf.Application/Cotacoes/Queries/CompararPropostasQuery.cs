@@ -75,9 +75,11 @@ public sealed class CompararPropostasQueryHandler(
         decimal cetAaPercentual,
         decimal cdiAaPercentual)
     {
+        // ! null-forgiving seguro: propostas em moeda não-BRL só existem em cotações cambiais
+        // (FINIMP/REFINIMP/Lei4131), cujo invariante de domínio garante PtaxUsadaUsdBrl não-null.
         decimal principalBrl = proposta.MoedaOriginal == Moeda.Brl
             ? proposta.ValorOferecidoMoedaOriginal.Valor
-            : Math.Round(proposta.ValorOferecidoMoedaOriginal.Valor * cotacao.PtaxUsadaUsdBrl, 6, MidpointRounding.AwayFromZero);
+            : Math.Round(proposta.ValorOferecidoMoedaOriginal.Valor * cotacao.PtaxUsadaUsdBrl!.Value, 6, MidpointRounding.AwayFromZero);
 
         // Custo total da proposta para o seu próprio prazo
         decimal custoProposta = principalBrl * cetAaPercentual / 100m * proposta.PrazoDias / 360m;

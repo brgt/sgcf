@@ -98,7 +98,8 @@ public sealed class RegistrarPropostaCommandHandlerTests
             "BACEN",
             TestHelpers.AgentInstant.Minus(NodaTime.Duration.FromHours(2)));
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Cny, TipoCotacao.PtaxD1, cotacao.DataPtaxReferencia, default)
+        // DataPtaxReferencia é LocalDate? — FINIMP sempre tem valor não-null (invariante de domínio).
+        fxRepo.GetMaisRecenteAsync(Moeda.Cny, TipoCotacao.PtaxD1, cotacao.DataPtaxReferencia!.Value, default)
             .Returns(cnyUsd);
 
         RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
@@ -122,8 +123,8 @@ public sealed class RegistrarPropostaCommandHandlerTests
         // Act
         PropostaDto resultado = await handler.Handle(cmd, default);
 
-        // Assert — cross-rate foi consultado
-        await fxRepo.Received(1).GetMaisRecenteAsync(Moeda.Cny, TipoCotacao.PtaxD1, cotacao.DataPtaxReferencia, default);
+        // Assert — cross-rate foi consultado. DataPtaxReferencia é LocalDate? — FINIMP sempre tem valor.
+        await fxRepo.Received(1).GetMaisRecenteAsync(Moeda.Cny, TipoCotacao.PtaxD1, cotacao.DataPtaxReferencia!.Value, default);
         resultado.CetCalculadoAaPercentual.Should().NotBeNull();
         await repo.Received(1).SaveChangesAsync(default);
     }
