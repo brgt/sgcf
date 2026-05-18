@@ -1,7 +1,7 @@
 # SPEC — Modalidade FGI no Módulo de Cotações
 
 **Versão alvo:** v0.9.0 (paralelo com Capital de Giro)
-**Status:** Pendente de implementação
+**Status:** Entregue — v0.9.0 (2026-05-18)
 **Pré-requisito:** Onda 0 (PTAX nullable, `CalculadoraCet` por modalidade, `IConversorModalidade` dispatcher)
 **Plano:** `tasks/cotacoes-modalidades/fgi/plan.md`
 **Plano mestre:** `tasks/cotacoes-modalidades/plan.md`

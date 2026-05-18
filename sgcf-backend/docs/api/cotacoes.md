@@ -4,7 +4,7 @@
 
 Gerencia cotações de captação financeira: registro de propostas recebidas de múltiplos bancos, comparação lado a lado (taxa nominal, CET e custo total equivalente em BRL), aceitação de proposta vencedora e conversão em contrato com mensuração de economia negociada.
 
-> **MVP:** modalidade `Finimp`. Demais modalidades serão habilitadas em ondas futuras conforme [SPEC §1](../specs/cotacoes/SPEC.md).
+> **Modalidades entregues:** `Finimp`, `Nce`, `Fgi`, `Refinimp`, `Lei4131`. Demais modalidades serão habilitadas em ondas futuras conforme [SPEC §1](../specs/cotacoes/SPEC.md).
 
 ---
 
@@ -437,6 +437,17 @@ Registra proposta recebida de um banco e calcula o CET automaticamente. O `cotac
 | `garantiaEhCdbCativo` | bool | Sim | Se true, `rendimentoCdbAa` é obrigatório |
 | `rendimentoCdbAa` | decimal? | Condicional | Rendimento do CDB cativo em % a.a. |
 
+**Validações de negócio por modalidade:**
+
+| Modalidade | Regra |
+|---|---|
+| `Fgi` | `moedaOriginal` deve ser `Brl`. Retorna `400 Bad Request` caso contrário. |
+| `Fgi` | `exigeNdf` deve ser `false`. FGI é operação doméstica sem exposição cambial. |
+| `Fgi` | `estruturaAmortizacao` deve ser `Bullet`. Price/SAC exigem cronograma intermediário (MVP §1.1). |
+| `Nce` | `moedaOriginal` deve ser `Brl`. NCE é operação doméstica. |
+| `Nce` | `exigeNdf` deve ser `false`. |
+| `Lei4131` | `moedaOriginal` deve ser diferente de `Brl`. |
+
 **Responses:**
 - `201 Created` — [PropostaDto](#propostadto) com `cetCalculadoAaPercentual` e `valorTotalEstimadoBrl` preenchidos
 - `400 Bad Request` — Validação falhou
@@ -518,7 +529,12 @@ Cria atomicamente um novo `Contrato` a partir da proposta aceita, registra um `E
   "rofNumero": "string | null",
   "exportadorNome": "string | null",
   "exportadorPais": "string | null",
-  "produtoImportado": "string | null"
+  "produtoImportado": "string | null",
+  "numeroOperacaoFgi": "string | null",
+  "fgi": {
+    "taxaFgiAaPercentual": 0.5,
+    "percentualCoberto": 80.0
+  }
 }
 ```
 
@@ -534,6 +550,10 @@ Cria atomicamente um novo `Contrato` a partir da proposta aceita, registra um `E
 | `exportadorNome` | string | Não | Específico FINIMP |
 | `exportadorPais` | string | Não | Específico FINIMP |
 | `produtoImportado` | string | Não | Específico FINIMP |
+| `numeroOperacaoFgi` | string | Não | Número da operação no sistema BNDES (apenas `modalidade = "Fgi"`) |
+| `fgi` | objeto | Sim quando `modalidade = "Fgi"` | Dados financeiros do FGI — ver tabela abaixo |
+| `fgi.taxaFgiAaPercentual` | decimal | Sim | Taxa anual da tarifa FGI (ex.: `0.5` = 0,5% a.a.). Deve ser > 0 |
+| `fgi.percentualCoberto` | decimal | Não | Percentual de cobertura BNDES via FGI (ex.: `80.0` = 80%). Informativo — não entra no CET (SPEC §7.2) |
 
 **Responses:**
 - `201 Created` — [ContratoDto](./contratos.md#contratodto)

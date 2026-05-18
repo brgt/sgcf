@@ -11,6 +11,86 @@
 
 ---
 
+## [0.9.0] — 2026-05-18
+
+### Resumo executivo
+
+Entrega da **Onda 3a — modalidade FGI** no módulo de Cotações. Uma empresa pode agora registrar cotações para linhas BNDES com cobertura FGI obrigatória (produto ofertado por bancos repassadores: Caixa, BV, BB, Sicoob). Inclui: guards de modalidade em `POST /propostas` (BRL obrigatório, sem NDF, apenas Bullet no MVP), `CalcularCetFgi` como função pura com fluxo manual (IOF em t=0; principal + juros + tarifa FGI em t=vencimento; TIR Newton-Raphson base 360), `ConversorFgi` real (substitui stub Onda 0), campos `numeroOperacaoFgi` e `fgi` em `POST /converter-em-contrato`, e golden dataset validado pela equipe financeira (CET 12,912788% para principal R$ 500 k, 365 d, taxa 12%, IOF 0,38%, TaxaFgi 0,5%).
+
+> **Distinção de domínio:** FGI-modalidade (esta SPEC) é a linha BNDES. FGI como garantia em outras modalidades (NCE, Capital de Giro) já estava implementado em v0.6.0 via `GarantiaExigidaLimite.Tipo = Fgi`. Não há flag `TemFgi`; o tipo de garantia é declarado no limite, não na proposta.
+
+---
+
+### ADDITIVE — Cotações — Modalidade FGI
+
+**Validações novas em `POST /api/v1/cotacoes/{id}/propostas` (quando `modalidade = "Fgi"`):**
+
+- `moedaOriginal` deve ser `Brl` — FGI é operação doméstica BNDES sem conversão cambial. Violação retorna `400 Bad Request`.
+- `exigeNdf` deve ser `false` — operação em BRL sem exposição cambial. Violação retorna `400 Bad Request`.
+- `estruturaAmortizacao` deve ser `Bullet` — Price/SAC com FGI exigem cronograma intermediário (out of scope MVP §1.1). Violação retorna `400 Bad Request`.
+
+**Campos novos em `POST /api/v1/cotacoes/{id}/converter-em-contrato` (quando `modalidade = "Fgi"`):**
+
+- `numeroOperacaoFgi` (string?, opcional) — número da operação no sistema BNDES.
+- `fgi` (objeto, **obrigatório** quando `modalidade = "Fgi"`) — ausência retorna `400 Bad Request`.
+
+Estrutura do objeto `fgi`:
+
+```json
+{
+  "taxaFgiAaPercentual": 0.5,
+  "percentualCoberto": 80.0
+}
+```
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `taxaFgiAaPercentual` | decimal | Sim | Taxa anual da tarifa FGI em % (ex.: `0.5` = 0,5% a.a.). Deve ser > 0. |
+| `percentualCoberto` | decimal? | Não | Cobertura BNDES via FGI em % (ex.: `80.0`). Informativo — **não entra no CET** (MD-3, SPEC §7.2). |
+
+**Fórmula CET FGI (SPEC §7.3):**
+
+```
+IOF         = Principal × IofPct/100                          (em t=0, reduz desembolso líquido)
+Juros       = Principal × TaxaAa/100 × PrazoDias/360          (em t=vencimento)
+TarifaFgi   = Principal × TaxaFgiAa/100 × PrazoDias/360       (em t=vencimento, AwayFromZero 2 casas)
+```
+
+Fluxo de caixa para TIR:
+
+| t | Descrição | Sinal |
+|---|---|---|
+| 0 | Desembolso líquido `Principal - IOF` | − |
+| PrazoDias | `Principal + Juros + TarifaFgi` | + |
+
+TIR resolvida por Newton-Raphson (máx. 100 iterações, tolerância 1e-12), anualizada por `(1 + r_dia)^360 - 1`, base 360 dias.
+
+**Golden case validado pela equipe financeira (2026-05-18):**
+
+| Parâmetro | Valor |
+|---|---|
+| Moeda | BRL |
+| Principal | R$ 500.000,00 |
+| Prazo | 365 dias |
+| Taxa nominal | 12,0% a.a. |
+| IOF | 0,38% (R$ 1.900,00 em t=0) |
+| TaxaFgi | 0,5% a.a. (R$ 2.534,72 em t=365) |
+| PercentualCoberto | 80% (informativo — não altera CET) |
+| CET esperado | **12,912788% a.a.** (±0,01 p.p.) |
+
+**Invariante:** `PercentualCoberto` não altera o CET — alterar de 80% para qualquer valor produz CET idêntico (SPEC §7.2).
+
+**Migration:** nenhuma. `FgiDetail` e `fgi_detail` já existem desde a migração Onda 0 (`S6_FgiDetail`).
+
+**Cobertura de testes:**
+
+- 9 testes unitários: `CalcularCetFgi` (golden ≈12,9%; invariante PercentualCoberto; TaxaFgi=0 → exceção; tarifa positiva; 180d proporcional; Price → NotSupportedException; BRL direto; taxaAaOverride; proporcionalidade).
+- 12 testes de aplicação: `ConversorFgi` (modalidade=Fgi; FgiDetail populado; Fgi=null → IOE; TaxaFgi=0 → IOE; PercentualCoberto>100 → IOE; PercentualCoberto=0 → IOE; PercentualCoberto=null → válido; Secundario=null; NumeroOperacaoFgi=null → válido; timestamps).
+- 3 testes de aplicação: `RegistrarPropostaCommand` guards FGI (BRL guard; NDF guard; Bullet guard).
+- 1 golden dataset (Cenário 8): CET + invariante PercentualCoberto.
+
+---
+
 ## [0.8.0] — 2026-05-18
 
 ### Resumo executivo
