@@ -79,7 +79,7 @@ Cria nova cotação em status `Rascunho`. Exige PTAX D-1 cadastrada na data úti
 | Campo | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|-----------|
 | `codigoInterno` | string | Não | Se omitido, gerado automaticamente no padrão `COT-YYYY-NNNN` |
-| `modalidade` | string | Sim | MVP aceita apenas `Finimp` |
+| `modalidade` | string | Sim | `Finimp`, `Refinimp`, `Lei4131`, `Nce`, `CapitalDeGiro` (Fgi: Onda 3a) |
 | `valorAlvoBrl` | decimal | Sim | > 0 |
 | `prazoMaximoDias` | int | Sim | ≥ 1 |
 | `dataAbertura` | date | Sim | Usada para resolver PTAX D-1 |
@@ -745,9 +745,77 @@ Calculada uma única vez na conversão em contrato e armazenada em `EconomiaNego
 
 Antes de criar uma cotação:
 
-1. **PTAX D-1** — deve existir cotação cambial cadastrada para o dia útil anterior à `dataAbertura` (caso contrário, retorna 409 na criação).
+1. **PTAX D-1** — obrigatório apenas para modalidades cambiais (`Finimp`, `Refinimp`, `Lei4131`). Deve existir cotação cambial cadastrada para o dia útil anterior à `dataAbertura`; ausência retorna 409. Modalidades BRL puras (`Nce`, `CapitalDeGiro`) não exigem PTAX.
 2. **CDI Snapshot** — necessário na data de conversão para cálculo da economia ajustada. Ver [CDI Snapshots API](./cdi-snapshots.md).
 3. **LimiteBanco** — todos os bancos-alvo devem possuir limite vigente para a modalidade da cotação. Ver [Limites de Banco API](./limites-banco.md).
+
+### Restrições por modalidade em propostas
+
+| Modalidade | Moeda aceita | ExigeNdf | CustoNdfAa |
+|---|---|---|---|
+| `Finimp` | USD (ou moeda estrangeira) | qualquer | qualquer |
+| `Refinimp` | igual ao contrato mãe | qualquer | qualquer |
+| `Lei4131` | diferente de BRL | qualquer | qualquer |
+| `Nce` | BRL | `false` | `null` |
+| `CapitalDeGiro` | BRL | `false` | `null` |
+
+### Exemplo — Capital de Giro BRL (Onda 3b)
+
+**Criar cotação:**
+
+```json
+POST /api/v1/cotacoes
+{
+  "modalidade": "CapitalDeGiro",
+  "valorAlvoBrl": 1500000.00,
+  "prazoMaximoDias": 180,
+  "dataAbertura": "2026-05-18",
+  "observacoes": "Capital de Giro — fluxo de caixa Q2 2026"
+}
+```
+
+**Registrar proposta BRL:**
+
+```json
+POST /api/v1/cotacoes/{id}/propostas
+{
+  "bancoId": "...",
+  "moedaOriginal": "Brl",
+  "valorOferecido": 1500000.00,
+  "taxaAa": 14.5,
+  "iofPct": 0.38,
+  "spreadAa": 0.0,
+  "prazoDias": 180,
+  "estruturaAmortizacao": "Bullet",
+  "periodicidadeJuros": "Bullet",
+  "exigeNdf": false,
+  "custoNdfAa": null,
+  "garantiaExigida": "Aval dos sócios",
+  "valorGarantiaBrl": 1800000.00,
+  "garantiaEhCdbCativo": false,
+  "rendimentoCdbAa": null
+}
+```
+
+CET retornado: **15,904828% a.a.** (golden dataset Cenário 8 — IOF 0,38% eleva CET acima da taxa nominal de 14,5%).
+
+**Converter em contrato (capitalDeGiroInputs opcionais):**
+
+```json
+POST /api/v1/cotacoes/{id}/converter-em-contrato
+{
+  "cotacaoId": "...",
+  "numeroExternoContrato": "CDG-BB-2026-001",
+  "dataContratacao": "2026-05-20",
+  "dataVencimento": "2026-11-16",
+  "taxaAa": 14.5,
+  "capitalDeGiro": {
+    "numeroOperacao": "OP-2026-CDG-001"
+  }
+}
+```
+
+Campo `capitalDeGiro` é opcional. Quando omitido, `numeroOperacao` fica `null` no `capitalDeGiroDetail`.
 
 ---
 

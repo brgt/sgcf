@@ -11,6 +11,97 @@
 
 ---
 
+## [0.9.0] — 2026-05-18
+
+### Resumo executivo
+
+Entrega da **Onda 3b — modalidade Capital de Giro** no módulo de Cotações. Uma empresa pode agora registrar cotações 100% em BRL, sem PTAX D-1 e sem NDF, comparar propostas de capital de giro de qualquer banco comercial, e converter a proposta aceita em `Contrato` + `CapitalDeGiroDetail`. Inclui: remoção de `TipoProduto` e `TemFgi` de `CapitalDeGiroDetail` (quebra de schema — migration S8), `CalcularCetCapitalDeGiro` como função pura delegando ao NCE (mesma fórmula TIR Newton-Raphson base 360), `ConversorCapitalDeGiro` real (substitui stub Onda 0), guards de modalidade (USD → 400, NDF=true → 400), e golden dataset validado (CET 15,904828% com IOF 0,38%).
+
+---
+
+### BREAKING — Cotações — CapitalDeGiroDetail (migration S8)
+
+**Colunas removidas da tabela `balcao_caixa_detail` (schema `sgcf`):**
+
+- `tipo_produto` (`text`, nullable) — removida; Capital de Giro não tem tipologia de produto no MVP.
+- `tem_fgi` (`boolean`, not null, default false) — removida; FGI é modalidade independente (`ModalidadeContrato.Fgi`), não uma flag em Capital de Giro.
+
+Clientes que liam esses campos receberão erro de desserialização após a migration. Atualizar parsers antes de aplicar `S8_DropTipoProdutoTemFgi`.
+
+**Migration aplicada:** `20260518170758_S8_DropTipoProdutoTemFgi`.
+
+---
+
+### ADDITIVE — Cotações — Modalidade Capital de Giro
+
+**Validação nova em `POST /api/v1/cotacoes/{id}/propostas`:**
+
+- Para cotações `CapitalDeGiro`, `moedaOriginal` deve ser `Brl`. Proposta em moeda estrangeira retorna `400 Bad Request`.
+- Para cotações `CapitalDeGiro`, `exigeNdf` deve ser `false`. Proposta com NDF retorna `400 Bad Request`.
+- `custoNdfAaPercentual` não nulo em cotação `CapitalDeGiro` retorna `400 Bad Request`.
+
+**Campo novo (opcional) em `POST /api/v1/cotacoes/{id}/converter-em-contrato`:**
+
+- `capitalDeGiro` (objeto, opcional quando `modalidade = "CapitalDeGiro"`). Quando ausente, `NumeroOperacao` fica `null`.
+
+Estrutura do objeto `capitalDeGiro`:
+
+```json
+{
+  "numeroOperacao": "OP-2026-CDG-001"
+}
+```
+
+**Campo novo em `ContratoDto` (resposta de `POST converter-em-contrato` e `GET /api/v1/contratos/{id}`):**
+
+```json
+{
+  "capitalDeGiroDetail": {
+    "numeroOperacao": "OP-2026-CDG-001"
+  }
+}
+```
+
+`numeroOperacao` é `null` quando não informado na conversão (SPEC EC-10).
+
+**Fórmula CET (SPEC §7):**
+
+Capital de Giro usa a mesma TIR Newton-Raphson base 360 do NCE. O CET é sempre maior que a taxa nominal quando IOF > 0, pois o IOF incide sobre o principal em t=0.
+
+```
+NetoRecebido = ValorPrincipal - IOF
+IOF          = round(ValorPrincipal × iofPct/100, 2, AwayFromZero)
+FluxoT180    = ValorPrincipal × (1 + TaxaAa/100 × Prazo/360)
+CET          = TIR([NetoRecebido, -FluxoT180], base=360) — Newton-Raphson
+```
+
+**Golden case validado (SPEC §7 e Cenário 8):**
+
+| Parâmetro | Valor |
+|---|---|
+| Moeda | BRL |
+| Valor principal | R$ 1.500.000,00 |
+| Taxa | 14,5% a.a. |
+| IOF | 0,38% |
+| Prazo | 180 dias (Bullet) |
+| CET esperado | **15,904828% a.a.** (±0,01 p.p.) |
+| IOF t=0 | R$ 5.700,00 |
+| Juros Bullet | R$ 108.750,00 |
+| Pagamento t180 | R$ 1.608.750,00 |
+
+**Migration:** `S8_DropTipoProdutoTemFgi` — remove `tipo_produto` e `tem_fgi` de `balcao_caixa_detail`.
+
+**Cobertura de testes:**
+
+- 7 testes de domínio: `CalcularCetCapitalDeGiro` (golden BRL 180d, IOF zero ≈ nominal, IOF eleva CET, fachada null, override, rejeita USD, rejeita NDF).
+- 5 testes de domínio: `CapitalDeGiroDetail.Criar` (válido, NumeroOperacao null, contratoId empty, sem TipoProduto, sem TemFgi).
+- 6 testes de aplicação: `ConversorCapitalDeGiro` (Modalidade, retorna (CapitalDeGiroDetail, null), NumeroOperacao propagado, null sem inputs, ContratoId correto, timestamps preenchidos).
+- 3 testes de aplicação: `RegistrarPropostaCommand` guard (rejeita USD, rejeita NDF, aceita BRL válido).
+- 1 golden dataset (Cenário 8): CET 15,904828%.
+- 4 testes E2E (Slow): fluxo completo, proposta USD → 400, proposta NDF → 400, converter sem capitalDeGiroInputs → NumeroOperacao null.
+
+---
+
 ## [0.8.0] — 2026-05-18
 
 ### Resumo executivo

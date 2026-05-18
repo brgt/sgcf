@@ -1,7 +1,7 @@
 # SPEC — Modalidade Capital de Giro no Módulo de Cotações
 
 **Versão alvo:** v0.9.0 (paralelo com FGI)
-**Status:** Pendente de implementação
+**Status:** Entregue — v0.9.0 (2026-05-18)
 **Pré-requisito:** Onda 0 (`docs/specs/cotacoes/modalidades/onda-0.md`)
 **Plano de execução:** `tasks/cotacoes-modalidades/capital-de-giro/plan.md`
 **Plano mestre:** `tasks/cotacoes-modalidades/plan.md`
