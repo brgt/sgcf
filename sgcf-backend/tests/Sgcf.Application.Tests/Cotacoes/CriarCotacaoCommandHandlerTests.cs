@@ -123,4 +123,88 @@ public sealed class CriarCotacaoCommandHandlerTests
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("*PTAX D-1*");
     }
+
+    // ─── Onda 0 F0.1: Testes de PTAX condicional por modalidade ────────────
+
+    [Fact]
+    public async Task Handle_FINIMP_busca_PTAX_via_repo()
+    {
+        // FINIMP é modalidade cambial — repositório de FX deve ser consultado.
+        ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
+        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IClock clock = CriarClock();
+
+        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+            .Returns(CriarCotacaoFx());
+        repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
+            .Returns("COT-2026-00001");
+
+        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommand cmd = new(
+            CodigoInterno: null,
+            Modalidade: "Finimp",
+            ValorAlvoBrl: 500_000m,
+            PrazoMaximoDias: 180,
+            DataAbertura: new DateOnly(2026, 5, 16));
+
+        CotacaoDto resultado = await handler.Handle(cmd, default);
+
+        // PTAX deve ter sido buscada e persistida na cotação
+        resultado.PtaxUsadaUsdBrl.Should().Be(PtaxUsdBrl);
+        await fxRepo.Received(1)
+            .GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default);
+    }
+
+    [Fact]
+    public async Task Handle_NCE_pula_busca_PTAX_e_PtaxUsada_fica_null()
+    {
+        // NCE é operação BRL — repositório FX NÃO deve ser consultado.
+        ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
+        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IClock clock = CriarClock();
+
+        repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
+            .Returns("COT-2026-00002");
+
+        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommand cmd = new(
+            CodigoInterno: null,
+            Modalidade: "Nce",
+            ValorAlvoBrl: 500_000m,
+            PrazoMaximoDias: 180,
+            DataAbertura: new DateOnly(2026, 5, 16));
+
+        CotacaoDto resultado = await handler.Handle(cmd, default);
+
+        // PTAX não deve ser buscada nem persistida
+        resultado.PtaxUsadaUsdBrl.Should().BeNull();
+        await fxRepo.DidNotReceive()
+            .GetMaisRecenteAsync(Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_FINIMP_sem_PTAX_cadastrada_lanca_InvalidOperationException()
+    {
+        // FINIMP sem PTAX no repositório deve lançar exceção (operação cambial exige cotação).
+        ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
+        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IClock clock = CriarClock();
+
+        // Repositório retorna null — PTAX não cadastrada
+        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+            .Returns((CotacaoFx?)null);
+
+        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommand cmd = new(
+            CodigoInterno: null,
+            Modalidade: "Finimp",
+            ValorAlvoBrl: 500_000m,
+            PrazoMaximoDias: 180,
+            DataAbertura: new DateOnly(2026, 5, 16));
+
+        Func<Task> act = () => handler.Handle(cmd, default);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*PTAX D-1*");
+    }
 }
