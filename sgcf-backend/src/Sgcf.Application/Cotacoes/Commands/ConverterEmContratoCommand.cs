@@ -51,6 +51,9 @@ public sealed record Lei4131Inputs(
     string? PaisCredor,
     decimal? AliquotaIrrfPercentual);
 
+// Nota: FgiInputs é definido em Sgcf.Domain.Cotacoes — reutilizado diretamente para evitar duplicação.
+// A regra de dependência Application→Domain permite este uso (SPEC MD-5).
+
 /// <summary>
 /// Converte cotação aceita em contrato.
 /// Cria Contrato + EconomiaNegociacao atomicamente (único SaveChanges no final).
@@ -74,7 +77,11 @@ public sealed record ConverterEmContratoCommand(
     // Onda 2 NCE — SPEC §6: campos específicos de NCE.
     NceInputs? Nce = null,
     // Onda 4 Lei 4131 — SPEC §5.3: campos específicos de Lei 4131/62.
-    Lei4131Inputs? Lei4131 = null) : IRequest<ContratoDto>;
+    Lei4131Inputs? Lei4131 = null,
+    // Onda 3a FGI — SPEC fgi.md §6.1: número de operação (opcional) separado dos inputs financeiros.
+    string? NumeroOperacaoFgi = null,
+    // Onda 3a FGI — SPEC fgi.md §6.1: taxa e percentual de cobertura do FGI.
+    FgiInputs? Fgi = null) : IRequest<ContratoDto>;
 
 public sealed class ConverterEmContratoCommandValidator : AbstractValidator<ConverterEmContratoCommand>
 {
@@ -172,6 +179,7 @@ public sealed class ConverterEmContratoCommandHandler(
         FinimpDetail? finimpDetail = detailPrincipal as FinimpDetail;
         RefinimpDetail? refinimpDetail = detailPrincipal as RefinimpDetail;
         NceDetail? nceDetail = detailPrincipal as NceDetail; // Onda 2
+        FgiDetail? fgiDetail = detailPrincipal as FgiDetail; // Onda 3a
 
         // ── 2. Calcular CET do contrato fechado ────────────────────────────────
         // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
@@ -259,7 +267,7 @@ public sealed class ConverterEmContratoCommandHandler(
         // ── 6. Salvar tudo atomicamente (single UoW via SaveChanges) ───────────
         await contratoRepo.SaveChangesAsync(cancellationToken);
 
-        return ContratoDto.From(contrato, finimpDetail, refinimpDetail: refinimpDetail, nceDetail: nceDetail);
+        return ContratoDto.From(contrato, finimpDetail, refinimpDetail: refinimpDetail, nceDetail: nceDetail, fgiDetail: fgiDetail);
     }
 
     private static async Task<string> GerarCodigoInternoContratoAsync(
