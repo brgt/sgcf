@@ -1,0 +1,25 @@
+{
+  "descricao": "Capital de Giro BRL Bullet 180 dias — cenário golden Onda 3b",
+  "spec": "docs/specs/cotacoes/modalidades/capital-de-giro.md §7",
+  "cotacao": {
+    "modalidade": "CapitalDeGiro",
+    "valorAlvoBrl": 1500000.00,
+    "prazoMaximoDias": 180,
+    "ptaxUsadaUsdBrl": null,
+    "dataPtaxReferencia": null
+  },
+  "proposta": {
+    "moedaOriginal": "Brl",
+    "valorOferecidoBrl": 1500000.00,
+    "taxaAaPercentual": 14.5,
+    "iofPercentual": 0.38,
+    "spreadAaPercentual": 0.0,
+    "prazoDias": 180,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "Mensal",
+    "exigeNdf": false,
+    "custoNdfAaPercentual": null
+  },
+  "dataDesembolso": "2026-05-18",
+  "observacoes": "Capital de Giro BRL puro: sem PTAX, sem NDF, sem IRRF. IOF crédito 0,38% aplicado em t=0. Base 360 dias."
+}

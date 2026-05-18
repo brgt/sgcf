@@ -584,6 +584,56 @@ public sealed class CotacoesGoldenTests
         }
     }
 
+    // ── Cenário 8: Capital de Giro BRL Bullet 180 dias ───────────────────────
+
+    /// <summary>
+    /// Golden 8: Capital de Giro BRL 1,5M Bullet 180 dias — CET com IOF 0,38%, taxa 14,5% a.a.
+    /// Sem PTAX, sem NDF, sem IRRF (operação doméstica pura). Base 360 dias.
+    /// SPEC §7 — Onda 3b.
+    /// </summary>
+    [Fact]
+    public void CapitalDeGiroBrlBullet180d_CetComIof_MatchesGoldenDataset()
+    {
+        // Arrange
+        JsonElement e = LerJson("capital-de-giro-bullet-180d", "entrada.json");
+        JsonElement s = LerJson("capital-de-giro-bullet-180d", "saida_esperada.json");
+
+        JsonElement propostaJson = e.GetProperty("proposta");
+        LocalDate dataDesembolso = ParseLocalDate(e.GetProperty("dataDesembolso").GetString()!);
+
+        Proposta proposta = CriarProposta(
+            valorOferecidoUsd: propostaJson.GetProperty("valorOferecidoBrl").GetDecimal(),
+            taxaAaPercentual: propostaJson.GetProperty("taxaAaPercentual").GetDecimal(),
+            spreadAaPercentual: propostaJson.GetProperty("spreadAaPercentual").GetDecimal(),
+            iofPercentual: propostaJson.GetProperty("iofPercentual").GetDecimal(),
+            prazoDias: propostaJson.GetProperty("prazoDias").GetInt32(),
+            moedaOriginal: Moeda.Brl);
+
+        // Act — Capital de Giro usa método dedicado (sem PTAX)
+        decimal cetCalculado = CalculadoraCet.CalcularCetCapitalDeGiro(proposta, dataDesembolso);
+
+        // Assert — CET dentro da tolerância ±0,01 p.p.
+        decimal cetEsperado = s.GetProperty("cetAaPercentual").GetDecimal();
+        cetCalculado.Should().BeApproximately(cetEsperado, ToleranciaCetPp,
+            because: $"CET Capital de Giro BRL Bullet 180d deve bater com o golden (tolerância ±{ToleranciaCetPp} p.p.)");
+
+        // Assert — invariantes da modalidade (sem PTAX, sem NDF, sem IRRF)
+        bool semPtax = s.GetProperty("invariantes").GetProperty("semPtax").GetBoolean();
+        bool semNdf = s.GetProperty("invariantes").GetProperty("semNdf").GetBoolean();
+        bool semIrrf = s.GetProperty("invariantes").GetProperty("semIrrf").GetBoolean();
+        bool moedaBrl = s.GetProperty("invariantes").GetProperty("moedaBrl").GetBoolean();
+
+        semPtax.Should().BeTrue();
+        semNdf.Should().BeTrue();
+        semIrrf.Should().BeTrue();
+        moedaBrl.Should().BeTrue();
+
+        // CET deve ser maior que taxa nominal (IOF eleva o custo efetivo — SPEC §7.3)
+        decimal taxaNominal = propostaJson.GetProperty("taxaAaPercentual").GetDecimal();
+        cetCalculado.Should().BeGreaterThan(taxaNominal,
+            because: "IOF 0,38% em t=0 deve elevar CET acima da taxa nominal");
+    }
+
     // ─── Helper interno ────────────────────────────────────────────────────
 
     private static decimal CalcularVplCustoTotal(

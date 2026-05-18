@@ -1,0 +1,19 @@
+{
+  "descricao": "Saída esperada — CET Capital de Giro BRL Bullet 180 dias",
+  "spec": "docs/specs/cotacoes/modalidades/capital-de-giro.md §7",
+  "cetAaPercentual": 15.904828,
+  "invariantes": {
+    "semPtax": true,
+    "semNdf": true,
+    "semIrrf": true,
+    "moedaBrl": true,
+    "base360dias": true
+  },
+  "explicacao": {
+    "iof_t0_brl": 5700.00,
+    "juros_bullet_brl": 108750.00,
+    "pagamento_t180_brl": 1608750.00,
+    "cet_maior_que_taxa_nominal": true,
+    "nota": "CET > taxa nominal (14,5%) porque IOF 0,38% sobre principal é custo em t=0 que eleva a TIR anualizada."
+  }
+}

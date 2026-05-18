@@ -114,16 +114,21 @@ public sealed class ConversorStubsTests
         new ConversorCapitalDeGiro().Modalidade.Should().Be(ModalidadeContrato.CapitalDeGiro);
     }
 
+    /// <summary>
+    /// Onda 3b: ConversorCapitalDeGiro implementado — retorna CapitalDeGiroDetail sem lançar NotImplementedException.
+    /// Teste de stub substituído por comportamento real.
+    /// </summary>
     [Fact]
-    public async Task ConversorCapitalDeGiro_lanca_NotImplementedException()
+    public async Task ConversorCapitalDeGiro_retorna_CapitalDeGiroDetail_sem_excecao()
     {
         ConversorCapitalDeGiro conversor = new();
         ConverterEmContratoContext ctx = CriarContexto(ModalidadeContrato.CapitalDeGiro);
 
-        Func<Task> act = () => conversor.CriarDetailAsync(ctx, CancellationToken.None);
+        (Entity principal, Entity? secundario) = await conversor.CriarDetailAsync(ctx, CancellationToken.None);
 
-        await act.Should().ThrowAsync<NotImplementedException>()
-            .WithMessage("*CapitalDeGiro*");
+        principal.Should().BeOfType<CapitalDeGiroDetail>(
+            because: "Onda 3b implementou ConversorCapitalDeGiro — retorna CapitalDeGiroDetail");
+        secundario.Should().BeNull(because: "Capital de Giro não tem detail secundário");
     }
 
     // ─── ConversorFgi ─────────────────────────────────────────────────────────
