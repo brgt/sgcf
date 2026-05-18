@@ -106,6 +106,16 @@ public sealed class RegistrarPropostaCommandHandler(
             }
         }
 
+        // Onda 4 Lei 4131 — SPEC §4.2 e §5.2:
+        // Lei 4131 é operação internacional — rejeitar moeda BRL (sempre moeda estrangeira).
+        if (cotacao.Modalidade == ModalidadeContrato.Lei4131 && moeda == Moeda.Brl)
+        {
+            throw new ArgumentException(
+                "Proposta Lei 4131 deve ser em moeda estrangeira — " +
+                "Lei 4131 não suporta operações domésticas em BRL.",
+                nameof(cmd));
+        }
+
         // Onda 1 REFINIMP — SPEC §4.2: proposta deve ter mesma moeda do contrato mãe.
         if (cotacao.Modalidade == ModalidadeContrato.Refinimp && cotacao.ContratoMaeId.HasValue)
         {
