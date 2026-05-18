@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Contratos;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -74,7 +75,8 @@ public sealed class RegistrarPropostaCommandValidator : AbstractValidator<Regist
 public sealed class RegistrarPropostaCommandHandler(
     ICotacaoRepository repo,
     ICotacaoFxRepository fxRepo,
-    IClock clock) : IRequestHandler<RegistrarPropostaCommand, PropostaDto>
+    IClock clock,
+    IContratoRepository? contratoRepo = null) : IRequestHandler<RegistrarPropostaCommand, PropostaDto>
 {
     public async Task<PropostaDto> Handle(RegistrarPropostaCommand cmd, CancellationToken cancellationToken)
     {
@@ -84,6 +86,24 @@ public sealed class RegistrarPropostaCommandHandler(
         Moeda moeda = Enum.Parse<Moeda>(cmd.MoedaOriginal, true);
         EstruturaAmortizacao estrutura = Enum.Parse<EstruturaAmortizacao>(cmd.EstruturaAmortizacao, true);
         Periodicidade periodicidade = Enum.Parse<Periodicidade>(cmd.PeriodicidadeJuros, true);
+
+        // Onda 1 REFINIMP — SPEC §4.2: proposta deve ter mesma moeda do contrato mãe.
+        if (cotacao.Modalidade == ModalidadeContrato.Refinimp && cotacao.ContratoMaeId.HasValue)
+        {
+            Contrato mae = await (contratoRepo
+                ?? throw new InvalidOperationException(
+                    "IContratoRepository é obrigatório para registrar proposta em cotação REFINIMP."))
+                .GetByIdAsync(cotacao.ContratoMaeId.Value, cancellationToken)
+                ?? throw new KeyNotFoundException(
+                    $"Contrato mãe '{cotacao.ContratoMaeId.Value}' não encontrado.");
+
+            if (moeda != mae.Moeda)
+            {
+                throw new InvalidOperationException(
+                    $"Proposta REFINIMP deve ser na mesma moeda do contrato mãe ({mae.Moeda}); " +
+                    $"recebida {moeda}.");
+            }
+        }
 
         Money valorOferecido = new(cmd.ValorOferecido, moeda);
         Money valorGarantia = new(cmd.ValorGarantiaBrl, Moeda.Brl);
