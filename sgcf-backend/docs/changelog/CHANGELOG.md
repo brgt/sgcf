@@ -11,6 +11,64 @@
 
 ---
 
+## [0.7.0] — 2026-05-18
+
+### Resumo executivo
+
+Entrega da **Onda 1 — modalidade REFINIMP** no módulo de Cotações. Uma empresa pode agora registrar cotações de refinanciamento de FINIMP existente, comparar propostas e converter em contrato via fluxo estruturado, com rastreabilidade completa da cadeia mãe → filho. Inclui: campo `contratoMaeId` na cotação, validação de status do mãe, regra 70% Banco do Brasil, navegação até o ancestral FINIMP raiz, marcação automática do mãe como `RefinanciadoParcial` ou `RefinanciadoTotal`, e retorno de `RefinimpDetail` no `ContratoDto`.
+
+---
+
+### ADDITIVE — Cotações — Modalidade REFINIMP
+
+**Campo novo em `POST /api/v1/cotacoes`:**
+
+- `contratoMaeId` (Guid?, obrigatório quando `modalidade = "Refinimp"`, proibido nas demais).
+
+**Validações de negócio aplicadas na criação:**
+
+- `contratoMaeId` deve referenciar um contrato existente no status `Ativo`, `RefinanciadoParcial`, `Inadimplente` ou `Vencido`. Status `Cancelado`, `Liquidado` e `RefinanciadoTotal` são rejeitados com `400 Bad Request`.
+
+**Validação de proposta (`POST /api/v1/cotacoes/{id}/propostas`):**
+
+- Para cotações REFINIMP, a `moedaOriginal` da proposta deve coincidir com a moeda do contrato mãe. Divergência retorna `400 Bad Request`.
+
+**Conversão (`POST /api/v1/cotacoes/{id}/converter-em-contrato`):**
+
+- Campo novo opcional: `refinimp.percentualRefinanciado` (decimal) — auditoria de intenção; o valor armazenado no `RefinimpDetail` é sempre calculado como `valorPrincipal / ancestral.ValorPrincipal`.
+- **Regra 70% Banco do Brasil:** para banco com `codigoCompe = "001"`, o `valorPrincipal` do REFINIMP não pode exceder 70% do `valorPrincipal` do ancestral FINIMP raiz. Violação retorna `500 Internal Server Error` com mensagem descritiva (mapeamento para 422 previsto na Onda 2).
+- O ancestral é determinado percorrendo a cadeia REFINIMP até o contrato de modalidade não-REFINIMP mais antigo.
+
+**Campo novo em `RefinimpDetail` (resposta de `ContratoDto`):**
+
+```json
+{
+  "refinimpDetail": {
+    "contratoMaeId": "uuid",
+    "percentualRefinanciado": 0.75,
+    "valorQuitadoNoRefi": 150000.00,
+    "moeda": "Usd"
+  }
+}
+```
+
+**Migration aplicada:** `S7_CotacaoContratoMaeId`
+
+- Adiciona coluna `contrato_mae_id uuid NULL` na tabela `cotacao`.
+- FK para `contrato.id` com `ON DELETE RESTRICT`.
+- Índice parcial `ix_cotacao_contrato_mae_id` filtrado por `IS NOT NULL`.
+
+**Cobertura de testes:**
+
+- 7 testes unitários: invariantes de domínio `Cotacao.ContratoMaeId`.
+- 6 testes de aplicação: `CriarCotacaoCommand` com mãe em diferentes status.
+- 3 testes de aplicação: `RegistrarPropostaCommand` validação de moeda REFINIMP.
+- 8 testes unitários: `ConversorRefinimp` (regra 70% BB, cadeia 3 níveis, marcação de status).
+- 3 testes E2E: fluxo completo, 70% BB, mãe RefinanciadoTotal.
+- 1 golden dataset: CET e economia REFINIMP USD banco não-BB.
+
+---
+
 ## [0.6.0] — 2026-05-16
 
 ### Resumo executivo
