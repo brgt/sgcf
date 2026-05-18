@@ -40,6 +40,9 @@ public sealed class ConversorStubsTests
         IClock clock = CriarClock();
         bool exigeEstrangeira = Cotacao.ExigeMoedaEstrangeira(modalidade);
 
+        // Onda 1: REFINIMP exige ContratoMaeId — passa um Guid fictício para testes de stub.
+        Guid? contratoMaeId = modalidade == ModalidadeContrato.Refinimp ? Guid.NewGuid() : null;
+
         Cotacao cotacao = Cotacao.Criar(
             codigoInterno: $"COT-STUB-{(int)modalidade:D2}",
             modalidade: modalidade,
@@ -48,7 +51,8 @@ public sealed class ConversorStubsTests
             dataAbertura: DataBase,
             dataPtaxReferencia: exigeEstrangeira ? new LocalDate(2026, 5, 15) : null,
             ptaxUsadaUsdBrl: exigeEstrangeira ? 5.20m : null,
-            clock: clock);
+            clock: clock,
+            contratoMaeId: contratoMaeId);
 
         cotacao.Enviar(clock);
 

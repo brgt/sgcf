@@ -22,7 +22,9 @@ public sealed record CotacaoDto(
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     IReadOnlyList<Guid> BancosAlvo,
-    IReadOnlyList<PropostaDto> Propostas)
+    IReadOnlyList<PropostaDto> Propostas,
+    // Onda 1 REFINIMP: null para todas as outras modalidades.
+    Guid? ContratoMaeId = null)
 {
     public static CotacaoDto From(Cotacao c)
     {
@@ -55,6 +57,7 @@ public sealed record CotacaoDto(
             c.CreatedAt.ToDateTimeOffset(),
             c.UpdatedAt.ToDateTimeOffset(),
             c.BancosAlvo.ToList().AsReadOnly(),
-            propostas.AsReadOnly());
+            propostas.AsReadOnly(),
+            ContratoMaeId: c.ContratoMaeId);
     }
 }
