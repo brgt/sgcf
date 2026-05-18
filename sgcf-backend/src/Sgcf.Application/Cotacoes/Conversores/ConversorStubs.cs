@@ -5,23 +5,7 @@ namespace Sgcf.Application.Cotacoes.Conversores;
 
 // ConversorRefinimp foi migrado para ConversorRefinimp.cs (Onda 1 — implementação real).
 // ConversorNce foi migrado para ConversorNce.cs (Onda 2 — implementação real).
-
-/// <summary>
-/// Stub do conversor Lei 4131. Implementação completa entregue na Onda 4.
-/// </summary>
-public sealed class ConversorLei4131 : IConversorModalidade
-{
-    /// <inheritdoc/>
-    public ModalidadeContrato Modalidade => ModalidadeContrato.Lei4131;
-
-    /// <inheritdoc/>
-    public Task<(Entity, Entity?)> CriarDetailAsync(
-        ConverterEmContratoContext ctx,
-        CancellationToken cancellationToken) =>
-        throw new NotImplementedException(
-            "Conversor da modalidade Lei4131 será entregue na Onda 4. " +
-            "Veja docs/specs/cotacoes/modalidades/lei4131.md.");
-}
+// ConversorLei4131 foi migrado para ConversorLei4131.cs (Onda 4 — implementação real).
 
 /// <summary>
 /// Stub do conversor Capital de Giro. Implementação completa entregue na Onda 3.
