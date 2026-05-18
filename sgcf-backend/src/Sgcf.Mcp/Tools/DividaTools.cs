@@ -22,7 +22,7 @@ public sealed class DividaTools(
     [Description("Retorna a posição consolidada de dívida em múltiplas moedas, com ajuste MTM de hedges e alertas de contratos sem cobertura cambial.")]
     public async Task<string> GetPosicaoDividaAsync(
         [Description("UUID do banco para filtrar (opcional).")] string? bancoId,
-        [Description("Modalidade para filtrar: Finimp, Lei4131, Refinimp, Nce, BalcaoCaixa, Fgi (opcional).")] string? modalidade,
+        [Description("Modalidade para filtrar: Finimp, Lei4131, Refinimp, Nce, CapitalDeGiro, Fgi (opcional).")] string? modalidade,
         CancellationToken cancellationToken)
     {
         Guid? bancoGuid = null;

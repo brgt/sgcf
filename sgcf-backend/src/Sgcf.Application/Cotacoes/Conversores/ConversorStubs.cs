@@ -4,6 +4,7 @@ using Sgcf.Domain.Contratos;
 namespace Sgcf.Application.Cotacoes.Conversores;
 
 // ConversorRefinimp foi migrado para ConversorRefinimp.cs (Onda 1 — implementação real).
+// ConversorNce foi migrado para ConversorNce.cs (Onda 2 — implementação real).
 
 /// <summary>
 /// Stub do conversor Lei 4131. Implementação completa entregue na Onda 4.
@@ -23,37 +24,20 @@ public sealed class ConversorLei4131 : IConversorModalidade
 }
 
 /// <summary>
-/// Stub do conversor NCE. Implementação completa entregue na Onda 2.
+/// Stub do conversor Capital de Giro. Implementação completa entregue na Onda 3.
 /// </summary>
-public sealed class ConversorNce : IConversorModalidade
+public sealed class ConversorCapitalDeGiro : IConversorModalidade
 {
     /// <inheritdoc/>
-    public ModalidadeContrato Modalidade => ModalidadeContrato.Nce;
+    public ModalidadeContrato Modalidade => ModalidadeContrato.CapitalDeGiro;
 
     /// <inheritdoc/>
     public Task<(Entity, Entity?)> CriarDetailAsync(
         ConverterEmContratoContext ctx,
         CancellationToken cancellationToken) =>
         throw new NotImplementedException(
-            "Conversor da modalidade Nce será entregue na Onda 2. " +
-            "Veja docs/specs/cotacoes/modalidades/nce.md.");
-}
-
-/// <summary>
-/// Stub do conversor Balcão Caixa. Implementação completa entregue na Onda 3.
-/// </summary>
-public sealed class ConversorBalcaoCaixa : IConversorModalidade
-{
-    /// <inheritdoc/>
-    public ModalidadeContrato Modalidade => ModalidadeContrato.BalcaoCaixa;
-
-    /// <inheritdoc/>
-    public Task<(Entity, Entity?)> CriarDetailAsync(
-        ConverterEmContratoContext ctx,
-        CancellationToken cancellationToken) =>
-        throw new NotImplementedException(
-            "Conversor da modalidade BalcaoCaixa será entregue na Onda 3. " +
-            "Veja docs/specs/cotacoes/modalidades/balcao-caixa.md.");
+            "Conversor da modalidade CapitalDeGiro será entregue na Onda 3. " +
+            "Veja docs/specs/cotacoes/modalidades/capital-de-giro.md.");
 }
 
 /// <summary>

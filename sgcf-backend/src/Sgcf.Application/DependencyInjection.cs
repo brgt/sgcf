@@ -22,7 +22,7 @@ public static class DependencyInjection
         services.AddScoped<IConversorModalidade, ConversorRefinimp>();
         services.AddScoped<IConversorModalidade, ConversorLei4131>();
         services.AddScoped<IConversorModalidade, ConversorNce>();
-        services.AddScoped<IConversorModalidade, ConversorBalcaoCaixa>();
+        services.AddScoped<IConversorModalidade, ConversorCapitalDeGiro>();
         services.AddScoped<IConversorModalidade, ConversorFgi>();
 
         return services;
