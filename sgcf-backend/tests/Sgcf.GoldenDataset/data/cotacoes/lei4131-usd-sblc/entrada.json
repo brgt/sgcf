@@ -1,0 +1,33 @@
+{
+  "descricao": "Lei 4131 USD 5MM com SBLC — golden case SPEC §7.4. Onda 4.",
+  "cotacao": {
+    "codigoInterno": "COT-2026-00042",
+    "modalidade": "Lei4131",
+    "valorAlvoBrl": 25061500.00,
+    "prazoMaximoDias": 720,
+    "dataAbertura": "2026-05-18",
+    "dataPtaxReferencia": "2026-05-17",
+    "ptaxUsadaUsdBrl": 5.0123
+  },
+  "dataDesembolso": "2026-05-18",
+  "proposta": {
+    "banco": "BankAmerica",
+    "moedaOriginal": "Usd",
+    "valorOferecidoUsd": 5000000.00,
+    "taxaAaPercentual": 6.0,
+    "spreadAaPercentual": 0.5,
+    "iofPercentual": 0.38,
+    "prazoDias": 720,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "Bullet",
+    "exigeNdf": false,
+    "garantiaExigida": "SBLC 100% (obrigatório)",
+    "valorGarantiaExigidaBrl": 25061500.00,
+    "garantiaEhCdbCativo": false
+  },
+  "irrfCenarios": [
+    { "aliquotaPercentual": 15.0, "descricao": "Regra geral" },
+    { "aliquotaPercentual": 12.5, "descricao": "Acordo Japão — SPEC §2.4" },
+    { "aliquotaPercentual": 25.0, "descricao": "Jurisdição favorecida — SPEC §2.4" }
+  ]
+}

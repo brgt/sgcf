@@ -533,6 +533,57 @@ public sealed class CotacoesGoldenTests
             because: "economia ajustada CDI REFINIMP deve bater com o golden (tolerância ±R$1,00)");
     }
 
+    // ── Cenário 7: Lei 4131 USD SBLC ─────────────────────────────────────────
+
+    /// <summary>
+    /// Golden 7: Lei 4131 USD 5MM com SBLC — CET e IRRF estimado para 3 alíquotas.
+    /// Valida que CET Lei4131 bate com o golden (usa mesma fórmula FINIMP) e que
+    /// IRRF estimado respeita fórmula SPEC §8.1 para alíquotas 15%, 12,5% e 25%.
+    /// SPEC §7.4 e §8.1 — Onda 4.
+    /// </summary>
+    [Fact]
+    public void Lei4131UsdSblc_CetEIrrf_MatchesGoldenDataset()
+    {
+        // Arrange
+        JsonElement e = LerJson("lei4131-usd-sblc", "entrada.json");
+        JsonElement s = LerJson("lei4131-usd-sblc", "saida_esperada.json");
+
+        decimal ptax = e.GetProperty("cotacao").GetProperty("ptaxUsadaUsdBrl").GetDecimal();
+        JsonElement propostaJson = e.GetProperty("proposta");
+
+        Proposta proposta = CriarProposta(
+            valorOferecidoUsd: propostaJson.GetProperty("valorOferecidoUsd").GetDecimal(),
+            taxaAaPercentual: propostaJson.GetProperty("taxaAaPercentual").GetDecimal(),
+            spreadAaPercentual: propostaJson.GetProperty("spreadAaPercentual").GetDecimal(),
+            iofPercentual: propostaJson.GetProperty("iofPercentual").GetDecimal(),
+            prazoDias: propostaJson.GetProperty("prazoDias").GetInt32(),
+            valorGarantiaExigidaBrl: propostaJson.GetProperty("valorGarantiaExigidaBrl").GetDecimal());
+
+        // Act — CET Lei4131
+        decimal cetCalculado = CalculadoraCet.CalcularCetLei4131(proposta, ptax, DataDesembolso);
+
+        // Assert — CET dentro da tolerância (SPEC §7.4: validado pela equipe de tesouraria)
+        decimal cetEsperado = s.GetProperty("cetAaPercentual").GetDecimal();
+        cetCalculado.Should().BeApproximately(cetEsperado, ToleranciaCetPp,
+            because: $"CET Lei4131 USD SBLC deve bater com o golden (tolerância ±{ToleranciaCetPp} p.p.)");
+
+        // Act + Assert — IRRF para cada cenário de alíquota (SPEC §8.1)
+        JsonElement[] irrfCenarios = s.GetProperty("irrfCenarios").EnumerateArray().ToArray();
+
+        foreach (JsonElement cenario in irrfCenarios)
+        {
+            decimal aliquota = cenario.GetProperty("aliquotaPercentual").GetDecimal();
+            decimal irrfEsperado = cenario.GetProperty("irrfEstimadoBrl").GetDecimal();
+            string descricao = cenario.GetProperty("descricao").GetString()!;
+
+            decimal irrfCalculado = Sgcf.Application.Cotacoes.CalculadoraIrrfEstimado.Calcular(
+                proposta, ptax, aliquota);
+
+            irrfCalculado.Should().BeApproximately(irrfEsperado, 0.01m,
+                because: $"IRRF {aliquota}% ({descricao}) deve bater com golden (tolerância ±0,01 BRL)");
+        }
+    }
+
     // ─── Helper interno ────────────────────────────────────────────────────
 
     private static decimal CalcularVplCustoTotal(
