@@ -32,7 +32,7 @@ public sealed class ConversorStubsTests
     /// Constrói um contexto mínimo válido para testar stubs.
     /// Os stubs lançam NotImplementedException imediatamente sem acessar os campos,
     /// portanto qualquer instância válida serve.
-    /// Para modalidades BRL (Nce, BalcaoCaixa, Fgi), PTAX deve ser null.
+    /// Para modalidades BRL (Nce, CapitalDeGiro, Fgi), PTAX deve ser null.
     /// Para modalidades cambiais (Refinimp, Lei4131), PTAX deve estar presente.
     /// </summary>
     private static ConverterEmContratoContext CriarContexto(ModalidadeContrato modalidade)
@@ -143,24 +143,24 @@ public sealed class ConversorStubsTests
             .WithMessage("*Nce*");
     }
 
-    // ─── ConversorBalcaoCaixa ─────────────────────────────────────────────────
+    // ─── ConversorCapitalDeGiro ───────────────────────────────────────────────
 
     [Fact]
-    public void ConversorBalcaoCaixa_retorna_modalidade_BalcaoCaixa()
+    public void ConversorCapitalDeGiro_retorna_modalidade_CapitalDeGiro()
     {
-        new ConversorBalcaoCaixa().Modalidade.Should().Be(ModalidadeContrato.BalcaoCaixa);
+        new ConversorCapitalDeGiro().Modalidade.Should().Be(ModalidadeContrato.CapitalDeGiro);
     }
 
     [Fact]
-    public async Task ConversorBalcaoCaixa_lanca_NotImplementedException()
+    public async Task ConversorCapitalDeGiro_lanca_NotImplementedException()
     {
-        ConversorBalcaoCaixa conversor = new();
-        ConverterEmContratoContext ctx = CriarContexto(ModalidadeContrato.BalcaoCaixa);
+        ConversorCapitalDeGiro conversor = new();
+        ConverterEmContratoContext ctx = CriarContexto(ModalidadeContrato.CapitalDeGiro);
 
         Func<Task> act = () => conversor.CriarDetailAsync(ctx, CancellationToken.None);
 
         await act.Should().ThrowAsync<NotImplementedException>()
-            .WithMessage("*BalcaoCaixa*");
+            .WithMessage("*CapitalDeGiro*");
     }
 
     // ─── ConversorFgi ─────────────────────────────────────────────────────────

@@ -155,7 +155,7 @@ public sealed class ResolveTipoCotacaoTests
     {
         // Arrange
         Guid bancoId = Guid.NewGuid();
-        ModalidadeContrato modalidade = ModalidadeContrato.BalcaoCaixa;
+        ModalidadeContrato modalidade = ModalidadeContrato.CapitalDeGiro;
 
         List<ParametroCotacao> parametros = new()
         {

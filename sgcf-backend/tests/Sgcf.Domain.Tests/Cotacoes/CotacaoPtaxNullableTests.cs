@@ -99,13 +99,12 @@ public sealed class CotacaoPtaxNullableTests
     }
 
     [Fact]
-    public void Criar_BalcaoCaixa_com_PTAX_lanca_excecao()
+    public void Criar_CapitalDeGiro_com_PTAX_lanca_excecao()
     {
-        // BalcaoCaixa é operação BRL pura — fornecer PTAX é erro semântico.
-        // Nota: renomeação para CapitalDeGiro será tratada na Fase R (agent separado).
+        // CapitalDeGiro é operação BRL pura — fornecer PTAX é erro semântico.
         var act = () => Cotacao.Criar(
             codigoInterno: "COT-2026-00001",
-            modalidade: ModalidadeContrato.BalcaoCaixa,
+            modalidade: ModalidadeContrato.CapitalDeGiro,
             valorAlvoBrl: ValorAlvo,
             prazoMaximoDias: PrazoDias,
             dataAbertura: DataAbertura,
@@ -165,7 +164,7 @@ public sealed class CotacaoPtaxNullableTests
     [InlineData(ModalidadeContrato.Refinimp, true)]
     [InlineData(ModalidadeContrato.Lei4131, true)]
     [InlineData(ModalidadeContrato.Nce, false)]
-    [InlineData(ModalidadeContrato.BalcaoCaixa, false)]
+    [InlineData(ModalidadeContrato.CapitalDeGiro, false)]
     [InlineData(ModalidadeContrato.Fgi, false)]
     public void ExigeMoedaEstrangeira_helper_retorna_valor_correto_por_modalidade(
         ModalidadeContrato modalidade,

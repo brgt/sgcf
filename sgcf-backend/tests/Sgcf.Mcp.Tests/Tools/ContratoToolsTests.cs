@@ -53,7 +53,7 @@ public sealed class ContratoToolsTests
             Lei4131Detail: null,
             RefinimpDetail: null,
             NceDetail: null,
-            BalcaoCaixaDetail: null,
+            CapitalDeGiroDetail: null,
             FgiDetail: null);
 
     // ── ListContratos ──────────────────────────────────────────────────────
