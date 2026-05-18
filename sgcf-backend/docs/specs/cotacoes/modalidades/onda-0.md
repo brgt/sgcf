@@ -1,7 +1,7 @@
 # SPEC — Onda 0: Foundation para Cotações Multi-Modalidade
 
 **Versão alvo:** v0.6.1 (interna) ou consolidada na release v0.7.0 (REFINIMP)
-**Status:** Pendente de implementação
+**Status:** Entregue — v0.6.1 consolidada em v0.7.0 (2026-05-18)
 **Pré-requisito de:** Ondas 2 (NCE), 3 (FGI + Capital de Giro), 4 (Lei 4131)
 **Plano de execução:** `tasks/cotacoes-modalidades/plan.md` §3
 **Decisões trancadas:** MD-1..MD-10 do plano mestre + respostas do PO em 2026-05-18

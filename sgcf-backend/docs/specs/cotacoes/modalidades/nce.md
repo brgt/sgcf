@@ -1,7 +1,7 @@
 # SPEC — Modalidade NCE no Módulo de Cotações
 
 **Versão alvo:** v0.8.0
-**Status:** Pendente de implementação
+**Status:** Entregue — v0.8.0 (2026-05-18)
 **Pré-requisito:** Onda 0 (foundation) — F0.1 (PTAX nullable) é essencial; F0.2 (`CalcularCetNce` stub); F0.3 (`IConversorModalidade` registrado)
 **Plano operacional:** `tasks/cotacoes-modalidades/nce/plan.md`
 **SPEC base:** `docs/specs/cotacoes/SPEC.md`

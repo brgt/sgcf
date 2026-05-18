@@ -190,6 +190,7 @@ public sealed class ConverterEmContratoCommandHandler(
         // Novos conversores adicionam o cast correspondente aqui ao serem implementados.
         FinimpDetail? finimpDetail = detailPrincipal as FinimpDetail;
         RefinimpDetail? refinimpDetail = detailPrincipal as RefinimpDetail;
+        Lei4131Detail? lei4131Detail = detailPrincipal as Lei4131Detail;                     // Onda 4
         NceDetail? nceDetail = detailPrincipal as NceDetail;                                 // Onda 2
         CapitalDeGiroDetail? capitalDeGiroDetail = detailPrincipal as CapitalDeGiroDetail;   // Onda 3b
         FgiDetail? fgiDetail = detailPrincipal as FgiDetail;                                 // Onda 3a
@@ -283,6 +284,7 @@ public sealed class ConverterEmContratoCommandHandler(
         return ContratoDto.From(
             contrato,
             finimpDetail,
+            lei4131Detail: lei4131Detail,
             refinimpDetail: refinimpDetail,
             nceDetail: nceDetail,
             capitalDeGiroDetail: capitalDeGiroDetail,
