@@ -161,17 +161,44 @@ public static class CalculadoraCet
         CalcularCetFinimp(proposta, ptaxUsdBrl, dataDesembolso, taxaAaPercentualOverride);
 
     /// <summary>
-    /// Stub: cálculo do CET para Lei 4131.
-    /// Implementação pendente — veja docs/specs/cotacoes/modalidades/lei4131.md.
-    /// Onda 0 F0.2.
+    /// Calcula o CET anualizado em percentual (ex: 8.42 para 8,42% a.a.)
+    /// para propostas da modalidade Lei 4131/62 (empréstimo direto do exterior).
+    /// <para>
+    /// A fórmula é idêntica a FINIMP (SPEC §7.3): fluxo em moeda original convertido
+    /// para BRL via <paramref name="ptaxUsdBrl"/>, TIR Newton-Raphson, base 360 dias.
+    /// A diferença é que Lei 4131 rejeita BRL como moeda original (sempre estrangeira).
+    /// </para>
+    /// <para>
+    /// Componentes que NÃO entram no CET (decisões travadas MD-3/AD-3):
+    /// IRRF (informativo via <c>irrfEstimadoBrl</c>), custo SBLC, break funding fee, market flex.
+    /// </para>
+    /// Onda 4 — SPEC §7.1 (docs/specs/cotacoes/modalidades/lei4131.md).
     /// </summary>
+    /// <param name="proposta">Proposta Lei 4131 com MoedaOriginal != Brl.</param>
+    /// <param name="ptaxUsdBrl">PTAX USD/BRL da cotação (ou cross-rate efetivo para outras moedas).</param>
+    /// <param name="dataDesembolso">Data de desembolso (início do fluxo).</param>
+    /// <param name="taxaAaPercentualOverride">Substitui a taxa da proposta quando informado.</param>
+    /// <returns>CET em % a.a. (ex: 8.42m para 8,42%).</returns>
     public static decimal CalcularCetLei4131(
         Proposta proposta,
         decimal ptaxUsdBrl,
         LocalDate dataDesembolso,
-        decimal? taxaAaPercentualOverride = null) =>
-        throw new NotImplementedException(
-            "Implementação pendente — Onda 4. Veja docs/specs/cotacoes/modalidades/lei4131.md.");
+        decimal? taxaAaPercentualOverride = null)
+    {
+        ArgumentNullException.ThrowIfNull(proposta);
+
+        // Guard: Lei 4131 exige moeda estrangeira — invariante SPEC §7.1 e §4.2.
+        if (proposta.MoedaOriginal == Moeda.Brl)
+        {
+            throw new ArgumentException(
+                $"CalcularCetLei4131 exige moeda estrangeira (recebido: Brl). " +
+                "Lei 4131 não suporta operações domésticas em BRL.",
+                nameof(proposta));
+        }
+
+        // Delega a CalcularCetFinimp: fórmulas idênticas — SPEC §7.3 e §7.5.
+        return CalcularCetFinimp(proposta, ptaxUsdBrl, dataDesembolso, taxaAaPercentualOverride);
+    }
 
     /// <summary>
     /// Calcula o CET anualizado em percentual (ex: 14.5 para 14,5% a.a.)
