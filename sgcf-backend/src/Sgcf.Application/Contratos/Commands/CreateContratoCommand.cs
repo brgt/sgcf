@@ -40,10 +40,11 @@ public sealed record NceDetailRequest(
     DateOnly? DataEmissao,
     string? BancoMandatario);
 
-public sealed record CapitalDeGiroDetailRequest(
-    string? NumeroOperacao,
-    string? TipoProduto,
-    bool TemFgi);
+/// <summary>
+/// Inputs do detalhe Capital de Giro para <see cref="CreateContratoCommand"/>.
+/// Onda 3b: campos TipoProduto e TemFgi removidos (SPEC §3.3 e §3.4).
+/// </summary>
+public sealed record CapitalDeGiroDetailRequest(string? NumeroOperacao);
 
 public sealed record FgiDetailRequest(
     string? NumeroOperacaoFgi,
@@ -326,12 +327,10 @@ public sealed class CreateContratoCommandHandler(IContratoRepository repo, ICloc
         CapitalDeGiroDetail? capitalDeGiroDetail = null;
         if (modalidade == ModalidadeContrato.CapitalDeGiro)
         {
-            CapitalDeGiroDetailRequest reqCg = cmd.CapitalDeGiroDetail ?? new CapitalDeGiroDetailRequest(null, null, false);
+            CapitalDeGiroDetailRequest reqCg = cmd.CapitalDeGiroDetail ?? new CapitalDeGiroDetailRequest(null);
             capitalDeGiroDetail = CapitalDeGiroDetail.Criar(
                 contrato.Id,
                 reqCg.NumeroOperacao,
-                reqCg.TipoProduto,
-                reqCg.TemFgi,
                 clock);
 
             repo.AddCapitalDeGiroDetail(capitalDeGiroDetail);

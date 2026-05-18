@@ -424,13 +424,15 @@ public sealed class CalculadoraCetF02Tests
     }
 
     [Fact]
-    public void CalcularCetCapitalDeGiro_lanca_NotImplementedException()
+    public void CalcularCetCapitalDeGiro_brl_bullet_retorna_cet_positivo()
     {
+        // Onda 3b: implementação real substituiu o stub.
+        // Proposta BRL sem NDF deve retornar CET positivo.
         var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
 
-        var act = () => CalculadoraCet.CalcularCetCapitalDeGiro(proposta, DataDesembolso);
+        decimal cet = CalculadoraCet.CalcularCetCapitalDeGiro(proposta, DataDesembolso);
 
-        act.Should().Throw<NotImplementedException>("Capital de Giro será implementado em Onda futura");
+        cet.Should().BeGreaterThan(0m, "Capital de Giro BRL com parâmetros padrão deve produzir CET positivo (Onda 3b)");
     }
 
     [Fact]
