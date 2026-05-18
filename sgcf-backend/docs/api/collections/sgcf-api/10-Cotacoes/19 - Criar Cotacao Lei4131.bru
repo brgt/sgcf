@@ -1,0 +1,59 @@
+meta {
+  name: Criar Cotacao Lei4131
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "modalidade": "Lei4131",
+    "valorAlvoBrl": 25061500.00,
+    "prazoMaximoDias": 720,
+    "dataAbertura": "2026-05-18",
+    "dataPtaxReferencia": "2026-05-17",
+    "ptaxUsadaUsdBrl": 5.0123,
+    "observacoes": "Captação Lei 4131 USD 5MM com SBLC — golden case SPEC §7.4"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("cotacaoId", res.body.id);
+  }
+}
+
+docs {
+  Cria nova cotação Lei 4131/62 (captação de recursos externos).
+  Política: Escrita
+
+  Diferença em relação a Finimp:
+  - modalidade: "Lei4131"
+  - dataPtaxReferencia: data D-1 da PTAX usada para converter USD→BRL
+  - ptaxUsadaUsdBrl: taxa PTAX de referência (BRL por USD)
+
+  Proposta registrada para esta cotação deve ser em moeda estrangeira (Usd, Eur etc).
+  Proposta em Brl retorna HTTP 400.
+
+  CET calculado pela fórmula FINIMP sobre fluxo BRL (SPEC §7.5).
+  IRRF é campo informativo — calculado sob demanda em GET /comparativo?aliquotaIrrfPercentual=15.
+
+  Retornos:
+  - 201: cotação criada com CodigoInterno gerado automaticamente (ex: COT-2026-00042)
+  - 400: campos inválidos ou PTAX ausente
+  - 409: PTAX D-1 não cadastrada
+}

@@ -1,0 +1,46 @@
+meta {
+  name: Comparativo com IRRF (Lei4131)
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/api/v1/cotacoes/{{cotacaoId}}/comparativo?aliquotaIrrfPercentual=15
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+}
+
+docs {
+  Retorna comparativo de propostas com estimativa de IRRF para cotação Lei 4131.
+  Política: Leitura
+
+  Parâmetro de query:
+  - aliquotaIrrfPercentual (optional): alíquota IRRF (%) para estimar retenção na fonte.
+    Valores comuns: 15 (regra geral), 12.5 (acordo Japão — SPEC §2.4), 25 (jurisdição favorecida).
+    Omitir para cotações não-Lei4131 ou quando o campo não for relevante.
+
+  O campo irrfEstimadoBrl em cada ComparativoDto é informativo e NÃO compõe o CET.
+  Decisão PO 2026-05-18 (MD-3/AD-3): IRRF não integra o custo efetivo regulatório.
+
+  Fórmula IRRF (SPEC §8.1):
+    JurosProjetados = ValorOferecido × (TaxaAa + Spread)/100 × Prazo/360
+    JurosProjetadosBrl = JurosProjetados × PTAX
+    IrrfEstimadoBrl = round(JurosProjetadosBrl × Alíquota/100, 2, AwayFromZero)
+
+  Exemplo golden case (SPEC §7.4):
+    Proposta: USD 5MM, 6%+0.5%aa, 720d, PTAX 5.0123, alíquota 15%
+    → JurosProjetadosBrl = 650000 × 5.0123 = 3.257.995,00
+    → IrrfEstimadoBrl = 3.257.995,00 × 0.15 = 488.699,25
+
+  Retornos:
+  - 200: lista de ComparativoDto com irrfEstimadoBrl populado (Lei4131) ou 0 (demais)
+  - 404: cotação não encontrada
+}
