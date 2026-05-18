@@ -1,0 +1,38 @@
+{
+  "descricao": "REFINIMP USD banco não-BB — 80% do ancestral (acima de 70% mas banco não é BB, portanto permitido). SPEC §6.1 Onda 1.",
+  "nota": "Cenário valida CET idêntico ao FINIMP (mesma fórmula TIR) e economia após negociação de 0,5 p.p.",
+  "cotacao": {
+    "codigoInterno": "COT-2026-REFI-01",
+    "modalidade": "Refinimp",
+    "valorAlvoBrl": 800000.00,
+    "prazoMaximoDias": 180,
+    "dataAbertura": "2026-05-16",
+    "dataPtaxReferencia": "2026-05-15",
+    "ptaxUsadaUsdBrl": 5.20
+  },
+  "contratoMae": {
+    "nota": "FINIMP ancestral raiz com valorPrincipal 200k USD. Percentual = 150k/200k = 75%.",
+    "valorPrincipalUsd": 200000.00
+  },
+  "dataDesembolso": "2026-05-16",
+  "taxaCdiAaPercentual": 10.50,
+  "proposta": {
+    "banco": "Santander",
+    "moedaOriginal": "Usd",
+    "valorOferecidoUsd": 150000.00,
+    "taxaAaPercentual": 6.5,
+    "spreadAaPercentual": 0.5,
+    "iofPercentual": 0.38,
+    "prazoDias": 180,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "Bullet",
+    "exigeNdf": false,
+    "garantiaExigida": "Aval",
+    "valorGarantiaExigidaBrl": 900000.00,
+    "garantiaEhCdbCativo": false
+  },
+  "cenarioEconomia": {
+    "nota": "Após negociação, taxa reduzida de 6.5% para 6.0% aa (−0,5 p.p.).",
+    "contratoTaxaAaPercentual": 6.0
+  }
+}

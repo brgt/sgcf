@@ -1,0 +1,14 @@
+{
+  "descricao": "Saída esperada — REFINIMP usa mesma fórmula TIR que FINIMP. Tolerância CET: ±0,01 p.p. Valores: ±0,01 BRL.",
+  "toleranciaCetPercentualPontos": 0.01,
+  "toleranciaValorBrl": 1.00,
+  "cetPropostaAaPercentual": 7.941295,
+  "cetContratoAaPercentual": 7.420469,
+  "principalBrl": 780000.00,
+  "percentualSobreAncestral": 0.75,
+  "economia": {
+    "nota": "Proposta aceita CET=7.941295% vs contrato fechado CET=7.420469% (taxa 6.0%). CDI 10.50%.",
+    "economiaBrutaBrl": 2031.22,
+    "economiaAjustadaCdiBrl": 1929.90
+  }
+}

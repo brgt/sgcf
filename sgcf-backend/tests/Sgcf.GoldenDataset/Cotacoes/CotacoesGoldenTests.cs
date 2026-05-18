@@ -468,6 +468,71 @@ public sealed class CotacoesGoldenTests
         opsEsperado.Should().Be(3, because: "há 3 cotações convertidas no mês");
     }
 
+    // ── Cenário 6: REFINIMP USD banco não-BB ──────────────────────────────
+
+    /// <summary>
+    /// Golden 6: REFINIMP USD banco Santander (não-BB) com 80% do ancestral.
+    /// Valida que CET REFINIMP usa fórmula TIR idêntica ao FINIMP e que
+    /// economia de 0,5 p.p. de negociação é calculada corretamente.
+    /// SPEC §4.2, §6.1 — Onda 1.
+    /// </summary>
+    [Fact]
+    public void RefinimpUsd80PctNaoBb_CetIdenticoFinimpEEconomia_MatchesGoldenDataset()
+    {
+        // Arrange
+        JsonElement e = LerJson("refinimp-usd-80pct-nao-bb", "entrada.json");
+        JsonElement s = LerJson("refinimp-usd-80pct-nao-bb", "saida_esperada.json");
+
+        decimal ptax = e.GetProperty("cotacao").GetProperty("ptaxUsadaUsdBrl").GetDecimal();
+        decimal taxaCdi = e.GetProperty("taxaCdiAaPercentual").GetDecimal();
+        JsonElement propostaJson = e.GetProperty("proposta");
+
+        Proposta proposta = CriarProposta(
+            valorOferecidoUsd: propostaJson.GetProperty("valorOferecidoUsd").GetDecimal(),
+            taxaAaPercentual: propostaJson.GetProperty("taxaAaPercentual").GetDecimal(),
+            spreadAaPercentual: propostaJson.GetProperty("spreadAaPercentual").GetDecimal(),
+            iofPercentual: propostaJson.GetProperty("iofPercentual").GetDecimal(),
+            prazoDias: propostaJson.GetProperty("prazoDias").GetInt32(),
+            valorGarantiaExigidaBrl: propostaJson.GetProperty("valorGarantiaExigidaBrl").GetDecimal());
+
+        decimal cetPropostaEsperado = s.GetProperty("cetPropostaAaPercentual").GetDecimal();
+        decimal cetContratoEsperado = s.GetProperty("cetContratoAaPercentual").GetDecimal();
+        decimal taxaContratoAa = e.GetProperty("cenarioEconomia").GetProperty("contratoTaxaAaPercentual").GetDecimal();
+
+        // Act — CET da proposta e do contrato fechado
+        decimal cetProposta = CalculadoraCet.CalcularCet(proposta, ptax, DataDesembolso);
+        decimal cetContrato = CalculadoraCet.CalcularCet(
+            proposta, ptax, DataDesembolso, taxaAaPercentualOverride: taxaContratoAa);
+
+        // Assert — CET dentro da tolerância
+        cetProposta.Should().BeApproximately(cetPropostaEsperado, ToleranciaCetPp,
+            because: $"CET da proposta REFINIMP deve bater com o golden (tolerância ±{ToleranciaCetPp} p.p.)");
+        cetContrato.Should().BeApproximately(cetContratoEsperado, ToleranciaCetPp,
+            because: $"CET do contrato REFINIMP deve bater com o golden (tolerância ±{ToleranciaCetPp} p.p.)");
+
+        // Assert — economia
+        decimal principalBrl = s.GetProperty("principalBrl").GetDecimal();
+        int prazo = propostaJson.GetProperty("prazoDias").GetInt32();
+        JsonElement economiaSaida = s.GetProperty("economia");
+
+        var (economiaBruta, economiaAjustada, _) = CalculadoraEconomia.Calcular(
+            cetPropostaAaPercentual: cetProposta,
+            cetContratoAaPercentual: cetContrato,
+            valorPrincipalBrl: new Money(principalBrl, Moeda.Brl),
+            prazoProposta: prazo,
+            prazoContrato: prazo,
+            taxaCdiAaPercentual: taxaCdi,
+            dataReferenciaCdi: DataDesembolso);
+
+        decimal economiaBrutaEsperada = economiaSaida.GetProperty("economiaBrutaBrl").GetDecimal();
+        decimal economiaAjustadaEsperada = economiaSaida.GetProperty("economiaAjustadaCdiBrl").GetDecimal();
+
+        economiaBruta.Valor.Should().BeApproximately(economiaBrutaEsperada, ToleranciaValorBrl,
+            because: "economia bruta REFINIMP deve bater com o golden (tolerância ±R$1,00)");
+        economiaAjustada.Valor.Should().BeApproximately(economiaAjustadaEsperada, ToleranciaValorBrl,
+            because: "economia ajustada CDI REFINIMP deve bater com o golden (tolerância ±R$1,00)");
+    }
+
     // ─── Helper interno ────────────────────────────────────────────────────
 
     private static decimal CalcularVplCustoTotal(
