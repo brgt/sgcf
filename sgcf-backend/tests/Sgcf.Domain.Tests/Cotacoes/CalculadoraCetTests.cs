@@ -392,13 +392,14 @@ public sealed class CalculadoraCetF02Tests
     }
 
     [Fact]
-    public void CalcularCetNce_lanca_NotImplementedException()
+    public void CalcularCetNce_retorna_CET_positivo_para_proposta_BRL_valida()
     {
+        // Onda 2: CalcularCetNce implementado — não lança mais NotImplementedException.
         var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
 
-        var act = () => CalculadoraCet.CalcularCetNce(proposta, DataDesembolso);
+        decimal cet = CalculadoraCet.CalcularCetNce(proposta, DataDesembolso);
 
-        act.Should().Throw<NotImplementedException>("NCE será implementado em Onda futura");
+        cet.Should().BeGreaterThan(0m, "NCE BRL com parâmetros padrão deve produzir CET positivo");
     }
 
     [Fact]
@@ -423,17 +424,16 @@ public sealed class CalculadoraCetF02Tests
     }
 
     [Fact]
-    public void CalcularCet_fachada_modalidade_Nce_lanca_NotImplementedException()
+    public void CalcularCet_fachada_com_ptax_null_e_proposta_BRL_dispacheia_para_CalcularCetNce()
     {
-        // Fachada com ptax null representa modalidades BRL (NCE, CapitalDeGiro, FGI)
-        // que ainda não têm implementação nesta Onda.
+        // Onda 2: fachada com ptax null + proposta BRL → CalcularCetNce (implementado).
         var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
-        decimal? ptaxNull = null; // null → modalidade BRL → NotImplemented
+        decimal? ptaxNull = null;
 
-        var act = () => CalculadoraCet.CalcularCet(proposta, ptaxNull, DataDesembolso);
+        decimal cet = CalculadoraCet.CalcularCet(proposta, ptaxNull, DataDesembolso);
 
-        act.Should().Throw<NotImplementedException>(
-            "fachada com ptax null (modalidade BRL) deve lançar NotImplementedException até Onda futura implementar o branch");
+        cet.Should().BeGreaterThan(0m,
+            "fachada com ptax null e proposta BRL deve despachar para CalcularCetNce e retornar CET positivo");
     }
 }
 
