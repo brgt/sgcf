@@ -7,22 +7,42 @@ using Sgcf.Domain.Cronograma;
 namespace Sgcf.Domain.Cotacoes;
 
 /// <summary>
+/// Inputs específicos do FGI que não se encaixam nos parâmetros gerais de Proposta.
+/// Onda 0 F0.2 — placeholder; implementação real virá na SPEC de FGI.
+/// </summary>
+/// <param name="TaxaFgiAaPercentual">Taxa anual cobrada pelo Fundo Garantidor de Investimentos sobre o saldo devedor.</param>
+/// <param name="PercentualCoberto">Percentual do principal coberto pelo FGI (ex: 80 para 80%). Null se não aplicável.</param>
+public sealed record FgiInputs(decimal TaxaFgiAaPercentual, decimal? PercentualCoberto);
+
+/// <summary>
 /// Serviço de domínio puro para cálculo do CET (Custo Efetivo Total) de uma Proposta.
 /// Sem I/O, sem estado, sem IClock — função matemática pura.
 /// Reutiliza o motor de amortização em Sgcf.Domain.Cronograma.
-/// SPEC §5.1.
+/// SPEC §5.1. Onda 0 F0.2: fachada dispatcheia por modalidade via ptaxUsadaUsdBrl.
 /// </summary>
 public static class CalculadoraCet
 {
     private const int MaxIteracoesNewtonRaphson = 200;
     private const decimal ToleranciaConvergencia = 0.000_000_01m; // 1e-8
 
+    // ─── Fachada pública ────────────────────────────────────────────────────
+
     /// <summary>
-    /// Calcula o CET anualizado em percentual (ex: 7.5 para 7,5% a.a.)
-    /// para uma proposta de FINIMP.
+    /// Fachada de cálculo do CET. Dispatcheia para o método especializado correto
+    /// com base na presença de PTAX (indicador da família de modalidade):
+    /// <list type="bullet">
+    ///   <item>ptaxUsadaUsdBrl não-null → modalidade cambial (FINIMP/REFINIMP/Lei4131) → <see cref="CalcularCetFinimp"/>.</item>
+    ///   <item>ptaxUsadaUsdBrl null → modalidade BRL pura (NCE, Capital de Giro, FGI) → NotImplementedException até Onda futura.</item>
+    /// </list>
+    /// <para>
+    /// Onda 0 F0.2: aceita <see cref="decimal?"/> para eliminar o adapter <c>?? 1m</c> introduzido em F0.1.
+    /// </para>
     /// </summary>
     /// <param name="proposta">Proposta com taxa, estrutura e demais parâmetros.</param>
-    /// <param name="ptaxUsdBrl">Taxa PTAX D-1 USD/BRL para conversão dos fluxos.</param>
+    /// <param name="ptaxUsadaUsdBrl">
+    /// Taxa PTAX D-1 USD/BRL. Não-null para modalidades cambiais (FINIMP, REFINIMP, Lei4131);
+    /// null para modalidades BRL puras (NCE, Capital de Giro, FGI).
+    /// </param>
     /// <param name="dataDesembolso">Data de desembolso (início do fluxo).</param>
     /// <param name="taxaAaPercentualOverride">
     /// Quando informado, substitui <see cref="Proposta.TaxaAaPercentualDecimal"/> no cálculo.
@@ -31,6 +51,47 @@ public static class CalculadoraCet
     /// </param>
     /// <returns>CET em % a.a. (ex: 7.5m para 7,5%).</returns>
     public static decimal CalcularCet(
+        Proposta proposta,
+        decimal? ptaxUsadaUsdBrl,
+        LocalDate dataDesembolso,
+        decimal? taxaAaPercentualOverride = null)
+    {
+        ArgumentNullException.ThrowIfNull(proposta);
+
+        // Dispatch: presença de PTAX identifica a família de modalidade.
+        // Modalidades cambiais (FINIMP, REFINIMP, Lei4131) sempre têm PTAX não-null
+        // por invariante de domínio em Cotacao.Criar.
+        if (ptaxUsadaUsdBrl is not null)
+        {
+            return CalcularCetFinimp(proposta, ptaxUsadaUsdBrl.Value, dataDesembolso, taxaAaPercentualOverride);
+        }
+
+        // PTAX null → modalidade BRL pura. Nenhuma implementada na Onda 0.
+        // Cada modalidade BRL terá sua própria SPEC e método especializado.
+        throw new NotImplementedException(
+            "Cálculo de CET para modalidades BRL puras (NCE, Capital de Giro, FGI) " +
+            "será implementado nas Ondas específicas de cada modalidade. " +
+            "Veja docs/specs/cotacoes/modalidades/ para o roadmap.");
+    }
+
+    // ─── Métodos especializados por modalidade ──────────────────────────────
+
+    /// <summary>
+    /// Calcula o CET anualizado em percentual (ex: 7.5 para 7,5% a.a.)
+    /// para propostas da modalidade FINIMP.
+    /// Inputs: moeda estrangeira (USD/CNY/EUR), NDF opcional, BreakFunding.
+    /// Onda 0 F0.2: extração exata da lógica que antes estava em <see cref="CalcularCet"/>.
+    /// Comportamento bit-a-bit idêntico ao legado — golden dataset não deve regredir.
+    /// </summary>
+    /// <param name="proposta">Proposta FINIMP com parâmetros cambiais.</param>
+    /// <param name="ptaxUsdBrl">Taxa PTAX D-1 USD/BRL; deve ser positiva.</param>
+    /// <param name="dataDesembolso">Data de desembolso (início do fluxo).</param>
+    /// <param name="taxaAaPercentualOverride">
+    /// Substitui <see cref="Proposta.TaxaAaPercentualDecimal"/> quando informado.
+    /// Usado para calcular CET do contrato fechado com taxa final negociada (SPEC §5.2).
+    /// </param>
+    /// <returns>CET em % a.a.</returns>
+    public static decimal CalcularCetFinimp(
         Proposta proposta,
         decimal ptaxUsdBrl,
         LocalDate dataDesembolso,
@@ -80,6 +141,69 @@ public static class CalculadoraCet
 
         return Math.Round(cetAjustado * 100m, 6, MidpointRounding.AwayFromZero);
     }
+
+    /// <summary>
+    /// Calcula o CET para propostas REFINIMP.
+    /// REFINIMP é FINIMP refinanciado — usa fórmula CET idêntica (SPEC §4.2, MD-8).
+    /// Onda 0 F0.2.
+    /// </summary>
+    /// <inheritdoc cref="CalcularCetFinimp"/>
+    public static decimal CalcularCetRefinimp(
+        Proposta proposta,
+        decimal ptaxUsdBrl,
+        LocalDate dataDesembolso,
+        decimal? taxaAaPercentualOverride = null) =>
+        CalcularCetFinimp(proposta, ptaxUsdBrl, dataDesembolso, taxaAaPercentualOverride);
+
+    /// <summary>
+    /// Stub: cálculo do CET para Lei 4131.
+    /// Implementação pendente — veja docs/specs/cotacoes/modalidades/lei4131.md.
+    /// Onda 0 F0.2.
+    /// </summary>
+    public static decimal CalcularCetLei4131(
+        Proposta proposta,
+        decimal ptaxUsdBrl,
+        LocalDate dataDesembolso,
+        decimal? taxaAaPercentualOverride = null) =>
+        throw new NotImplementedException(
+            "Implementação pendente — Onda 4. Veja docs/specs/cotacoes/modalidades/lei4131.md.");
+
+    /// <summary>
+    /// Stub: cálculo do CET para NCE (Nota de Crédito à Exportação).
+    /// Implementação pendente — veja docs/specs/cotacoes/modalidades/nce.md.
+    /// Onda 0 F0.2.
+    /// </summary>
+    public static decimal CalcularCetNce(
+        Proposta proposta,
+        LocalDate dataDesembolso,
+        decimal? taxaAaPercentualOverride = null) =>
+        throw new NotImplementedException(
+            "Implementação pendente — Onda 2. Veja docs/specs/cotacoes/modalidades/nce.md.");
+
+    /// <summary>
+    /// Stub: cálculo do CET para Capital de Giro (anteriormente BalcaoCaixa; Fase R renomeará).
+    /// Implementação pendente — veja docs/specs/cotacoes/modalidades/capital-de-giro.md.
+    /// Onda 0 F0.2.
+    /// </summary>
+    public static decimal CalcularCetCapitalDeGiro(
+        Proposta proposta,
+        LocalDate dataDesembolso,
+        decimal? taxaAaPercentualOverride = null) =>
+        throw new NotImplementedException(
+            "Implementação pendente — Onda 3. Veja docs/specs/cotacoes/modalidades/capital-de-giro.md.");
+
+    /// <summary>
+    /// Stub: cálculo do CET para FGI (Fundo Garantidor de Investimentos).
+    /// Implementação pendente — veja docs/specs/cotacoes/modalidades/fgi.md.
+    /// Onda 0 F0.2.
+    /// </summary>
+    public static decimal CalcularCetFgi(
+        Proposta proposta,
+        LocalDate dataDesembolso,
+        FgiInputs fgiInputs,
+        decimal? taxaAaPercentualOverride = null) =>
+        throw new NotImplementedException(
+            "Implementação pendente — Onda 3. Veja docs/specs/cotacoes/modalidades/fgi.md.");
 
     // ─── Helpers internos ───────────────────────────────────────────────────
 
