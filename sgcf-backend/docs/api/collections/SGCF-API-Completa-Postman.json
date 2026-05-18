@@ -241,7 +241,7 @@
           }
         },
         {
-          "name": "Importar Cronograma (BalcaoCaixa)",
+          "name": "Importar Cronograma (CapitalDeGiro)",
           "request": {
             "method": "POST",
             "header": [
