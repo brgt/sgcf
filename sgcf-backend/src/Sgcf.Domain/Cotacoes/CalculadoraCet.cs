@@ -66,10 +66,15 @@ public static class CalculadoraCet
             return CalcularCetFinimp(proposta, ptaxUsadaUsdBrl.Value, dataDesembolso, taxaAaPercentualOverride);
         }
 
-        // PTAX null → modalidade BRL pura. Nenhuma implementada na Onda 0.
-        // Cada modalidade BRL terá sua própria SPEC e método especializado.
+        // PTAX null → modalidade BRL pura.
+        // Onda 2: NCE implementado. Capital de Giro (Onda 3) e FGI (Onda 3) ainda pendentes.
+        if (proposta.MoedaOriginal == Moeda.Brl)
+        {
+            return CalcularCetNce(proposta, dataDesembolso, taxaAaPercentualOverride);
+        }
+
         throw new NotImplementedException(
-            "Cálculo de CET para modalidades BRL puras (NCE, Capital de Giro, FGI) " +
+            "Cálculo de CET para modalidades BRL puras não-NCE (Capital de Giro, FGI) " +
             "será implementado nas Ondas específicas de cada modalidade. " +
             "Veja docs/specs/cotacoes/modalidades/ para o roadmap.");
     }
@@ -169,19 +174,88 @@ public static class CalculadoraCet
             "Implementação pendente — Onda 4. Veja docs/specs/cotacoes/modalidades/lei4131.md.");
 
     /// <summary>
-    /// Stub: cálculo do CET para NCE (Nota de Crédito à Exportação).
-    /// Implementação pendente — veja docs/specs/cotacoes/modalidades/nce.md.
-    /// Onda 0 F0.2.
+    /// Calcula o CET anualizado em percentual (ex: 14.5 para 14,5% a.a.)
+    /// para propostas da modalidade NCE (Nota de Crédito à Exportação).
+    /// <para>
+    /// NCE é operação doméstica em BRL: sem IRRF (isenção lei 6.313/1975),
+    /// sem IOF câmbio (não há conversão cambial), sem NDF. O IOF crédito
+    /// (alíquota interna) é custo em t=0 que compõe o CET. Base 360 dias.
+    /// </para>
+    /// <para>
+    /// Fórmula (SPEC §7.3): fluxo BRL → TIR Newton-Raphson → anualização base 360.
+    /// </para>
+    /// Onda 2 — SPEC §7 (docs/specs/cotacoes/modalidades/nce.md).
     /// </summary>
+    /// <param name="proposta">Proposta NCE com MoedaOriginal=Brl e ExigeNdf=false.</param>
+    /// <param name="dataDesembolso">Data de desembolso (início do fluxo).</param>
+    /// <param name="taxaAaPercentualOverride">
+    /// Substitui a taxa da proposta quando informado. Usado para CET do contrato
+    /// fechado com taxa final negociada (SPEC §5.2 — mesmo padrão do FINIMP).
+    /// </param>
+    /// <returns>CET em % a.a. (ex: 14.5m para 14,5%).</returns>
     public static decimal CalcularCetNce(
         Proposta proposta,
         LocalDate dataDesembolso,
-        decimal? taxaAaPercentualOverride = null) =>
-        throw new NotImplementedException(
-            "Implementação pendente — Onda 2. Veja docs/specs/cotacoes/modalidades/nce.md.");
+        decimal? taxaAaPercentualOverride = null)
+    {
+        ArgumentNullException.ThrowIfNull(proposta);
+
+        // Guard: NCE exige BRL — invariante SPEC §7.1 e §10.3.
+        if (proposta.MoedaOriginal != Moeda.Brl)
+        {
+            throw new ArgumentException(
+                $"CalcularCetNce exige MoedaOriginal=Brl (recebido: {proposta.MoedaOriginal}). " +
+                "NCE não tem conversão cambial.",
+                nameof(proposta));
+        }
+
+        // Guard: NCE não aceita NDF — invariante SPEC §7.1 e §10.3.
+        if (proposta.ExigeNdf)
+        {
+            throw new ArgumentException(
+                "CalcularCetNce não aceita ExigeNdf=true. NCE é operação em BRL sem hedge cambial.",
+                nameof(proposta));
+        }
+
+        // O principal já está em BRL — ConverterParaBrl é no-op para Moeda.Brl.
+        // Passamos ptax=1m como sentinel para reutilizar MontarFluxoBrl sem alterar o cálculo.
+        const decimal PtaxBrlSentinel = 1m;
+        Money valorBrl = proposta.ValorOferecidoMoedaOriginal;
+
+        LocalDate dataVencimento = dataDesembolso.PlusDays(proposta.PrazoDias);
+        decimal taxaBase = taxaAaPercentualOverride ?? proposta.TaxaAaPercentualDecimal;
+        decimal taxaEfetiva = taxaBase + proposta.SpreadAaPercentualDecimal;
+
+        IReadOnlyList<EventoCronogramaGerado> eventos = ProjetarFluxo(
+            proposta,
+            valorBrl,
+            taxaEfetiva,
+            dataDesembolso,
+            dataVencimento);
+
+        // MontarFluxoBrl aplica IOF crédito em t=0 — mesmo mecanismo do FINIMP.
+        // Para NCE: guard acima impede ExigeNdf=true (sem custo NDF no fluxo).
+        // Rendimento CDB cativo é suportado se banco exigir (proposta.GarantiaEhCdbCativo).
+        // Sem IRRF e sem IOF câmbio — invisíveis nesta implementação pois a fórmula
+        // nunca os incluiu; o guard acima é a barreira formal (SPEC §2.3 e EC-15).
+        List<(int DiasFromT0, decimal FluxoBrl)> fluxos = MontarFluxoBrl(
+            eventos,
+            dataDesembolso,
+            valorBrl,
+            proposta,
+            PtaxBrlSentinel);
+
+        decimal tirDiaria = CalcularTirDiaria(fluxos);
+        decimal cetAa = AnualizarTaxaDiaria(tirDiaria, proposta.PrazoDias);
+
+        // CET tem floor em 0% — mesmo comportamento do FINIMP (SPEC §5.1).
+        decimal cetAjustado = Math.Max(0m, cetAa);
+
+        return Math.Round(cetAjustado * 100m, 6, MidpointRounding.AwayFromZero);
+    }
 
     /// <summary>
-    /// Stub: cálculo do CET para Capital de Giro (anteriormente BalcaoCaixa; Fase R renomeará).
+    /// Stub: cálculo do CET para Capital de Giro.
     /// Implementação pendente — veja docs/specs/cotacoes/modalidades/capital-de-giro.md.
     /// Onda 0 F0.2.
     /// </summary>

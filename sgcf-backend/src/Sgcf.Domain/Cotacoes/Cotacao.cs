@@ -26,14 +26,14 @@ public sealed class Cotacao : Entity, IAuditable
     public LocalDate DataAbertura { get; private set; }
 
     /// <summary>
-    /// Data de referência da PTAX usada. Null para modalidades BRL puras (NCE, BalcaoCaixa, FGI).
+    /// Data de referência da PTAX usada. Null para modalidades BRL puras (NCE, CapitalDeGiro, FGI).
     /// Onda 0 F0.1.
     /// </summary>
     public LocalDate? DataPtaxReferencia { get; private set; }
 
     /// <summary>
     /// PTAX D-1 usada como referência na conversão USD/BRL para cálculo de CET.
-    /// Null para modalidades BRL puras (NCE, BalcaoCaixa, FGI). Onda 0 F0.1.
+    /// Null para modalidades BRL puras (NCE, CapitalDeGiro, FGI). Onda 0 F0.1.
     /// </summary>
     public decimal? PtaxUsadaUsdBrl { get; private set; }
 
@@ -83,7 +83,7 @@ public sealed class Cotacao : Entity, IAuditable
     /// </summary>
     /// <remarks>
     /// Modalidades cambiais: FINIMP, REFINIMP, Lei 4131.
-    /// Modalidades BRL puras (NCE, BalcaoCaixa/CapitalDeGiro, FGI): PTAX não se aplica.
+    /// Modalidades BRL puras (NCE, CapitalDeGiro, FGI): PTAX não se aplica.
     /// </remarks>
     public static bool ExigeMoedaEstrangeira(ModalidadeContrato modalidade) =>
         modalidade == ModalidadeContrato.Finimp

@@ -4,13 +4,13 @@ using Sgcf.Domain.Common;
 namespace Sgcf.Domain.Contratos;
 
 /// <summary>
-/// Detalhe de contrato Balcão Caixa — crédito direto no balcão da Caixa Econômica Federal.
+/// Detalhe de contrato Capital de Giro — crédito direto no balcão da Caixa Econômica Federal.
 /// Tabela de extensão 1:1 com <see cref="Contrato"/> — mesma convenção de FinimpDetail e Lei4131Detail.
 /// <para>
 /// O cronograma é importado manualmente via <c>ImportarCronogramaCommand</c>; não há geração automática.
 /// </para>
 /// </summary>
-public sealed class BalcaoCaixaDetail : Entity
+public sealed class CapitalDeGiroDetail : Entity
 {
     public Guid ContratoId { get; private set; }
 
@@ -26,12 +26,12 @@ public sealed class BalcaoCaixaDetail : Entity
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
 
-    private BalcaoCaixaDetail() { }
+    private CapitalDeGiroDetail() { }
 
     /// <summary>
-    /// Cria um novo <see cref="BalcaoCaixaDetail"/> com os campos opcionais fornecidos.
+    /// Cria um novo <see cref="CapitalDeGiroDetail"/> com os campos opcionais fornecidos.
     /// </summary>
-    public static BalcaoCaixaDetail Criar(
+    public static CapitalDeGiroDetail Criar(
         Guid contratoId,
         string? numeroOperacao,
         string? tipoProduto,
@@ -39,7 +39,7 @@ public sealed class BalcaoCaixaDetail : Entity
         IClock clock)
     {
         Instant now = clock.GetCurrentInstant();
-        return new BalcaoCaixaDetail
+        return new CapitalDeGiroDetail
         {
             ContratoId = contratoId,
             NumeroOperacao = numeroOperacao,
