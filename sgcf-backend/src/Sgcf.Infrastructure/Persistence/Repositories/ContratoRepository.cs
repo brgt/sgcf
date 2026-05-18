@@ -78,6 +78,28 @@ internal sealed class ContratoRepository(SgcfDbContext context) : IContratoRepos
 
     public void Add(Contrato contrato) => context.Contratos.Add(contrato);
 
+    /// <summary>
+    /// Adiciona qualquer tipo de Detail aggregate ao contexto EF Core via pattern matching.
+    /// Usado pelo dispatcher <see cref="Sgcf.Application.Cotacoes.IConversorModalidade"/>
+    /// para persistir o detail sem conhecer o tipo concreto em tempo de compilação.
+    /// </summary>
+    public void AddDetail(Entity detail)
+    {
+        switch (detail)
+        {
+            case FinimpDetail f:       context.FinimpDetails.Add(f);           break;
+            case Lei4131Detail l:      context.Lei4131Details.Add(l);          break;
+            case RefinimpDetail r:     context.RefinimpDetails.Add(r);         break;
+            case NceDetail n:          context.NceDetails.Add(n);              break;
+            case BalcaoCaixaDetail bc: context.BalcaoCaixaDetails.Add(bc);    break;
+            case FgiDetail fg:         context.FgiDetails.Add(fg);             break;
+            default:
+                throw new ArgumentException(
+                    $"Tipo de Detail '{detail.GetType().Name}' não suportado em AddDetail.",
+                    nameof(detail));
+        }
+    }
+
     public void AddFinimpDetail(FinimpDetail detail) => context.Set<FinimpDetail>().Add(detail);
 
     public void AddLei4131Detail(Lei4131Detail detail) => context.Set<Lei4131Detail>().Add(detail);

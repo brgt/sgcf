@@ -1,4 +1,5 @@
 using Sgcf.Application.Contratos.Queries;
+using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 
 namespace Sgcf.Application.Contratos;
@@ -35,6 +36,15 @@ public interface IContratoRepository
         int pageSize,
         CancellationToken cancellationToken = default);
     public void Add(Contrato contrato);
+
+    /// <summary>
+    /// Adiciona um Detail aggregate (FinimpDetail, NceDetail, etc.) de forma polimórfica.
+    /// Substitui os métodos tipados (AddFinimpDetail, etc.) no contexto do dispatcher
+    /// <see cref="Sgcf.Application.Cotacoes.IConversorModalidade"/>.
+    /// Os métodos tipados são mantidos para compatibilidade com callers existentes.
+    /// </summary>
+    public void AddDetail(Entity detail);
+
     public void AddFinimpDetail(FinimpDetail detail);
     public void AddLei4131Detail(Lei4131Detail detail);
     public void AddRefinimpDetail(RefinimpDetail detail);
