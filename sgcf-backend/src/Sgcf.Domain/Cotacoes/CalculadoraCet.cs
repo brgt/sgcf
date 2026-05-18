@@ -333,17 +333,138 @@ public static class CalculadoraCet
     }
 
     /// <summary>
-    /// Stub: cálculo do CET para FGI (Fundo Garantidor de Investimentos).
-    /// Implementação pendente — veja docs/specs/cotacoes/modalidades/fgi.md.
-    /// Onda 0 F0.2.
+    /// Calcula o CET anualizado em percentual (ex: 13.0 para 13,0% a.a.)
+    /// para propostas da modalidade FGI (Fundo Garantidor para Investimentos — programa BNDES).
+    /// <para>
+    /// FGI é operação doméstica em BRL: sem PTAX, sem NDF, sem IRRF.
+    /// Suporta apenas <see cref="EstruturaAmortizacao.Bullet"/> no MVP (Price/SAC rejeitados — §1.1).
+    /// </para>
+    /// <para>
+    /// Fluxo de caixa (base 360 dias — SPEC §7.1):
+    /// <list type="bullet">
+    ///   <item>t=0: desembolso do principal (saída) e IOF crédito (custo adicional).</item>
+    ///   <item>t=prazoDias: amortização + juros (Principal × TaxaAa × Prazo/360) + tarifa FGI (Principal × TaxaFgiAa × Prazo/360).</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// A tarifa FGI usa a <strong>mesma fórmula</strong> que
+    /// <c>GerarCronogramaCommand.AdicionarTarifaFgiAsync</c> (linha 180) para garantir
+    /// coerência bit-a-bit entre CET projetado na cotação e CET observado após cronograma.
+    /// </para>
+    /// <para>
+    /// <see cref="FgiInputs.PercentualCoberto"/> é informativo — não altera o CET (SPEC §7.2).
+    /// </para>
+    /// Onda 3a — SPEC docs/specs/cotacoes/modalidades/fgi.md §7.
     /// </summary>
+    /// <param name="proposta">Proposta FGI com MoedaOriginal=Brl e EstruturaAmortizacao=Bullet.</param>
+    /// <param name="dataDesembolso">Data de desembolso (início do fluxo de caixa).</param>
+    /// <param name="fgiInputs">Taxa anual FGI e cobertura percentual (cobertura é ignorada no CET).</param>
+    /// <param name="taxaAaPercentualOverride">
+    /// Substitui a taxa da proposta quando informado. Necessário para calcular o CET
+    /// do contrato fechado com taxa final negociada sem mutar a proposta original (SPEC §5.2).
+    /// </param>
+    /// <returns>CET em % a.a. (ex: 13.0 para 13,0%).</returns>
     public static decimal CalcularCetFgi(
         Proposta proposta,
         LocalDate dataDesembolso,
         FgiInputs fgiInputs,
-        decimal? taxaAaPercentualOverride = null) =>
-        throw new NotImplementedException(
-            "Implementação pendente — Onda 3. Veja docs/specs/cotacoes/modalidades/fgi.md.");
+        decimal? taxaAaPercentualOverride = null)
+    {
+        ArgumentNullException.ThrowIfNull(proposta);
+        ArgumentNullException.ThrowIfNull(fgiInputs);
+
+        // Guard: FGI exige BRL — sem conversão cambial (SPEC §2.4).
+        if (proposta.MoedaOriginal != Moeda.Brl)
+        {
+            throw new ArgumentException(
+                $"CalcularCetFgi exige MoedaOriginal=Brl (recebido: {proposta.MoedaOriginal}). " +
+                "FGI é operação doméstica em BRL.",
+                nameof(proposta));
+        }
+
+        // Guard: FGI não aceita NDF — operação em BRL (SPEC §2.4, EC-10).
+        if (proposta.ExigeNdf)
+        {
+            throw new ArgumentException(
+                "CalcularCetFgi não aceita ExigeNdf=true. FGI é operação em BRL sem hedge cambial.",
+                nameof(proposta));
+        }
+
+        // Guard: MVP suporta apenas Bullet — tarifa anual sobre saldo médio em Price/SAC
+        // exige cronograma intermediário (SPEC §1.1, EC-1).
+        if (proposta.EstruturaAmortizacao != EstruturaAmortizacao.Bullet)
+        {
+            throw new NotSupportedException(
+                $"CalcularCetFgi suporta apenas EstruturaAmortizacao.Bullet no MVP " +
+                $"(recebido: {proposta.EstruturaAmortizacao}). " +
+                "Price/SAC com FGI exige cronograma intermediário — SPEC §1.1.");
+        }
+
+        // Guard: taxa FGI deve ser positiva — zero implica ausência de FGI (EC-13).
+        if (fgiInputs.TaxaFgiAaPercentual <= 0m)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(fgiInputs),
+                fgiInputs.TaxaFgiAaPercentual,
+                "TaxaFgiAaPercentual deve ser > 0. Taxa zero implica ausência de FGI — registre como outra modalidade.");
+        }
+
+        decimal principal = proposta.ValorOferecidoMoedaOriginal.Valor;
+        decimal taxaBase = taxaAaPercentualOverride ?? proposta.TaxaAaPercentualDecimal;
+        // Spread é 0 para FGI no MVP, mas mantemos a soma para consistência com demais modalidades.
+        decimal taxaEfetiva = taxaBase + proposta.SpreadAaPercentualDecimal;
+        int prazoDias = proposta.PrazoDias;
+        const decimal BaseCalculo = 360m;
+
+        // ── Montar fluxo BRL manualmente para FGI Bullet ────────────────────────
+        // FGI não usa ProjetarFluxo/MontarFluxoBrl do FINIMP porque adiciona a tarifa FGI
+        // ao vencimento — componente novo que não existe no motor de amortização genérico.
+        // Evitar abstração prematura: o fluxo Bullet é simples o suficiente para ser inline.
+        var fluxos = new List<(int DiasFromT0, decimal FluxoBrl)>(5);
+
+        // t=0: o tomador recebe o principal (saída para o banco = valor negativo na TIR)
+        fluxos.Add((0, -principal));
+
+        // t=0: IOF crédito — custo adicional ao tomador em t=0 (reduz o "valor líquido recebido")
+        // Modelado como entrada de caixa (positivo) para o banco — eleva a TIR efetiva.
+        if (proposta.IofPercentualDecimal > 0)
+        {
+            decimal iof = Math.Round(
+                principal * proposta.IofPercentualDecimal / 100m,
+                6,
+                MidpointRounding.AwayFromZero);
+            fluxos.Add((0, iof));
+        }
+
+        // t=prazoDias: amortização do principal (entrada para o banco)
+        fluxos.Add((prazoDias, principal));
+
+        // t=prazoDias: juros — fórmula linear base 360 (Bullet BRL)
+        // Principal × TaxaAaEfetiva / 100 × PrazoDias / 360
+        decimal juros = Math.Round(
+            principal * taxaEfetiva / 100m * prazoDias / BaseCalculo,
+            6,
+            MidpointRounding.AwayFromZero);
+        fluxos.Add((prazoDias, juros));
+
+        // t=prazoDias: tarifa FGI anual rateada pelo prazo — idêntica a AdicionarTarifaFgiAsync
+        // (GerarCronogramaCommand.cs linha 180): principal × TaxaFgiAa × prazo / 360.
+        // TaxaFgiAaPercentual está em % humano (ex: 0.5) → convertemos para fração (/100).
+        decimal tarifaFgi = Math.Round(
+            principal * fgiInputs.TaxaFgiAaPercentual / 100m * prazoDias / BaseCalculo,
+            2,                              // mesma precisão de AdicionarTarifaFgiAsync
+            MidpointRounding.AwayFromZero);
+        fluxos.Add((prazoDias, tarifaFgi));
+
+        // ── Calcular TIR e anualizar ────────────────────────────────────────────
+        decimal tirDiaria = CalcularTirDiaria(fluxos);
+        decimal cetAa = AnualizarTaxaDiaria(tirDiaria, prazoDias);
+
+        // CET tem floor em 0% (mesmo comportamento do FINIMP/NCE — SPEC §5.1).
+        decimal cetAjustado = Math.Max(0m, cetAa);
+
+        return Math.Round(cetAjustado * 100m, 6, MidpointRounding.AwayFromZero);
+    }
 
     // ─── Helpers internos ───────────────────────────────────────────────────
 

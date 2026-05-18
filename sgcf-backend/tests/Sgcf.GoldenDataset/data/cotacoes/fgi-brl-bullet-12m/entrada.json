@@ -1,0 +1,38 @@
+{
+  "descricao": "FGI BRL Bullet 365d — golden case SPEC §7.3 (Onda 3a). Principal R$500k, taxa 12% a.a., IOF 0,38%, TaxaFgi 0,5% a.a., PercentualCoberto 80%.",
+  "cotacao": {
+    "codigoInterno": "COT-2026-FGI-001",
+    "modalidade": "Fgi",
+    "valorAlvoBrl": 500000.00,
+    "prazoMaximoDias": 365,
+    "dataAbertura": "2026-05-18",
+    "dataPtaxReferencia": null,
+    "ptaxUsadaUsdBrl": null
+  },
+  "dataDesembolso": "2026-05-18",
+  "proposta": {
+    "banco": "Caixa",
+    "moedaOriginal": "Brl",
+    "valorOferecidoBrl": 500000.00,
+    "taxaAaPercentual": 12.0,
+    "spreadAaPercentual": 0.0,
+    "iofPercentual": 0.38,
+    "prazoDias": 365,
+    "estruturaAmortizacao": "Bullet",
+    "periodicidadeJuros": "Bullet",
+    "exigeNdf": false,
+    "garantiaExigida": "Cobertura FGI 80%",
+    "valorGarantiaExigidaBrl": 0.0,
+    "garantiaEhCdbCativo": false
+  },
+  "fgiInputs": {
+    "taxaFgiAaPercentual": 0.5,
+    "percentualCoberto": 80.0
+  },
+  "notasFormula": {
+    "iof": "500000 * 0.38/100 = 1900.00 (em t=0)",
+    "juros": "500000 * 12/100 * 365/360 = 60833.33 (em t=365)",
+    "tarifaFgi": "500000 * 0.5/100 * 365/360 = 2534.72 (em t=365, arredondado AwayFromZero 2 casas)",
+    "invariante": "PercentualCoberto nao entra no CET — informativo apenas (SPEC §7.2)"
+  }
+}

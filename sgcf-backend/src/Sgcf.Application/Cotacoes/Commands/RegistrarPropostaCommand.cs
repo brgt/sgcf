@@ -106,6 +106,35 @@ public sealed class RegistrarPropostaCommandHandler(
             }
         }
 
+        // Onda 3a FGI — SPEC §5.2 (EC-1, EC-10, EC-11):
+        // FGI é operação doméstica em BRL via banco repassador BNDES — sem PTAX, sem NDF.
+        // MVP suporta apenas Bullet (Price/SAC exigem cronograma intermediário — SPEC §1.1).
+        if (cotacao.Modalidade == ModalidadeContrato.Fgi)
+        {
+            if (moeda != Moeda.Brl)
+            {
+                throw new ArgumentException(
+                    "Proposta FGI deve ser em BRL — modalidade é operação doméstica BNDES sem conversão cambial. " +
+                    $"Recebido: {moeda} (EC-10).",
+                    nameof(cmd));
+            }
+
+            if (cmd.ExigeNdf)
+            {
+                throw new ArgumentException(
+                    "Proposta FGI não aceita NDF — operação em BRL sem exposição cambial (EC-11).",
+                    nameof(cmd));
+            }
+
+            if (estrutura != EstruturaAmortizacao.Bullet)
+            {
+                throw new ArgumentException(
+                    $"Modalidade FGI suporta apenas EstruturaAmortizacao.Bullet no MVP — " +
+                    $"recebido: {estrutura}. Price/SAC com FGI exigem cronograma intermediário (EC-1, SPEC §1.1).",
+                    nameof(cmd));
+            }
+        }
+
         // Onda 4 Lei 4131 — SPEC §4.2 e §5.2:
         // Lei 4131 é operação internacional — rejeitar moeda BRL (sempre moeda estrangeira).
         if (cotacao.Modalidade == ModalidadeContrato.Lei4131 && moeda == Moeda.Brl)

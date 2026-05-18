@@ -15,7 +15,12 @@
 
 ### Resumo executivo
 
-Entrega da **Onda 3b — modalidade Capital de Giro** no módulo de Cotações. Uma empresa pode agora registrar cotações 100% em BRL, sem PTAX D-1 e sem NDF, comparar propostas de capital de giro de qualquer banco comercial, e converter a proposta aceita em `Contrato` + `CapitalDeGiroDetail`. Inclui: remoção de `TipoProduto` e `TemFgi` de `CapitalDeGiroDetail` (quebra de schema — migration S8), `CalcularCetCapitalDeGiro` como função pura delegando ao NCE (mesma fórmula TIR Newton-Raphson base 360), `ConversorCapitalDeGiro` real (substitui stub Onda 0), guards de modalidade (USD → 400, NDF=true → 400), e golden dataset validado (CET 15,904828% com IOF 0,38%).
+Entrega conjunta da **Onda 3 — modalidades Capital de Giro e FGI** no módulo de Cotações. Duas modalidades BRL independentes mergeadas no mesmo release:
+
+- **Onda 3b — Capital de Giro:** linha BRL universal para fluxo de caixa empresarial (qualquer banco comercial). Inclui remoção de `TipoProduto` e `TemFgi` de `CapitalDeGiroDetail` (migration S8 — BREAKING), `CalcularCetCapitalDeGiro` como função pura, `ConversorCapitalDeGiro` real, guards (USD → 400, NDF=true → 400), e golden dataset validado (CET 15,904828% com IOF 0,38%).
+- **Onda 3a — FGI:** linha BNDES via banco repassador (Caixa, BV, BB, Sicoob). Inclui guards específicos (BRL obrigatório, sem NDF, apenas Bullet no MVP), `CalcularCetFgi` com fluxo manual de tarifa anual, `ConversorFgi` real, campos `numeroOperacaoFgi` e `fgi` em `POST /converter-em-contrato`, e golden dataset (CET 12,912788%).
+
+> **Distinção de domínio (correção 2026-05-18):** FGI-modalidade é a linha BNDES direta. FGI como garantia em outras modalidades (NCE, Capital de Giro) já estava implementado em v0.6.0 via `GarantiaExigidaLimite.Tipo = Fgi`. Não há flag `TemFgi`; o tipo de garantia é declarado no limite, não na proposta.
 
 ---
 
@@ -75,7 +80,7 @@ FluxoT180    = ValorPrincipal × (1 + TaxaAa/100 × Prazo/360)
 CET          = TIR([NetoRecebido, -FluxoT180], base=360) — Newton-Raphson
 ```
 
-**Golden case validado (SPEC §7 e Cenário 8):**
+**Golden case Capital de Giro validado (SPEC §7 e Cenário 8):**
 
 | Parâmetro | Valor |
 |---|---|
@@ -89,9 +94,9 @@ CET          = TIR([NetoRecebido, -FluxoT180], base=360) — Newton-Raphson
 | Juros Bullet | R$ 108.750,00 |
 | Pagamento t180 | R$ 1.608.750,00 |
 
-**Migration:** `S8_DropTipoProdutoTemFgi` — remove `tipo_produto` e `tem_fgi` de `balcao_caixa_detail`.
+**Migration Capital de Giro:** `S8_DropTipoProdutoTemFgi` — remove `tipo_produto` e `tem_fgi` de `balcao_caixa_detail`.
 
-**Cobertura de testes:**
+**Cobertura de testes Capital de Giro:**
 
 - 7 testes de domínio: `CalcularCetCapitalDeGiro` (golden BRL 180d, IOF zero ≈ nominal, IOF eleva CET, fachada null, override, rejeita USD, rejeita NDF).
 - 5 testes de domínio: `CapitalDeGiroDetail.Criar` (válido, NumeroOperacao null, contratoId empty, sem TipoProduto, sem TemFgi).
@@ -99,6 +104,76 @@ CET          = TIR([NetoRecebido, -FluxoT180], base=360) — Newton-Raphson
 - 3 testes de aplicação: `RegistrarPropostaCommand` guard (rejeita USD, rejeita NDF, aceita BRL válido).
 - 1 golden dataset (Cenário 8): CET 15,904828%.
 - 4 testes E2E (Slow): fluxo completo, proposta USD → 400, proposta NDF → 400, converter sem capitalDeGiroInputs → NumeroOperacao null.
+
+---
+
+### ADDITIVE — Cotações — Modalidade FGI
+
+**Validações novas em `POST /api/v1/cotacoes/{id}/propostas` (quando `modalidade = "Fgi"`):**
+
+- `moedaOriginal` deve ser `Brl` — FGI é operação doméstica BNDES sem conversão cambial. Violação retorna `400 Bad Request`.
+- `exigeNdf` deve ser `false` — operação em BRL sem exposição cambial. Violação retorna `400 Bad Request`.
+- `estruturaAmortizacao` deve ser `Bullet` — Price/SAC com FGI exigem cronograma intermediário (out of scope MVP §1.1). Violação retorna `400 Bad Request`.
+
+**Campos novos em `POST /api/v1/cotacoes/{id}/converter-em-contrato` (quando `modalidade = "Fgi"`):**
+
+- `numeroOperacaoFgi` (string?, opcional) — número da operação no sistema BNDES.
+- `fgi` (objeto, **obrigatório** quando `modalidade = "Fgi"`) — ausência retorna `400 Bad Request`.
+
+Estrutura do objeto `fgi`:
+
+```json
+{
+  "taxaFgiAaPercentual": 0.5,
+  "percentualCoberto": 80.0
+}
+```
+
+| Campo | Tipo | Obrigatório | Descrição |
+|---|---|---|---|
+| `taxaFgiAaPercentual` | decimal | Sim | Taxa anual da tarifa FGI em % (ex.: `0.5` = 0,5% a.a.). Deve ser > 0. |
+| `percentualCoberto` | decimal? | Não | Cobertura BNDES via FGI em % (ex.: `80.0`). Informativo — **não entra no CET** (MD-3, SPEC §7.2). |
+
+**Fórmula CET FGI (SPEC §7.3):**
+
+```
+IOF         = Principal × IofPct/100                          (em t=0, reduz desembolso líquido)
+Juros       = Principal × TaxaAa/100 × PrazoDias/360          (em t=vencimento)
+TarifaFgi   = Principal × TaxaFgiAa/100 × PrazoDias/360       (em t=vencimento, AwayFromZero 2 casas)
+```
+
+Fluxo de caixa para TIR:
+
+| t | Descrição | Sinal |
+|---|---|---|
+| 0 | Desembolso líquido `Principal - IOF` | − |
+| PrazoDias | `Principal + Juros + TarifaFgi` | + |
+
+TIR resolvida por Newton-Raphson (máx. 100 iterações, tolerância 1e-12), anualizada por `(1 + r_dia)^360 - 1`, base 360 dias.
+
+**Golden case FGI validado pela equipe financeira (2026-05-18):**
+
+| Parâmetro | Valor |
+|---|---|
+| Moeda | BRL |
+| Principal | R$ 500.000,00 |
+| Prazo | 365 dias |
+| Taxa nominal | 12,0% a.a. |
+| IOF | 0,38% (R$ 1.900,00 em t=0) |
+| TaxaFgi | 0,5% a.a. (R$ 2.534,72 em t=365) |
+| PercentualCoberto | 80% (informativo — não altera CET) |
+| CET esperado | **12,912788% a.a.** (±0,01 p.p.) |
+
+**Invariante FGI:** `PercentualCoberto` não altera o CET — alterar de 80% para qualquer valor produz CET idêntico (SPEC §7.2).
+
+**Migration FGI:** nenhuma. `FgiDetail` e `fgi_detail` já existem desde a migração Onda 0 (`S6_FgiDetail`).
+
+**Cobertura de testes FGI:**
+
+- 9 testes unitários: `CalcularCetFgi` (golden ≈12,9%; invariante PercentualCoberto; TaxaFgi=0 → exceção; tarifa positiva; 180d proporcional; Price → NotSupportedException; BRL direto; taxaAaOverride; proporcionalidade).
+- 12 testes de aplicação: `ConversorFgi` (modalidade=Fgi; FgiDetail populado; Fgi=null → IOE; TaxaFgi=0 → IOE; PercentualCoberto>100 → IOE; PercentualCoberto=0 → IOE; PercentualCoberto=null → válido; Secundario=null; NumeroOperacaoFgi=null → válido; timestamps).
+- 3 testes de aplicação: `RegistrarPropostaCommand` guards FGI (BRL guard; NDF guard; Bullet guard).
+- 1 golden dataset (Cenário 9): CET + invariante PercentualCoberto.
 
 ---
 

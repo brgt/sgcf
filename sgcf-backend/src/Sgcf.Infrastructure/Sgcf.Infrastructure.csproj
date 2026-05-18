@@ -11,9 +11,10 @@
   </PropertyGroup>
 
   <!-- Auto-generated EF migration files violate style rules that are valid in hand-written code.
-       These rules (IDE0161, CA1861) are suppressed project-wide; they only occur in generated files. -->
+       These rules (IDE0161, CA1861, CA1707) are suppressed project-wide; they only occur in generated files.
+       CA1707: EF migration class names use underscores by convention (e.g., S5_GarantiasExigidasLimite). -->
   <PropertyGroup>
-    <NoWarn>$(NoWarn);IDE0161;CA1861</NoWarn>
+    <NoWarn>$(NoWarn);IDE0161;CA1861;CA1707</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

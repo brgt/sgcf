@@ -1,0 +1,17 @@
+{
+  "descricao": "Saida esperada — FGI BRL Bullet 365d. CET calculado por TIR Newton-Raphson base 360 dias. Tolerancia CET: +/-0,01 p.p. Validado pela equipe financeira em 2026-05-18.",
+  "toleranciaCetPercentualPontos": 0.01,
+  "cetAaPercentual": 12.912788,
+  "fluxoCaixa": [
+    { "t": 0,   "descricao": "desembolso",   "valor": -500000.00 },
+    { "t": 0,   "descricao": "IOF",           "valor":    1900.00 },
+    { "t": 365, "descricao": "principal",     "valor":  500000.00 },
+    { "t": 365, "descricao": "juros",         "valor":   60833.333333 },
+    { "t": 365, "descricao": "tarifa_fgi",    "valor":    2534.72 }
+  ],
+  "invariantes": [
+    "PercentualCoberto 80% nao altera o CET — informativo (SPEC §7.2)",
+    "CET > taxa nominal (12%) pois IOF e TarifaFgi sao custos adicionais",
+    "CET < 13.5% (limiar de razoabilidade para esse prazo e taxa)"
+  ]
+}

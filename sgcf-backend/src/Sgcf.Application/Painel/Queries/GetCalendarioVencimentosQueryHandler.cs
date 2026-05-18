@@ -2,6 +2,7 @@ using MediatR;
 using NodaTime;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cambio;
@@ -20,6 +21,7 @@ public sealed class GetCalendarioVencimentosQueryHandler(
     IEventoCronogramaRepository cronogramaRepo,
     ICotacaoSpotCache spotCache,
     ICotacaoFxRepository cotacaoFxRepo,
+    ICdiSnapshotRepository cdiSnapshotRepo,
     IClock clock)
     : IRequestHandler<GetCalendarioVencimentosQuery, CalendarioVencimentosDto>
 {
@@ -87,12 +89,24 @@ public sealed class GetCalendarioVencimentosQueryHandler(
                 : (totais.Principal, Math.Round(totais.Juros + valorBrl, 6, MidpointRounding.AwayFromZero));
         }
 
-        // CDI flat projection — only when caller provides the current CDI rate
+        // CDI flat projection — use caller-supplied rate, or auto-fetch the latest snapshot
+        // when there are Juros events with value 0 (CDI-indexed contracts during carência).
+        decimal? cdiEfetivo = query.CdiAnualPct;
+        if (!cdiEfetivo.HasValue
+            && eventos.Any(e => e.Tipo == TipoEventoCronograma.Juros && e.ValorMoedaOriginal.Valor == 0m))
+        {
+            CdiSnapshot? snapshot = await cdiSnapshotRepo.GetMaisRecenteAsync(hoje, cancellationToken);
+            if (snapshot is not null)
+            {
+                cdiEfetivo = snapshot.CdiAaPercentual;
+            }
+        }
+
         Dictionary<(int Mes, LocalDate Data, Guid ContratoId), decimal>? projecaoJuros = null;
-        if (query.CdiAnualPct.HasValue)
+        if (cdiEfetivo.HasValue)
         {
             projecaoJuros = await CalcularProjecaoCdiAsync(
-                eventos, contratos, moedaPorContrato, taxasConversao, query.CdiAnualPct.Value, cancellationToken);
+                eventos, contratos, moedaPorContrato, taxasConversao, cdiEfetivo.Value, cancellationToken);
         }
 
         // Organiza os itens por mês, ordenados por data
@@ -156,7 +170,7 @@ public sealed class GetCalendarioVencimentosQueryHandler(
             Ano: query.Ano,
             Meses: meses.AsReadOnly(),
             TotalAnoBrl: totalAno,
-            TaxaCdiUsadaPct: query.CdiAnualPct);
+            TaxaCdiUsadaPct: cdiEfetivo);
     }
 
     private static CalendarioVencimentosDto ConstruirVazio(int ano)

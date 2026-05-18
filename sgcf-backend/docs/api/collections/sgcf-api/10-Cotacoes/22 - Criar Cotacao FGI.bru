@@ -1,0 +1,59 @@
+meta {
+  name: Criar Cotacao FGI
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/api/v1/cotacoes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+headers {
+  Accept: application/json
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "modalidade": "Fgi",
+    "valorAlvoBrl": 500000.00,
+    "prazoMaximoDias": 365,
+    "dataAbertura": "2026-05-18",
+    "observacoes": "Captação FGI BRL Bullet 365d — golden case SPEC §7.3"
+  }
+}
+
+script:post-response {
+  if (res.status === 201 && res.body && res.body.id) {
+    bru.setEnvVar("cotacaoId", res.body.id);
+  }
+}
+
+docs {
+  Cria nova cotação FGI (linha BNDES com cobertura FGI obrigatória via banco repassador).
+  Política: Escrita
+
+  FGI é operação doméstica em BRL — dataPtaxReferencia e ptaxUsadaUsdBrl devem ser omitidos.
+
+  Diferenças em relação a Finimp:
+  - modalidade: "Fgi"
+  - sem dataPtaxReferencia / ptaxUsadaUsdBrl (PTAX não se aplica)
+
+  Proposta registrada para esta cotação deve obedecer:
+  - moedaOriginal: "Brl" (obrigatório — FGI é operação doméstica)
+  - exigeNdf: false (obrigatório — sem exposição cambial)
+  - estruturaAmortizacao: "Bullet" (MVP §1.1 — Price/SAC exigem cronograma intermediário)
+
+  CET calculado por fluxo manual (IOF em t=0; principal+juros+tarifaFgi em t=vencimento),
+  TIR Newton-Raphson base 360 dias (SPEC §7.3).
+
+  Retornos:
+  - 201: cotação criada com CodigoInterno gerado automaticamente (ex: COT-2026-FGI-001)
+  - 400: campos inválidos
+}

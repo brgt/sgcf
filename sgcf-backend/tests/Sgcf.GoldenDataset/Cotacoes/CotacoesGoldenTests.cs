@@ -634,6 +634,59 @@ public sealed class CotacoesGoldenTests
             because: "IOF 0,38% em t=0 deve elevar CET acima da taxa nominal");
     }
 
+    // ── Cenário 9: FGI BRL Bullet 365d ────────────────────────────────────────
+
+    /// <summary>
+    /// Golden 9: FGI BRL Bullet 365d — golden case SPEC §7.3.
+    /// Principal R$500k, taxa 12% a.a., IOF 0,38%, TaxaFgi 0,5% a.a., PercentualCoberto 80%.
+    /// CET esperado ≈ 12,912788% a.a. (TIR Newton-Raphson base 360).
+    /// Valida que PercentualCoberto não entra no CET (invariante SPEC §7.2).
+    /// Onda 3a — docs/specs/cotacoes/modalidades/fgi.md §7.3.
+    /// </summary>
+    [Fact]
+    public void FgiBrlBullet12m_CetMatchesGoldenDataset()
+    {
+        // Arrange
+        JsonElement e = LerJson("fgi-brl-bullet-12m", "entrada.json");
+        JsonElement s = LerJson("fgi-brl-bullet-12m", "saida_esperada.json");
+
+        JsonElement propostaJson = e.GetProperty("proposta");
+        JsonElement fgiJson = e.GetProperty("fgiInputs");
+        LocalDate dataDesembolso = ParseLocalDate(e.GetProperty("dataDesembolso").GetString()!);
+
+        Proposta proposta = CriarProposta(
+            valorOferecidoUsd: propostaJson.GetProperty("valorOferecidoBrl").GetDecimal(),
+            taxaAaPercentual: propostaJson.GetProperty("taxaAaPercentual").GetDecimal(),
+            spreadAaPercentual: propostaJson.GetProperty("spreadAaPercentual").GetDecimal(),
+            iofPercentual: propostaJson.GetProperty("iofPercentual").GetDecimal(),
+            prazoDias: propostaJson.GetProperty("prazoDias").GetInt32(),
+            moedaOriginal: Moeda.Brl);
+
+        var fgiInputs = new FgiInputs(
+            TaxaFgiAaPercentual: fgiJson.GetProperty("taxaFgiAaPercentual").GetDecimal(),
+            PercentualCoberto: fgiJson.GetProperty("percentualCoberto").GetDecimal());
+
+        decimal cetEsperado = s.GetProperty("cetAaPercentual").GetDecimal();
+        decimal tolerancia = s.GetProperty("toleranciaCetPercentualPontos").GetDecimal();
+
+        // Act — CET com tarifa FGI (SPEC §7.1)
+        decimal cetCalculado = CalculadoraCet.CalcularCetFgi(proposta, dataDesembolso, fgiInputs);
+
+        // Assert — CET dentro da tolerância aprovada pela equipe financeira
+        cetCalculado.Should().BeApproximately(cetEsperado, tolerancia,
+            because: $"CET FGI BRL Bullet 365d deve bater com o golden (tolerância ±{tolerancia} p.p.)");
+
+        // Assert — invariante: PercentualCoberto NÃO altera o CET (SPEC §7.2)
+        var fgiInputsSemCobertura = new FgiInputs(
+            TaxaFgiAaPercentual: fgiInputs.TaxaFgiAaPercentual,
+            PercentualCoberto: null);
+
+        decimal cetSemCobertura = CalculadoraCet.CalcularCetFgi(proposta, dataDesembolso, fgiInputsSemCobertura);
+
+        cetCalculado.Should().Be(cetSemCobertura,
+            because: "PercentualCoberto é informativo — não deve alterar o CET FGI (SPEC §7.2, §2.3)");
+    }
+
     // ─── Helper interno ────────────────────────────────────────────────────
 
     private static decimal CalcularVplCustoTotal(

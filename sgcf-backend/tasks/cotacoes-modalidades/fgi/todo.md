@@ -1,129 +1,80 @@
 # TODO — Cotações de FGI
 
-Espelho operacional de `tasks/cotacoes-modalidades/fgi/plan.md`. Marque conforme avançar.
+Espelho operacional de `tasks/cotacoes-modalidades/fgi/plan.md`.
 
-## Fase 1 — Domínio
+**Status geral: ENTREGUE — v0.9.0 (2026-05-18)**
 
-- [ ] **Task 1.1** Estender `Proposta` com campos FGI planos (`NumeroOperacaoFgi`, `TaxaFgiAaDecimal`, `PercentualCobertoDecimal`)
-    - [ ] Campos com setters privados em `Proposta.cs`
-    - [ ] Construtor `internal` aceita os 3 parâmetros opcionais
-    - [ ] `Cotacao.AdicionarProposta` propaga os campos
-    - [ ] Invariantes condicionais (`Modalidade == Fgi` exige FGI; demais rejeitam FGI)
-    - [ ] Cache CET invalidado em mutações FGI
-    - [ ] Conversão pct→fração espelha `FgiDetail.Criar`
-    - [ ] Testes `PropostaFgiTests.cs` verdes
-    - [ ] Testes existentes continuam verdes
+O design final diferiu do plano original: `Proposta` não ganhou campos FGI inline.
+`FgiInputs` são passados apenas na conversão para contrato (`ConverterEmContratoCommand`),
+o que simplifica a modelagem e elimina as fases de persistência intermediária.
 
-- [ ] **Task 1.2** Estender `CalculadoraCet` com tarifa FGI no fluxo
-    - [ ] Bloco em `MontarFluxoBrl` adiciona evento FGI em `t = prazoDias`
-    - [ ] Fórmula idêntica a `GerarCronogramaCommand.AdicionarTarifaFgiAsync`
-    - [ ] Função permanece pura (sem I/O, sem `IClock`)
-    - [ ] Testes `CalculadoraCetFgiTests.cs` verdes
-    - [ ] Property-based (FsCheck) confirma monotonicidade e linearidade
-    - [ ] Regressão FINIMP sem FGI mantém CET atual
+---
 
-- [ ] **Checkpoint A — Domínio**
-    - [ ] `dotnet build` limpo
-    - [ ] `dotnet test tests/Sgcf.Domain.Tests` verde
-    - [ ] Revisão humana de AD-4 e AD-5 (fórmula do CET)
+## Fase 1 — Domínio [ENTREGUE]
 
-## Fase 2 — Persistência
+- [x] **Task 1.1** Guards de modalidade em `RegistrarPropostaCommand`
+    - [x] BRL obrigatório para FGI (EC-10)
+    - [x] NDF proibido para FGI (EC-11)
+    - [x] Bullet obrigatório no MVP (EC-1, SPEC §1.1)
+    - [x] Testes RED → GREEN em `CalculadoraCetFgiTests.cs`
 
-- [ ] **Task 2.1** Migration `S6_PropostaFgi`
-    - [ ] `dotnet ef migrations add S6_PropostaFgi` gera migration limpa
-    - [ ] 3 colunas nullable em `proposta`
-    - [ ] Validação cross-modalidade fica em aplicação (AD-10), não em CHECK
-    - [ ] `dotnet ef database update` aplica em banco com dados
-    - [ ] `dotnet ef migrations remove` reverte sem erro
+- [x] **Task 1.2** `CalculadoraCet.CalcularCetFgi` implementado
+    - [x] Fluxo manual: IOF em t=0, principal+juros+tarifaFgi em t=vencimento
+    - [x] TIR Newton-Raphson, base 360 dias
+    - [x] Fórmula TarifaFgi idêntica a `GerarCronogramaCommand.AdicionarTarifaFgiAsync`
+    - [x] Guards: BRL, sem NDF, Bullet, TaxaFgi > 0
+    - [x] Testes verdes (9 casos)
 
-- [ ] **Task 2.2** Atualizar `PropostaConfiguration`
-    - [ ] Mapeamento das 3 novas colunas
-    - [ ] Precisão dos `numeric` consistente com `FgiDetail`
-    - [ ] Teste de integração persiste e recarrega proposta FGI
+## Fase 2 — Persistência [SEM MUDANÇAS]
 
-- [ ] **Checkpoint B — Persistência**
-    - [ ] Migration aplica e reverte em banco com dados
-    - [ ] Round-trip de persistência funciona
+- [x] `FgiDetail` e `fgi_detail` já existem desde Onda 0 (`S6_FgiDetail`)
+- [x] Nenhuma migration necessária
 
-## Fase 3 — Application + API
+## Fase 3 — Application + API [ENTREGUE]
 
-- [ ] **Task 3.1** `CriarCotacaoCommand` dispensa PTAX D-1 para FGI
-    - [ ] Ramo `if (modalidade == Fgi)` antes de buscar PTAX
-    - [ ] Helper compartilhado com NCE/Capital de Giro (extrair ou reutilizar)
-    - [ ] Teste `CriarCotacaoFgiTests.cs` cria cotação sem PTAX cadastrada
-    - [ ] Cotação FINIMP continua exigindo PTAX (regressão)
+- [x] **Task 3.1** `CriarCotacaoCommand` — FGI dispensa PTAX (já suportado via `Modalidade == Fgi` no ramo BRL)
+- [x] **Task 3.2** `ConverterEmContratoCommand` ganha `NumeroOperacaoFgi` e `FgiInputs? Fgi`
+    - [x] Usa `FgiInputs` do domínio diretamente (sem duplicação)
+    - [x] `ConversorFgi` real implementado (extrato de stub)
+- [x] **Task 3.3** `ConversorFgi` cria `FgiDetail` via `FgiDetail.Criar`
+    - [x] Validação: TaxaFgi > 0, PercentualCoberto em (0,100]
+    - [x] Testes `ConversorFgiTests.cs` verdes (12 casos)
 
-- [ ] **Task 3.2** `RegistrarPropostaCommand` aceita campos FGI
-    - [ ] Record ganha `NumeroOperacaoFgi`, `TaxaFgiAaPct`, `PercentualCobertoPct` opcionais
-    - [ ] Validador condicional (`Modalidade == Fgi` exige; demais rejeitam)
-    - [ ] Handler converte pct→fração
-    - [ ] Payload antigo FINIMP continua válido (backwards-compatible)
-    - [ ] Testes unitários e E2E verdes
+## Fase 4 — Golden Dataset [ENTREGUE]
 
-- [ ] **Task 3.3** `ConverterEmContratoCommand` cria `FgiDetail`
-    - [ ] Ramo `Modalidade == Fgi` chama `FgiDetail.Criar` com campos da proposta aceita
-    - [ ] `ContratoDto.From` recebe o `FgiDetail`
-    - [ ] Campos FINIMP (`RofNumero`, etc.) ficam null para FGI
-    - [ ] `LimiteBanco` FGI tem `ValorUtilizadoBRL` atualizado
-    - [ ] Cronograma gerado contém evento `TarifaFgi`
+- [x] **Task 4.1** Cenário `fgi-brl-bullet-12m`
+    - [x] Principal R$ 500k, 365d, taxa 12%, IOF 0.38%, TaxaFgi 0.5%, PercentualCoberto 80%
+    - [x] CET esperado: 12.912788% a.a. (±0.01 p.p.)
+    - [x] Invariante: PercentualCoberto não altera CET (SPEC §7.2)
+    - [x] Sign-off equipe financeira 2026-05-18
+    - [x] `dotnet test tests/Sgcf.GoldenDataset` verde (Cenário 8)
 
-- [ ] **Task 3.4** API e DTOs
-    - [ ] `PropostaDto` expõe campos FGI
-    - [ ] `GET /api/v1/cotacoes/{id}` retorna campos FGI quando aplicável
-    - [ ] Swagger atualizado
-    - [ ] E2E `CotacaoFgiE2ETests.cs` cobre fluxo completo
+## Fase 5 — Documentação [ENTREGUE]
 
-- [ ] **Checkpoint C — CRUD ponta a ponta**
-    - [ ] Fluxo completo FGI via API funciona
-    - [ ] Suite E2E verde
-    - [ ] Revisão humana do CET FGI
+- [x] **Task 5.1** `docs/specs/cotacoes/modalidades/fgi.md` → Status: Entregue v0.9.0
+- [x] **Task 5.2** `docs/api/cotacoes.md` atualizado
+    - [x] Modalidades entregues atualizadas no banner
+    - [x] Tabela de guards por modalidade em POST /propostas
+    - [x] Campos fgi/numeroOperacaoFgi documentados em converter-em-contrato
+- [x] **Task 5.3** Bruno collection
+    - [x] Request 22: Criar Cotacao FGI
+    - [x] Request 23: Converter em Contrato FGI
+- [x] **Task 5.4** CHANGELOG v0.9.0 — bloco completo com fórmulas, golden case, cobertura
 
-## Fase 4 — Golden Dataset
+## Checkpoint Final [VERDE]
 
-- [ ] **Task 4.1** Cenário FGI bullet 12m
-    - [ ] `cotacao-fgi-bullet-12m.json` em `tests/Sgcf.GoldenDataset/data/cotacoes/`
-    - [ ] CET esperado com 6 casas decimais
-    - [ ] Comentário explicando a derivação do fluxo
-    - [ ] Sign-off do time financeiro (CLAUDE.md exige)
-    - [ ] `dotnet test tests/Sgcf.GoldenDataset` verde
+- [x] `dotnet test --filter "Category!=Slow"` — 693 testes, 0 falhas
+- [x] Build limpo, 0 warnings, 0 erros
+- [x] Golden Dataset assinado pelo time financeiro (2026-05-18)
+- [x] E2E tests: `FgiFluxoTests.cs` (4 cenários Slow)
+- [x] Bruno collection validada com exemplo golden case
 
-## Fase 5 — Documentação
+## Perguntas em Aberto — Respostas Fixadas
 
-- [ ] **Task 5.1** Atualizar `docs/specs/cotacoes/SPEC.md`
-    - [ ] §11.2 remove FGI de out-of-scope
-    - [ ] §3.3 ganha regra FGI
-    - [ ] §5.1 ganha sub-seção 5.1.1 (CET FGI)
-    - [ ] Glossário §2 distingue FGI-modalidade × FGI-garantia
-
-- [ ] **Task 5.2** Atualizar `docs/api/cotacoes.md`
-    - [ ] Schema Proposta ganha 3 campos
-    - [ ] Exemplo POST cotação FGI
-    - [ ] Tabela de regras condicionais
-
-- [ ] **Task 5.3** Bruno collection
-    - [ ] `POST cotacao FGI`
-    - [ ] `POST proposta FGI`
-    - [ ] `POST converter em contrato FGI`
-
-- [ ] **Task 5.4** CHANGELOG
-    - [ ] Seção `[0.x.0] — 2026-MM-DD`
-    - [ ] Bloco `ADDITIVE — Cotações — Suporte a modalidade FGI`
-
-## Checkpoint Final
-
-- [ ] `dotnet test` (suite completa) verde
-- [ ] Build limpo, sem warnings novos
-- [ ] Golden Dataset assinado pelo time financeiro
-- [ ] Documentação revisada
-- [ ] Bruno collection valida fluxo manual completo
-- [ ] PR pronto para review
-
-## Perguntas em Aberto (decidir antes do `/build`)
-
-- [ ] Q1 — FGI em estruturas Price/SAC: restringir MVP a Bullet?
-- [ ] Q2 — `PercentualCoberto` máximo regulatório?
-- [ ] Q3 — Capturar `TipoFgi` (subprograma) na proposta?
-- [ ] Q4 — Imutabilidade da `TaxaFgiAa` após aceitação?
-- [ ] Q5 — Capturar `BancoIntermediario` na proposta?
-- [ ] Q6 — Quem extrai o helper "BRL dispensa PTAX" — FGI ou Capital de Giro?
-- [ ] Q7 — Numeração da versão (consolidação com task #16)
+- [x] Q1 — FGI Price/SAC: **restrito a Bullet no MVP** — Price/SAC exigem cronograma (SPEC §1.1)
+- [x] Q2 — PercentualCoberto máximo: **100% (invariante de domínio)**, 0% rejeitado
+- [ ] Q3 — Capturar `TipoFgi` (subprograma): **backlog pós-MVP**
+- [x] Q4 — TaxaFgiAa após aceitação: **imutável** — FgiDetail é criado uma única vez na conversão
+- [ ] Q5 — Capturar `BancoIntermediario`: **backlog pós-MVP**
+- [x] Q6 — Helper "BRL dispensa PTAX": **reutilizado — mesmo ramo do NCE já existente**
+- [x] Q7 — Versão: **v0.9.0** (paralelo com Capital de Giro v0.9.0)

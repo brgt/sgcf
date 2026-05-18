@@ -132,6 +132,9 @@ public sealed class ConversorStubsTests
     }
 
     // ─── ConversorFgi ─────────────────────────────────────────────────────────
+    // ConversorFgi: implementação real entregue na Onda 3a — testes completos em ConversorFgiTests.cs.
+    // Estes testes mantêm a regressão de contrato da interface (modalidade) e o comportamento
+    // ao receber inputs ausentes (comando sem Fgi).
 
     [Fact]
     public void ConversorFgi_retorna_modalidade_Fgi()
@@ -139,15 +142,21 @@ public sealed class ConversorStubsTests
         new ConversorFgi().Modalidade.Should().Be(ModalidadeContrato.Fgi);
     }
 
+    /// <summary>
+    /// Regressão: ConversorFgi com comando sem Fgi inputs deve lançar InvalidOperationException
+    /// (implementação real exige TaxaFgiAaPercentual — SPEC §5.3, EC-2).
+    /// Antes da Onda 3a, lançava NotImplementedException; após, lança InvalidOperationException.
+    /// </summary>
     [Fact]
-    public async Task ConversorFgi_lanca_NotImplementedException()
+    public async Task ConversorFgi_sem_FgiInputs_lanca_InvalidOperationException()
     {
         ConversorFgi conversor = new();
         ConverterEmContratoContext ctx = CriarContexto(ModalidadeContrato.Fgi);
+        // Contexto tem Fgi = null (default) → TaxaFgiAaPercentual ausente → deve rejeitar.
 
         Func<Task> act = () => conversor.CriarDetailAsync(ctx, CancellationToken.None);
 
-        await act.Should().ThrowAsync<NotImplementedException>()
-            .WithMessage("*Fgi*");
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*TaxaFgiAaPercentual*");
     }
 }

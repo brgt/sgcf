@@ -51,6 +51,9 @@ public sealed record Lei4131Inputs(
     string? PaisCredor,
     decimal? AliquotaIrrfPercentual);
 
+// Nota: FgiInputs é definido em Sgcf.Domain.Cotacoes — reutilizado diretamente para evitar duplicação.
+// A regra de dependência Application→Domain permite este uso (SPEC MD-5).
+
 /// <summary>
 /// Inputs específicos da modalidade Capital de Giro para o command de conversão.
 /// SPEC §5.3 — Onda 3b.
@@ -86,7 +89,11 @@ public sealed record ConverterEmContratoCommand(
     // Onda 4 Lei 4131 — SPEC §5.3: campos específicos de Lei 4131/62.
     Lei4131Inputs? Lei4131 = null,
     // Onda 3b Capital de Giro — SPEC §5.3: campos específicos de Capital de Giro.
-    CapitalDeGiroInputs? CapitalDeGiro = null) : IRequest<ContratoDto>;
+    CapitalDeGiroInputs? CapitalDeGiro = null,
+    // Onda 3a FGI — SPEC fgi.md §6.1: número de operação (opcional) separado dos inputs financeiros.
+    string? NumeroOperacaoFgi = null,
+    // Onda 3a FGI — SPEC fgi.md §6.1: taxa e percentual de cobertura do FGI.
+    FgiInputs? Fgi = null) : IRequest<ContratoDto>;
 
 public sealed class ConverterEmContratoCommandValidator : AbstractValidator<ConverterEmContratoCommand>
 {
@@ -183,8 +190,9 @@ public sealed class ConverterEmContratoCommandHandler(
         // Novos conversores adicionam o cast correspondente aqui ao serem implementados.
         FinimpDetail? finimpDetail = detailPrincipal as FinimpDetail;
         RefinimpDetail? refinimpDetail = detailPrincipal as RefinimpDetail;
-        NceDetail? nceDetail = detailPrincipal as NceDetail;             // Onda 2
-        CapitalDeGiroDetail? capitalDeGiroDetail = detailPrincipal as CapitalDeGiroDetail; // Onda 3b
+        NceDetail? nceDetail = detailPrincipal as NceDetail;                                 // Onda 2
+        CapitalDeGiroDetail? capitalDeGiroDetail = detailPrincipal as CapitalDeGiroDetail;   // Onda 3b
+        FgiDetail? fgiDetail = detailPrincipal as FgiDetail;                                 // Onda 3a
 
         // ── 2. Calcular CET do contrato fechado ────────────────────────────────
         // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
@@ -277,7 +285,8 @@ public sealed class ConverterEmContratoCommandHandler(
             finimpDetail,
             refinimpDetail: refinimpDetail,
             nceDetail: nceDetail,
-            capitalDeGiroDetail: capitalDeGiroDetail);
+            capitalDeGiroDetail: capitalDeGiroDetail,
+            fgiDetail: fgiDetail);
     }
 
     private static async Task<string> GerarCodigoInternoContratoAsync(
