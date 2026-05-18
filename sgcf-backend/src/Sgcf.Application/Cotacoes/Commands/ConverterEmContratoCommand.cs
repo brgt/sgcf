@@ -7,6 +7,7 @@ using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
+using Entity = Sgcf.Domain.Common.Entity;
 
 namespace Sgcf.Application.Cotacoes.Commands;
 
@@ -47,9 +48,15 @@ public sealed class ConverterEmContratoCommandHandler(
     IEconomiaRepository economiaRepo,
     ILimiteBancoRepository limiteRepo,
     ICdiSnapshotRepository cdiRepo,
+    IEnumerable<IConversorModalidade> conversores,
     IClock clock) : IRequestHandler<ConverterEmContratoCommand, ContratoDto>
 {
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = false };
+
+    // Mapa indexado por modalidade — construído uma vez por instância do handler.
+    // Scoped DI garante que o dicionário é recriado por request, compatível com o ciclo dos conversores.
+    private readonly IReadOnlyDictionary<ModalidadeContrato, IConversorModalidade> _conversoresMap =
+        conversores.ToDictionary(c => c.Modalidade);
 
     public async Task<ContratoDto> Handle(ConverterEmContratoCommand cmd, CancellationToken cancellationToken)
     {
@@ -95,22 +102,27 @@ public sealed class ConverterEmContratoCommandHandler(
         contrato.SetCodigoInterno(codigoInterno);
         contratoRepo.Add(contrato);
 
-        // Para FINIMP: criar FinimpDetail
-        FinimpDetail? finimpDetail = null;
-        if (cotacao.Modalidade == ModalidadeContrato.Finimp)
-        {
-            finimpDetail = FinimpDetail.Criar(
-                contrato.Id,
-                cmd.RofNumero,
-                null,
-                cmd.ExportadorNome,
-                cmd.ExportadorPais,
-                cmd.ProdutoImportado,
-                null, null, null, false,
-                clock);
+        // Dispatcher: roteia a criação do Detail para o conversor da modalidade registrada.
+        // Cada modalidade implementa IConversorModalidade e é registrada em DI.
+        // Onda 0 F0.3 — docs/specs/cotacoes/modalidades/onda-0.md §5.5.
+        IConversorModalidade conversor = _conversoresMap.GetValueOrDefault(cotacao.Modalidade)
+            ?? throw new InvalidOperationException(
+                $"Conversor não registrado para modalidade '{cotacao.Modalidade}'. " +
+                "Verifique o registro de IConversorModalidade em DependencyInjection.");
 
-            contratoRepo.AddFinimpDetail(finimpDetail);
+        var ctx = new ConverterEmContratoContext(cotacao, propostaAceita, contrato, cmd, clock);
+        (Entity detailPrincipal, Entity? detailSecundario) =
+            await conversor.CriarDetailAsync(ctx, cancellationToken);
+
+        contratoRepo.AddDetail(detailPrincipal);
+        if (detailSecundario is not null)
+        {
+            contratoRepo.AddDetail(detailSecundario);
         }
+
+        // Cast para FinimpDetail apenas quando a modalidade é FINIMP, para manter
+        // compatibilidade com ContratoDto.From que aceita FinimpDetail? como parâmetro opcional.
+        FinimpDetail? finimpDetail = detailPrincipal as FinimpDetail;
 
         // ── 2. Calcular CET do contrato fechado ────────────────────────────────
         // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
