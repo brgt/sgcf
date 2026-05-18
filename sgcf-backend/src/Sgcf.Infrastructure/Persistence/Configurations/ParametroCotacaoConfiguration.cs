@@ -27,14 +27,14 @@ internal sealed class ParametroCotacaoConfiguration : IEntityTypeConfiguration<P
                    : m == ModalidadeContrato.Refinimp ? "REFINIMP"
                    : m == ModalidadeContrato.Lei4131 ? "LEI_4131"
                    : m == ModalidadeContrato.Nce ? "NCE"
-                   : m == ModalidadeContrato.BalcaoCaixa ? "BALCAO_CAIXA"
+                   : m == ModalidadeContrato.CapitalDeGiro ? "CAPITAL_DE_GIRO"
                    : "FGI",
                 s => s == null ? (ModalidadeContrato?)null
                    : s == "FINIMP" ? ModalidadeContrato.Finimp
                    : s == "REFINIMP" ? ModalidadeContrato.Refinimp
                    : s == "LEI_4131" ? ModalidadeContrato.Lei4131
                    : s == "NCE" ? ModalidadeContrato.Nce
-                   : s == "BALCAO_CAIXA" ? ModalidadeContrato.BalcaoCaixa
+                   : s == "CAPITAL_DE_GIRO" ? ModalidadeContrato.CapitalDeGiro
                    : (ModalidadeContrato?)ModalidadeContrato.Fgi)
             .HasColumnType("text")
             .IsRequired(false);
