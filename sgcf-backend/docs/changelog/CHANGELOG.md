@@ -11,6 +11,101 @@
 
 ---
 
+## [0.8.0] — 2026-05-18
+
+### Resumo executivo
+
+Entrega da **Onda 4 — modalidade Lei 4131/62** no módulo de Cotações. Uma empresa pode agora registrar cotações de empréstimo direto do exterior (Lei 4.131/62), comparar propostas com estimativa de IRRF por alíquota de bitributação, e converter em contrato com detalhamento de SBLC, market flex e break funding fee. Inclui: guard de moeda estrangeira em propostas Lei4131, `CalculadoraIrrfEstimado` como função pura, `irrfEstimadoBrl` informativo no comparativo (sem entrar no CET — decisão MD-3), `ConversorLei4131` real (substitui stub Onda 0), `CalcularCetLei4131` delegando a FINIMP com guard BRL, e golden dataset validado pela tesouraria (CET 6.504008%).
+
+---
+
+### ADDITIVE — Cotações — Modalidade Lei 4131/62
+
+**Campo novo em `GET /api/v1/cotacoes/{id}/comparativo`:**
+
+- `aliquotaIrrfPercentual` (decimal?, query string) — alíquota IRRF para estimar retenção na fonte. Valores comuns: `15` (regra geral), `12.5` (acordo Japão), `25` (jurisdição favorecida). Quando ausente, `irrfEstimadoBrl = 0`.
+
+**Campo novo em `ComparativoDto` (resposta do comparativo):**
+
+```json
+{
+  "irrfEstimadoBrl": 488699.25
+}
+```
+
+Valor **informativo** — não compõe o CET (decisão PO 2026-05-18, MD-3/AD-3). Calculado on-demand; não persistido na `Proposta`.
+
+**Validação nova em `POST /api/v1/cotacoes/{id}/propostas`:**
+
+- Para cotações `Lei4131`, `moedaOriginal` deve ser diferente de `Brl`. Proposta em BRL retorna `400 Bad Request` com mensagem descritiva.
+
+**Campo novo em `POST /api/v1/cotacoes/{id}/converter-em-contrato`:**
+
+- `lei4131` (objeto, obrigatório quando `modalidade = "Lei4131"`). Ausência retorna `400 Bad Request`.
+
+Estrutura do objeto `lei4131`:
+
+```json
+{
+  "garantiaTipo": "SBLC",
+  "garantiaPercentual": 100.0,
+  "valorGarantiaContratadaBrl": 25061500.00,
+  "garantiaEhCdbCativo": false
+}
+```
+
+Campos de `Lei4131Detail` persistidos no contrato:
+
+| Campo | Tipo | Notas |
+|---|---|---|
+| `SblcNumero` | `string?` | Identificador externo da SBLC |
+| `SblcBancoEmissor` | `string?` | Razão social do banco emissor |
+| `SblcValorUsd` | `decimal?` | Valor de face em USD (informativo) |
+| `TemMarketFlex` | `bool` | Flag de cláusula market flex |
+| `BreakFundingFeePercentual` | `decimal?` | Fee de liquidação antecipada (fração, ex: 0.015 = 1.5%) |
+
+Campos capturados no command mas **não persistidos** (MD-5):
+
+- `paisCredor` — país do credor (ISO 3166-1 alpha-3). Informativo; sem FK.
+- `aliquotaIrrfPercentual` — alíquota IRRF usada na estimativa; sem coluna em `lei4131_detail`.
+
+**Fórmula IRRF (SPEC §8.1):**
+
+```
+JurosProjetadosMoedaOriginal = ValorOferecidoMoedaOriginal × (TaxaAa + Spread)/100 × Prazo/360
+JurosProjetadosBrl           = JurosProjetadosMoedaOriginal × PtaxUsadaUsdBrl
+IrrfEstimadoBrl              = round(JurosProjetadosBrl × Alíquota/100, 2, AwayFromZero)
+```
+
+**Golden case validado (SPEC §7.4):**
+
+| Parâmetro | Valor |
+|---|---|
+| Moeda | USD |
+| Valor ofertado | 5.000.000,00 |
+| Taxa + Spread | 6,0% + 0,5% = 6,5% a.a. |
+| Prazo | 720 dias |
+| PTAX | 5,0123 |
+| CET esperado | **6,504008% a.a.** (±0,01 p.p.) |
+| IRRF 15% | **R$ 488.699,25** |
+| IRRF 12,5% | **R$ 407.249,38** |
+| IRRF 25% | **R$ 814.498,75** |
+
+**Migration:** nenhuma. Todos os campos persistidos já existem em `lei4131_detail` (migrado na Onda 0).
+
+**Bruno collection:** 3 novos requests (19, 20, 21) em `docs/api/collections/sgcf-api/10-Cotacoes/`.
+
+**Cobertura de testes:**
+
+- 8 testes unitários: `CalculadoraIrrfEstimado` (null, zero, negativo → 0; golden cases 15%/12.5%/25%; prazo proporcional; arredondamento AwayFromZero).
+- 6 testes de aplicação: `ConversorLei4131` (SBLC completo, clean, ContratoId, campos não persistidos, inputs nulos → InvalidOperationException).
+- 2 testes de aplicação: `RegistrarPropostaCommand` guard BRL (Lei4131 BRL → ArgumentException; Lei4131 USD → sucesso).
+- 2 testes de domínio: `CalcularCetLei4131` (retorna CET idêntico ao FINIMP; BRL → ArgumentException).
+- 1 golden dataset (Cenário 7): CET + IRRF 3 alíquotas.
+- 3 testes E2E (Slow): fluxo completo, BRL guard, lei4131Detail ausente.
+
+---
+
 ## [0.7.0] — 2026-05-18
 
 ### Resumo executivo
