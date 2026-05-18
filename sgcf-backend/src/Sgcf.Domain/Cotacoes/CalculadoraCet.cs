@@ -282,16 +282,55 @@ public static class CalculadoraCet
     }
 
     /// <summary>
-    /// Stub: cálculo do CET para Capital de Giro.
-    /// Implementação pendente — veja docs/specs/cotacoes/modalidades/capital-de-giro.md.
-    /// Onda 0 F0.2.
+    /// Calcula o CET anualizado em percentual (ex: 14.5 para 14,5% a.a.)
+    /// para propostas da modalidade Capital de Giro.
+    /// <para>
+    /// Capital de Giro é operação doméstica em BRL: sem PTAX, sem NDF, sem IRRF.
+    /// IOF crédito (alíquota interna) é custo em t=0 que compõe o CET. Base 360 dias.
+    /// </para>
+    /// <para>
+    /// A fórmula é idêntica a <see cref="CalcularCetNce"/>: fluxo BRL → TIR Newton-Raphson → anualização.
+    /// A diferença é que Capital de Giro admite qualquer banco (não restrito a emissão de nota específica).
+    /// </para>
+    /// Onda 3b — SPEC §7 (docs/specs/cotacoes/modalidades/capital-de-giro.md).
     /// </summary>
+    /// <param name="proposta">Proposta Capital de Giro com MoedaOriginal=Brl e ExigeNdf=false.</param>
+    /// <param name="dataDesembolso">Data de desembolso (início do fluxo).</param>
+    /// <param name="taxaAaPercentualOverride">
+    /// Substitui a taxa da proposta quando informado. Usado para CET do contrato
+    /// fechado com taxa final negociada (SPEC §5.2 — mesmo padrão do FINIMP e NCE).
+    /// </param>
+    /// <returns>CET em % a.a. (ex: 14.5m para 14,5%).</returns>
     public static decimal CalcularCetCapitalDeGiro(
         Proposta proposta,
         LocalDate dataDesembolso,
-        decimal? taxaAaPercentualOverride = null) =>
-        throw new NotImplementedException(
-            "Implementação pendente — Onda 3. Veja docs/specs/cotacoes/modalidades/capital-de-giro.md.");
+        decimal? taxaAaPercentualOverride = null)
+    {
+        ArgumentNullException.ThrowIfNull(proposta);
+
+        // Guard: Capital de Giro exige BRL — operação doméstica sem conversão cambial (SPEC §3.2).
+        if (proposta.MoedaOriginal != Moeda.Brl)
+        {
+            throw new ArgumentException(
+                $"CalcularCetCapitalDeGiro exige MoedaOriginal=Brl (recebido: {proposta.MoedaOriginal}). " +
+                "Capital de Giro é operação doméstica em BRL.",
+                nameof(proposta));
+        }
+
+        // Guard: Capital de Giro não aceita NDF — sem exposição cambial (SPEC §3.2 e EC-2).
+        if (proposta.ExigeNdf)
+        {
+            throw new ArgumentException(
+                "CalcularCetCapitalDeGiro não aceita ExigeNdf=true. " +
+                "Capital de Giro é operação em BRL sem hedge cambial.",
+                nameof(proposta));
+        }
+
+        // Reutiliza o motor de CalcularCetNce: fórmula BRL pura idêntica.
+        // Diferença de produto (NCE vs Capital de Giro) não afeta a matemática do CET;
+        // a distinção é de negócio (finalidade declarada e tipo de documento).
+        return CalcularCetNce(proposta, dataDesembolso, taxaAaPercentualOverride);
+    }
 
     /// <summary>
     /// Stub: cálculo do CET para FGI (Fundo Garantidor de Investimentos).
