@@ -45,6 +45,9 @@ public sealed class ConversorNceTests
             ptaxUsadaUsdBrl: null,
             clock: clock);
 
+        // Transição Rascunho → EmCaptacao: necessária antes de AdicionarProposta.
+        cotacao.Enviar(clock);
+
         Proposta proposta = cotacao.AdicionarProposta(
             bancoId: Guid.NewGuid(),
             moedaOriginal: Moeda.Brl,

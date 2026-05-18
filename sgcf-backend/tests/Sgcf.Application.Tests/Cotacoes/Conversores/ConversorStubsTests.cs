@@ -102,46 +102,9 @@ public sealed class ConversorStubsTests
     }
 
     // ConversorRefinimp: implementação real em Onda 1 — testes em ConversorRefinimpTests.cs.
+    // ConversorLei4131: implementação real em Onda 4 — testes em ConversorLei4131Tests.cs.
 
-    // ─── ConversorLei4131 ─────────────────────────────────────────────────────
-
-    [Fact]
-    public void ConversorLei4131_retorna_modalidade_Lei4131()
-    {
-        new ConversorLei4131().Modalidade.Should().Be(ModalidadeContrato.Lei4131);
-    }
-
-    [Fact]
-    public async Task ConversorLei4131_lanca_NotImplementedException()
-    {
-        ConversorLei4131 conversor = new();
-        ConverterEmContratoContext ctx = CriarContexto(ModalidadeContrato.Lei4131);
-
-        Func<Task> act = () => conversor.CriarDetailAsync(ctx, CancellationToken.None);
-
-        await act.Should().ThrowAsync<NotImplementedException>()
-            .WithMessage("*Lei4131*");
-    }
-
-    // ─── ConversorNce ─────────────────────────────────────────────────────────
-
-    [Fact]
-    public void ConversorNce_retorna_modalidade_Nce()
-    {
-        new ConversorNce().Modalidade.Should().Be(ModalidadeContrato.Nce);
-    }
-
-    [Fact]
-    public async Task ConversorNce_lanca_NotImplementedException()
-    {
-        ConversorNce conversor = new();
-        ConverterEmContratoContext ctx = CriarContexto(ModalidadeContrato.Nce);
-
-        Func<Task> act = () => conversor.CriarDetailAsync(ctx, CancellationToken.None);
-
-        await act.Should().ThrowAsync<NotImplementedException>()
-            .WithMessage("*Nce*");
-    }
+    // ConversorNce: implementação real entregue na Onda 2 — testes em ConversorNceTests.cs.
 
     // ─── ConversorCapitalDeGiro ───────────────────────────────────────────────
 
