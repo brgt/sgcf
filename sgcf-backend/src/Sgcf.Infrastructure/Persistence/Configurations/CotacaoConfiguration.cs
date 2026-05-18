@@ -138,6 +138,24 @@ internal sealed class CotacaoConfiguration : IEntityTypeConfiguration<Cotacao>
             .OnDelete(DeleteBehavior.SetNull)
             .IsRequired(false);
 
+        // Onda 1 REFINIMP — SPEC §3.5: ContratoMaeId é FK nullable para contrato(id).
+        // ON DELETE RESTRICT: não permite apagar contrato que tenha cotação REFINIMP filha.
+        // Sem navegação inversa — id puro (AD-10 plano refinimp/).
+        builder.Property(c => c.ContratoMaeId)
+            .HasColumnName("contrato_mae_id")
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
+        builder.HasOne<Domain.Contratos.Contrato>()
+            .WithMany()
+            .HasForeignKey(c => c.ContratoMaeId)
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
+
+        builder.HasIndex(c => c.ContratoMaeId)
+            .HasDatabaseName("ix_cotacao_contrato_mae_id")
+            .HasFilter("contrato_mae_id IS NOT NULL");
+
         // Propostas: 1:N com Proposta; cascade Restrict para não apagar propostas ao cancelar cotação.
         builder.HasMany(c => c.Propostas)
             .WithOne()
