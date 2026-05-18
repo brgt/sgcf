@@ -4,6 +4,7 @@ using NSubstitute;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Commands;
 using Sgcf.Application.Cotacoes.Conversores;
+using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;

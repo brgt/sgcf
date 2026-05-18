@@ -87,6 +87,25 @@ public sealed class RegistrarPropostaCommandHandler(
         EstruturaAmortizacao estrutura = Enum.Parse<EstruturaAmortizacao>(cmd.EstruturaAmortizacao, true);
         Periodicidade periodicidade = Enum.Parse<Periodicidade>(cmd.PeriodicidadeJuros, true);
 
+        // Onda 2 NCE — SPEC §4.2 e §8 (EC-2, EC-3):
+        // NCE é operação doméstica em BRL — rejeitar moeda diferente ou NDF.
+        if (cotacao.Modalidade == ModalidadeContrato.Nce)
+        {
+            if (moeda != Moeda.Brl)
+            {
+                throw new ArgumentException(
+                    "Proposta NCE deve ser em BRL — modalidade não suporta conversão cambial.",
+                    nameof(cmd));
+            }
+
+            if (cmd.ExigeNdf)
+            {
+                throw new ArgumentException(
+                    "Proposta NCE não aceita NDF — operação em BRL sem exposição cambial.",
+                    nameof(cmd));
+            }
+        }
+
         // Onda 1 REFINIMP — SPEC §4.2: proposta deve ter mesma moeda do contrato mãe.
         if (cotacao.Modalidade == ModalidadeContrato.Refinimp && cotacao.ContratoMaeId.HasValue)
         {
