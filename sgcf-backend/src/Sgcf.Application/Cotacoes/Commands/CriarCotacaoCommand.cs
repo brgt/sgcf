@@ -73,7 +73,7 @@ public sealed class CriarCotacaoCommandHandler(
         ModalidadeContrato modalidade = Enum.Parse<ModalidadeContrato>(cmd.Modalidade, true);
 
         // Onda 0 F0.1: busca PTAX apenas para modalidades cambiais (FINIMP, REFINIMP, Lei4131).
-        // Modalidades BRL puras (NCE, CapitalDeGiro/BalcaoCaixa, FGI) não requerem conversão cambial.
+        // Modalidades BRL puras (NCE, CapitalDeGiro, FGI) não requerem conversão cambial.
         decimal? ptax = null;
         LocalDate? dataPtaxReferencia = null;
 

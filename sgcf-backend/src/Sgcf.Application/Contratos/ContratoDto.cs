@@ -55,7 +55,7 @@ public sealed record NceDetailDto(
     DateOnly? DataEmissao,
     string? BancoMandatario);
 
-public sealed record BalcaoCaixaDetailDto(
+public sealed record CapitalDeGiroDetailDto(
     string? NumeroOperacao,
     string? TipoProduto,
     bool TemFgi);
@@ -96,7 +96,7 @@ public sealed record ContratoDto(
     Lei4131DetailDto? Lei4131Detail,
     RefinimpDetailDto? RefinimpDetail,
     NceDetailDto? NceDetail,
-    BalcaoCaixaDetailDto? BalcaoCaixaDetail,
+    CapitalDeGiroDetailDto? CapitalDeGiroDetail,
     FgiDetailDto? FgiDetail)
 {
     public static ContratoDto From(
@@ -105,7 +105,7 @@ public sealed record ContratoDto(
         Lei4131Detail? lei4131Detail = null,
         RefinimpDetail? refinimpDetail = null,
         NceDetail? nceDetail = null,
-        BalcaoCaixaDetail? balcaoCaixaDetail = null,
+        CapitalDeGiroDetail? capitalDeGiroDetail = null,
         FgiDetail? fgiDetail = null)
     {
         List<ParcelaDto> parcelas = new(c.Parcelas.Count);
@@ -182,12 +182,12 @@ public sealed record ContratoDto(
                     : (DateOnly?)null,
                 nceDetail.BancoMandatario);
 
-        BalcaoCaixaDetailDto? balcaoCaixaDto = balcaoCaixaDetail is null
+        CapitalDeGiroDetailDto? capitalDeGiroDto = capitalDeGiroDetail is null
             ? null
-            : new BalcaoCaixaDetailDto(
-                balcaoCaixaDetail.NumeroOperacao,
-                balcaoCaixaDetail.TipoProduto,
-                balcaoCaixaDetail.TemFgi);
+            : new CapitalDeGiroDetailDto(
+                capitalDeGiroDetail.NumeroOperacao,
+                capitalDeGiroDetail.TipoProduto,
+                capitalDeGiroDetail.TemFgi);
 
         FgiDetailDto? fgiDto = fgiDetail is null
             ? null
@@ -227,7 +227,7 @@ public sealed record ContratoDto(
             lei4131Dto,
             refinimpDto,
             nceDto,
-            balcaoCaixaDto,
+            capitalDeGiroDto,
             fgiDto);
     }
 }

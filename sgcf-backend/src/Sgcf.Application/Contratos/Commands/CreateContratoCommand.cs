@@ -40,7 +40,7 @@ public sealed record NceDetailRequest(
     DateOnly? DataEmissao,
     string? BancoMandatario);
 
-public sealed record BalcaoCaixaDetailRequest(
+public sealed record CapitalDeGiroDetailRequest(
     string? NumeroOperacao,
     string? TipoProduto,
     bool TemFgi);
@@ -66,7 +66,7 @@ public sealed record CreateContratoCommand(
     Lei4131DetailRequest? Lei4131Detail,
     RefinimpDetailRequest? RefinimpDetail,
     NceDetailRequest? NceDetail = null,
-    BalcaoCaixaDetailRequest? BalcaoCaixaDetail = null,
+    CapitalDeGiroDetailRequest? CapitalDeGiroDetail = null,
     FgiDetailRequest? FgiDetail = null,
     string? Periodicidade = null,
     string? EstruturaAmortizacao = null,
@@ -323,18 +323,18 @@ public sealed class CreateContratoCommandHandler(IContratoRepository repo, ICloc
             repo.AddNceDetail(nceDetail);
         }
 
-        BalcaoCaixaDetail? balcaoCaixaDetail = null;
-        if (modalidade == ModalidadeContrato.BalcaoCaixa)
+        CapitalDeGiroDetail? capitalDeGiroDetail = null;
+        if (modalidade == ModalidadeContrato.CapitalDeGiro)
         {
-            BalcaoCaixaDetailRequest reqBc = cmd.BalcaoCaixaDetail ?? new BalcaoCaixaDetailRequest(null, null, false);
-            balcaoCaixaDetail = BalcaoCaixaDetail.Criar(
+            CapitalDeGiroDetailRequest reqCg = cmd.CapitalDeGiroDetail ?? new CapitalDeGiroDetailRequest(null, null, false);
+            capitalDeGiroDetail = CapitalDeGiroDetail.Criar(
                 contrato.Id,
-                reqBc.NumeroOperacao,
-                reqBc.TipoProduto,
-                reqBc.TemFgi,
+                reqCg.NumeroOperacao,
+                reqCg.TipoProduto,
+                reqCg.TemFgi,
                 clock);
 
-            repo.AddBalcaoCaixaDetail(balcaoCaixaDetail);
+            repo.AddCapitalDeGiroDetail(capitalDeGiroDetail);
         }
 
         FgiDetail? fgiDetail = null;
@@ -353,7 +353,7 @@ public sealed class CreateContratoCommandHandler(IContratoRepository repo, ICloc
 
         await repo.SaveChangesAsync(cancellationToken);
 
-        return ContratoDto.From(contrato, finimpDetail, lei4131Detail, refinimpDetail, nceDetail, balcaoCaixaDetail, fgiDetail);
+        return ContratoDto.From(contrato, finimpDetail, lei4131Detail, refinimpDetail, nceDetail, capitalDeGiroDetail, fgiDetail);
     }
 
     private static readonly string CodigoCompesBancoDoBrasil = "001";

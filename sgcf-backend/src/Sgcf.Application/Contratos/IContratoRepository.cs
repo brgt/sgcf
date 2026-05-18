@@ -12,7 +12,7 @@ public interface IContratoRepository
     public Task<Lei4131Detail?> GetLei4131DetailAsync(Guid contratoId, CancellationToken cancellationToken = default);
     public Task<RefinimpDetail?> GetRefinimpDetailAsync(Guid contratoId, CancellationToken cancellationToken = default);
     public Task<NceDetail?> GetNceDetailAsync(Guid contratoId, CancellationToken cancellationToken = default);
-    public Task<BalcaoCaixaDetail?> GetBalcaoCaixaDetailAsync(Guid contratoId, CancellationToken cancellationToken = default);
+    public Task<CapitalDeGiroDetail?> GetCapitalDeGiroDetailAsync(Guid contratoId, CancellationToken cancellationToken = default);
     public Task<FgiDetail?> GetFgiDetailAsync(Guid contratoId, CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -49,7 +49,7 @@ public interface IContratoRepository
     public void AddLei4131Detail(Lei4131Detail detail);
     public void AddRefinimpDetail(RefinimpDetail detail);
     public void AddNceDetail(NceDetail detail);
-    public void AddBalcaoCaixaDetail(BalcaoCaixaDetail detail);
+    public void AddCapitalDeGiroDetail(CapitalDeGiroDetail detail);
     public void AddFgiDetail(FgiDetail detail);
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     public Task<int> CountByAnoAsync(int ano, CancellationToken cancellationToken = default);

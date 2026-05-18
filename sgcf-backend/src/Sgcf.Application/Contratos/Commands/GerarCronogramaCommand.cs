@@ -85,10 +85,10 @@ public sealed class GerarCronogramaCommandHandler(
             }
         }
 
-        if (contrato.Modalidade == ModalidadeContrato.BalcaoCaixa)
+        if (contrato.Modalidade == ModalidadeContrato.CapitalDeGiro)
         {
             throw new ArgumentException(
-                "Balcão Caixa não suporta geração automática de cronograma. Use o endpoint importar-cronograma.",
+                "Capital de Giro não suporta geração automática de cronograma. Use o endpoint importar-cronograma.",
                 nameof(cmd));
         }
 

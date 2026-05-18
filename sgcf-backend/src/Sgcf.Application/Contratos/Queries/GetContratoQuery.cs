@@ -21,13 +21,13 @@ public sealed class GetContratoQueryHandler(IContratoRepository repo)
         NceDetail? nceDetail = contrato.Modalidade == ModalidadeContrato.Nce
             ? await repo.GetNceDetailAsync(query.Id, cancellationToken)
             : null;
-        BalcaoCaixaDetail? balcaoCaixaDetail = contrato.Modalidade == ModalidadeContrato.BalcaoCaixa
-            ? await repo.GetBalcaoCaixaDetailAsync(query.Id, cancellationToken)
+        CapitalDeGiroDetail? capitalDeGiroDetail = contrato.Modalidade == ModalidadeContrato.CapitalDeGiro
+            ? await repo.GetCapitalDeGiroDetailAsync(query.Id, cancellationToken)
             : null;
         FgiDetail? fgiDetail = contrato.Modalidade == ModalidadeContrato.Fgi
             ? await repo.GetFgiDetailAsync(query.Id, cancellationToken)
             : null;
 
-        return ContratoDto.From(contrato, finimpDetail, lei4131Detail, refinimpDetail, nceDetail, balcaoCaixaDetail, fgiDetail);
+        return ContratoDto.From(contrato, finimpDetail, lei4131Detail, refinimpDetail, nceDetail, capitalDeGiroDetail, fgiDetail);
     }
 }

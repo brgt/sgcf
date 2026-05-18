@@ -7,7 +7,7 @@ using Sgcf.Domain.Cronograma;
 namespace Sgcf.Application.Contratos.Commands;
 
 /// <summary>
-/// Uma parcela fornecida manualmente para importação no cronograma de Balcão Caixa.
+/// Uma parcela fornecida manualmente para importação no cronograma de Capital de Giro.
 /// </summary>
 public sealed record ParcelaManualRequest(
     DateOnly DataVencimento,
@@ -15,7 +15,7 @@ public sealed record ParcelaManualRequest(
     decimal ValorJuros);
 
 /// <summary>
-/// Importa um cronograma manual para contratos Balcão Caixa.
+/// Importa um cronograma manual para contratos Capital de Giro.
 /// Substitui integralmente qualquer cronograma existente.
 /// </summary>
 public sealed record ImportarCronogramaCommand(
@@ -35,10 +35,10 @@ public sealed class ImportarCronogramaCommandHandler(
         Contrato contrato = await contratoRepo.GetByIdAsync(cmd.ContratoId, cancellationToken)
             ?? throw new KeyNotFoundException($"Contrato com Id '{cmd.ContratoId}' não encontrado.");
 
-        if (contrato.Modalidade != ModalidadeContrato.BalcaoCaixa)
+        if (contrato.Modalidade != ModalidadeContrato.CapitalDeGiro)
         {
             throw new InvalidOperationException(
-                $"Importação manual de cronograma é exclusiva para contratos Balcão Caixa. " +
+                $"Importação manual de cronograma é exclusiva para contratos Capital de Giro. " +
                 $"Modalidade atual: {contrato.Modalidade}.");
         }
 
