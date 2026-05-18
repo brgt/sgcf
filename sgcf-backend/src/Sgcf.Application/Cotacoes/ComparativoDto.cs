@@ -21,4 +21,11 @@ public sealed record ComparativoDto(
     bool ExigeNdf,
     string GarantiaExigida,
     decimal ValorGarantiaExigidaBrl,
-    string Status);
+    string Status,
+    /// <summary>
+    /// IRRF estimado em BRL — campo informativo exclusivo de Lei 4131 (SPEC §8.1).
+    /// Calculado on-demand pelo <see cref="CompararPropostasQueryHandler"/> quando
+    /// <c>aliquotaIrrfPercentual</c> é fornecida na query. Zero para outras modalidades
+    /// e quando a alíquota não é informada. Não é persistido na Proposta (decisão MD-5/AD-3).
+    /// </summary>
+    decimal IrrfEstimadoBrl = 0m);

@@ -1,6 +1,7 @@
 using MediatR;
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
 
 namespace Sgcf.Application.Cotacoes.Queries;
@@ -8,8 +9,19 @@ namespace Sgcf.Application.Cotacoes.Queries;
 /// <summary>
 /// Tabela comparativa de propostas com três métricas: taxa nominal, CET e custo total equivalente.
 /// A terceira métrica equaliza propostas com prazos diferentes via CDI. SPEC §5.3, §6.2.
+/// <para>
+/// Para cotações Lei 4131, o campo opcional <see cref="AliquotaIrrfPercentual"/> ativa o cálculo
+/// informativo de IRRF estimado por proposta. Quando não informado, <c>irrfEstimadoBrl = 0</c>. SPEC §8.3.
+/// </para>
 /// </summary>
-public sealed record CompararPropostasQuery(Guid CotacaoId) : IRequest<IReadOnlyList<ComparativoDto>>;
+/// <param name="CotacaoId">Identificador da cotação a comparar.</param>
+/// <param name="AliquotaIrrfPercentual">
+/// Alíquota IRRF em percentual humano (ex: 15 para 15%). Opcional — usado apenas para Lei 4131.
+/// Quando null, <c>irrfEstimadoBrl = 0</c> para todas as propostas. SPEC §8.3.
+/// </param>
+public sealed record CompararPropostasQuery(
+    Guid CotacaoId,
+    decimal? AliquotaIrrfPercentual = null) : IRequest<IReadOnlyList<ComparativoDto>>;
 
 public sealed class CompararPropostasQueryHandler(
     ICotacaoRepository cotacaoRepo,
@@ -36,6 +48,11 @@ public sealed class CompararPropostasQueryHandler(
 
         List<ComparativoDto> comparativo = new(cotacao.Propostas.Count);
 
+        // PTAX efetiva para cálculo de IRRF: só relevante em cotações cambiais.
+        // ! null-forgiving seguro: usado apenas quando MoedaOriginal != Brl (modalidade cambial),
+        // cujo invariante de domínio garante PtaxUsadaUsdBrl não-null.
+        decimal ptaxParaIrrf = cotacao.PtaxUsadaUsdBrl ?? 1m;
+
         foreach (Proposta p in cotacao.Propostas)
         {
             decimal taxaNominal = p.TaxaAaPercentual + p.SpreadAaPercentual;
@@ -44,6 +61,12 @@ public sealed class CompararPropostasQueryHandler(
             // Custo total equivalente ao prazo da cotação via CDI (SPEC §5.3 coluna 3)
             decimal custoTotalBrl = CalcularCustoTotalEquivalente(
                 p, cotacao, cet, cdiAa);
+
+            // IRRF estimado — informativo exclusivo Lei 4131 (SPEC §8.3).
+            // Calculado on-demand com a alíquota informada na query. Zero para outras modalidades.
+            decimal irrfEstimadoBrl = cotacao.Modalidade == ModalidadeContrato.Lei4131
+                ? CalculadoraIrrfEstimado.Calcular(p, ptaxParaIrrf, query.AliquotaIrrfPercentual)
+                : 0m;
 
             comparativo.Add(new ComparativoDto(
                 p.Id,
@@ -56,7 +79,8 @@ public sealed class CompararPropostasQueryHandler(
                 p.ExigeNdf,
                 p.GarantiaExigida,
                 p.ValorGarantiaExigidaBrl.Valor,
-                p.Status.ToString()));
+                p.Status.ToString(),
+                IrrfEstimadoBrl: irrfEstimadoBrl));
         }
 
         // Ordena pelo custo total equivalente (menor = melhor — SPEC §5.3)

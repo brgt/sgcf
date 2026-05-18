@@ -363,12 +363,15 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<IReadOnlyList<ComparativoDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Comparativo(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Comparativo(
+        Guid id,
+        [FromQuery] decimal? aliquotaIrrfPercentual,
+        CancellationToken cancellationToken)
     {
         try
         {
             IReadOnlyList<ComparativoDto> result = await mediator.Send(
-                new CompararPropostasQuery(id), cancellationToken);
+                new CompararPropostasQuery(id, aliquotaIrrfPercentual), cancellationToken);
 
             return Ok(result);
         }
