@@ -433,15 +433,22 @@ public sealed class CalculadoraCetF02Tests
         act.Should().Throw<NotImplementedException>("Capital de Giro será implementado em Onda futura");
     }
 
+    /// <summary>
+    /// Regressão Onda 3a: CalcularCetFgi agora implementado — não lança mais NotImplementedException.
+    /// Proposta BRL Bullet com TaxaFgi positiva deve retornar CET > 0.
+    /// Substituindo o stub-test que validava NIE (Onda 0 F0.2).
+    /// </summary>
     [Fact]
-    public void CalcularCetFgi_lanca_NotImplementedException()
+    public void CalcularCetFgi_implementado_retorna_cet_positivo()
     {
+        // PropostaFactory cria proposta BRL Bullet por padrão — compatível com FGI.
         var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
-        var fgiInputs = new FgiInputs(TaxaFgiAaPercentual: 2.5m, PercentualCoberto: 80m);
+        var fgiInputs = new FgiInputs(TaxaFgiAaPercentual: 0.5m, PercentualCoberto: 80m);
 
-        var act = () => CalculadoraCet.CalcularCetFgi(proposta, DataDesembolso, fgiInputs);
+        decimal cet = CalculadoraCet.CalcularCetFgi(proposta, DataDesembolso, fgiInputs);
 
-        act.Should().Throw<NotImplementedException>("FGI será implementado em Onda futura");
+        cet.Should().BeGreaterThan(0m,
+            "CalcularCetFgi implementado na Onda 3a deve retornar CET positivo para inputs válidos");
     }
 
     [Fact]
