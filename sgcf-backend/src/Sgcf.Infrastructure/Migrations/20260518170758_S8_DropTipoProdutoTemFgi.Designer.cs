@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -13,9 +14,11 @@ using Sgcf.Infrastructure.Persistence;
 namespace Sgcf.Infrastructure.Migrations
 {
     [DbContext(typeof(SgcfDbContext))]
-    partial class SgcfDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260518170758_S8_DropTipoProdutoTemFgi")]
+    partial class S8_DropTipoProdutoTemFgi
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
