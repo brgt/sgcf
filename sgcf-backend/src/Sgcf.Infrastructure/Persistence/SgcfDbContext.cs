@@ -33,7 +33,7 @@ public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(
     public DbSet<Lei4131Detail> Lei4131Details => Set<Lei4131Detail>();
     public DbSet<RefinimpDetail> RefinimpDetails => Set<RefinimpDetail>();
     public DbSet<NceDetail> NceDetails => Set<NceDetail>();
-    public DbSet<BalcaoCaixaDetail> BalcaoCaixaDetails => Set<BalcaoCaixaDetail>();
+    public DbSet<CapitalDeGiroDetail> CapitalDeGiroDetails => Set<CapitalDeGiroDetail>();
     public DbSet<FgiDetail> FgiDetails => Set<FgiDetail>();
     public DbSet<PlanoContasGerencial> PlanoContas => Set<PlanoContasGerencial>();
     public DbSet<InstrumentoHedge> InstrumentosHedge => Set<InstrumentoHedge>();

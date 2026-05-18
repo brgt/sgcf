@@ -4,10 +4,11 @@ using Sgcf.Domain.Contratos;
 
 namespace Sgcf.Infrastructure.Persistence.Configurations;
 
-internal sealed class BalcaoCaixaDetailConfiguration : IEntityTypeConfiguration<BalcaoCaixaDetail>
+internal sealed class CapitalDeGiroDetailConfiguration : IEntityTypeConfiguration<CapitalDeGiroDetail>
 {
-    public void Configure(EntityTypeBuilder<BalcaoCaixaDetail> builder)
+    public void Configure(EntityTypeBuilder<CapitalDeGiroDetail> builder)
     {
+        // Mantém o nome físico da tabela — renomear via migration dedicada no futuro.
         builder.ToTable("balcao_caixa_detail");
 
         builder.HasKey(b => b.Id);

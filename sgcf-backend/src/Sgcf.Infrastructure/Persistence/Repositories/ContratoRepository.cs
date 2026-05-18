@@ -31,8 +31,8 @@ internal sealed class ContratoRepository(SgcfDbContext context) : IContratoRepos
     public Task<NceDetail?> GetNceDetailAsync(Guid contratoId, CancellationToken cancellationToken) =>
         context.Set<NceDetail>().FirstOrDefaultAsync(n => n.ContratoId == contratoId, cancellationToken);
 
-    public Task<BalcaoCaixaDetail?> GetBalcaoCaixaDetailAsync(Guid contratoId, CancellationToken cancellationToken) =>
-        context.Set<BalcaoCaixaDetail>().FirstOrDefaultAsync(b => b.ContratoId == contratoId, cancellationToken);
+    public Task<CapitalDeGiroDetail?> GetCapitalDeGiroDetailAsync(Guid contratoId, CancellationToken cancellationToken) =>
+        context.Set<CapitalDeGiroDetail>().FirstOrDefaultAsync(b => b.ContratoId == contratoId, cancellationToken);
 
     public Task<FgiDetail?> GetFgiDetailAsync(Guid contratoId, CancellationToken cancellationToken) =>
         context.Set<FgiDetail>().FirstOrDefaultAsync(f => f.ContratoId == contratoId, cancellationToken);
@@ -91,7 +91,7 @@ internal sealed class ContratoRepository(SgcfDbContext context) : IContratoRepos
             case Lei4131Detail l:      context.Lei4131Details.Add(l);          break;
             case RefinimpDetail r:     context.RefinimpDetails.Add(r);         break;
             case NceDetail n:          context.NceDetails.Add(n);              break;
-            case BalcaoCaixaDetail bc: context.BalcaoCaixaDetails.Add(bc);    break;
+            case CapitalDeGiroDetail cg: context.CapitalDeGiroDetails.Add(cg); break;
             case FgiDetail fg:         context.FgiDetails.Add(fg);             break;
             default:
                 throw new ArgumentException(
@@ -108,7 +108,7 @@ internal sealed class ContratoRepository(SgcfDbContext context) : IContratoRepos
 
     public void AddNceDetail(NceDetail detail) => context.Set<NceDetail>().Add(detail);
 
-    public void AddBalcaoCaixaDetail(BalcaoCaixaDetail detail) => context.Set<BalcaoCaixaDetail>().Add(detail);
+    public void AddCapitalDeGiroDetail(CapitalDeGiroDetail detail) => context.Set<CapitalDeGiroDetail>().Add(detail);
 
     public void AddFgiDetail(FgiDetail detail) => context.Set<FgiDetail>().Add(detail);
 

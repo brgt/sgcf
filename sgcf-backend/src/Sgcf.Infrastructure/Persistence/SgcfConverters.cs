@@ -21,13 +21,13 @@ internal static class SgcfConverters
                : m == ModalidadeContrato.Refinimp ? "REFINIMP"
                : m == ModalidadeContrato.Lei4131 ? "LEI_4131"
                : m == ModalidadeContrato.Nce ? "NCE"
-               : m == ModalidadeContrato.BalcaoCaixa ? "BALCAO_CAIXA"
+               : m == ModalidadeContrato.CapitalDeGiro ? "BALCAO_CAIXA"
                : "FGI",
             s => s == "FINIMP" ? ModalidadeContrato.Finimp
                : s == "REFINIMP" ? ModalidadeContrato.Refinimp
                : s == "LEI_4131" ? ModalidadeContrato.Lei4131
                : s == "NCE" ? ModalidadeContrato.Nce
-               : s == "BALCAO_CAIXA" ? ModalidadeContrato.BalcaoCaixa
+               : s == "BALCAO_CAIXA" ? ModalidadeContrato.CapitalDeGiro
                : ModalidadeContrato.Fgi);
 
     internal static readonly ValueConverter<StatusContrato, string> StatusContrato =
