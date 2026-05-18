@@ -381,14 +381,35 @@ public sealed class CalculadoraCetF02Tests
             "REFINIMP é FINIMP refinanciado — CET usa mesma fórmula, logo resultado deve ser idêntico");
     }
 
+    /// <summary>
+    /// Onda 4: Lei4131 usa mesma fórmula do FINIMP (delega a CalcularCetFinimp).
+    /// Verifica que o CET é positivo e idêntico ao resultado de FINIMP com os mesmos parâmetros.
+    /// </summary>
     [Fact]
-    public void CalcularCetLei4131_lanca_NotImplementedException()
+    public void CalcularCetLei4131_retorna_CET_identico_ao_FINIMP()
     {
-        var proposta = PropostaFactory.CriarProposta();
+        var proposta = PropostaFactory.CriarProposta(); // proposta USD — válida para Lei4131
+
+        decimal cetLei4131 = CalculadoraCet.CalcularCetLei4131(proposta, PtaxFixo, DataDesembolso);
+        decimal cetFinimp = CalculadoraCet.CalcularCetFinimp(proposta, PtaxFixo, DataDesembolso);
+
+        cetLei4131.Should().BeGreaterThan(0m, "CET Lei4131 deve ser positivo com parâmetros válidos");
+        cetLei4131.Should().Be(cetFinimp,
+            "Lei 4131 delega a CalcularCetFinimp — SPEC §7.5: fórmulas idênticas");
+    }
+
+    /// <summary>
+    /// Lei4131 rejeita BRL como moeda original — operação sempre estrangeira. SPEC §7.1.
+    /// </summary>
+    [Fact]
+    public void CalcularCetLei4131_com_proposta_BRL_lanca_ArgumentException()
+    {
+        var proposta = PropostaFactory.CriarProposta(moedaOriginal: Moeda.Brl);
 
         var act = () => CalculadoraCet.CalcularCetLei4131(proposta, PtaxFixo, DataDesembolso);
 
-        act.Should().Throw<NotImplementedException>("Lei 4131 será implementado em Onda futura");
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*Brl*");
     }
 
     [Fact]

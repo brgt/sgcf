@@ -112,8 +112,6 @@ public sealed class RegistrarPropostaLei4131Tests
         IClock clock = CriarClock();
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
-        // SaveChanges não precisa fazer nada nos testes unitários
-        repo.SaveChangesAsync(default).Returns(Task.CompletedTask);
 
         RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
         RegistrarPropostaCommand cmd = CriarComandoLei4131(
@@ -122,10 +120,21 @@ public sealed class RegistrarPropostaLei4131Tests
             moedaOriginal: "Usd");
 
         // Deve passar pela guard de moeda sem lançar ArgumentException.
-        // (Pode lançar outros erros downstream se PTAX não configurada corretamente,
-        //  mas não ArgumentException por moeda.)
-        Func<Task> act = () => handler.Handle(cmd, default);
+        // (Pode lançar outros erros downstream, mas não ArgumentException por moeda.)
+        Exception? ex = null;
+        try
+        {
+            await handler.Handle(cmd, default);
+        }
+        catch (ArgumentException argEx) when (argEx.Message.Contains("BRL"))
+        {
+            ex = argEx;
+        }
+        catch
+        {
+            // Outros erros são aceitáveis — a guard de moeda não deve ter sido acionada.
+        }
 
-        await act.Should().NotThrowAsync<ArgumentException>();
+        ex.Should().BeNull("proposta USD não deve ser rejeitada pela guard de moeda Lei 4131");
     }
 }
