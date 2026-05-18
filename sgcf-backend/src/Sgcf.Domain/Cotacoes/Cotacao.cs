@@ -45,6 +45,14 @@ public sealed class Cotacao : Entity, IAuditable
     /// <summary>Id do Contrato gerado na conversão. Preenchido em ConverterEmContrato.</summary>
     public Guid? ContratoGeradoId { get; private set; }
 
+    /// <summary>
+    /// Id do contrato mãe imediato. Obrigatório para modalidade Refinimp; nulo nas demais.
+    /// Capturado no momento da criação da cotação (rascunho) — permite validar moeda
+    /// da proposta e calcular ancestral para a regra 70% BB desde o início do fluxo.
+    /// SPEC §3.1 — Onda 1 REFINIMP.
+    /// </summary>
+    public Guid? ContratoMaeId { get; private set; }
+
     /// <summary>Subject (sub do JWT) do operador que aceitou a proposta. Obrigatório quando Status >= Aceita.</summary>
     public string? AceitaPor { get; private set; }
 
@@ -87,6 +95,8 @@ public sealed class Cotacao : Entity, IAuditable
     /// SPEC §3.2 — valida invariantes de criação.
     /// Onda 0 F0.1: <paramref name="ptaxUsadaUsdBrl"/> e <paramref name="dataPtaxReferencia"/>
     /// são null para modalidades BRL puras; obrigatórios para modalidades cambiais.
+    /// Onda 1: <paramref name="contratoMaeId"/> é obrigatório quando <paramref name="modalidade"/> = Refinimp;
+    /// proibido nas demais modalidades — SPEC §3.1 AD-1.
     /// </summary>
     public static Cotacao Criar(
         string codigoInterno,
@@ -97,7 +107,8 @@ public sealed class Cotacao : Entity, IAuditable
         LocalDate? dataPtaxReferencia,
         decimal? ptaxUsadaUsdBrl,
         IClock clock,
-        string? observacoes = null)
+        string? observacoes = null,
+        Guid? contratoMaeId = null)
     {
         if (string.IsNullOrWhiteSpace(codigoInterno))
         {
@@ -148,6 +159,22 @@ public sealed class Cotacao : Entity, IAuditable
                 nameof(dataPtaxReferencia));
         }
 
+        // Onda 1 — SPEC §3.1 AD-1: REFINIMP exige ContratoMaeId; outras modalidades proíbem.
+        if (modalidade == ModalidadeContrato.Refinimp &&
+            (contratoMaeId is null || contratoMaeId == Guid.Empty))
+        {
+            throw new ArgumentException(
+                "ContratoMaeId é obrigatório para cotação da modalidade Refinimp.",
+                nameof(contratoMaeId));
+        }
+
+        if (modalidade != ModalidadeContrato.Refinimp && contratoMaeId is not null)
+        {
+            throw new ArgumentException(
+                $"ContratoMaeId não se aplica à modalidade {modalidade}.",
+                nameof(contratoMaeId));
+        }
+
         var now = clock.GetCurrentInstant();
         return new Cotacao
         {
@@ -158,6 +185,7 @@ public sealed class Cotacao : Entity, IAuditable
             DataAbertura = dataAbertura,
             DataPtaxReferencia = dataPtaxReferencia,
             PtaxUsadaUsdBrl = ptaxUsadaUsdBrl,
+            ContratoMaeId = contratoMaeId,
             Status = StatusCotacao.Rascunho,
             Observacoes = observacoes,
             CreatedAt = now,
