@@ -14,6 +14,7 @@ using Sgcf.Application.Cambio;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Hedge;
 using Sgcf.Application.Painel;
+using Sgcf.Application.Simulacao;
 using Sgcf.Infrastructure.Antecipacao;
 using Sgcf.Infrastructure.Auditoria;
 using Sgcf.Infrastructure.Caching;
@@ -78,6 +79,7 @@ public static class DependencyInjection
         services.AddScoped<ILimiteBancoRepository, LimiteBancoRepository>();
         services.AddScoped<IEconomiaRepository, EconomiaRepository>();
         services.AddScoped<ICdiSnapshotRepository, CdiSnapshotRepository>();
+        services.AddScoped<ICenarioSimulacaoRepository, CenarioSimulacaoRepository>();
 
         return services;
     }
