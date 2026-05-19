@@ -1,6 +1,7 @@
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
+using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Dtos;
 using Sgcf.Application.Simulacao.Queries;
 using Sgcf.Domain.Common;
@@ -97,9 +98,12 @@ public sealed class SimularCronogramaHipoteticoQueryHandlerTests
         resultado.Eventos.Should().HaveCount(eventosEsperados.Count);
         for (int i = 0; i < eventosEsperados.Count; i++)
         {
-            resultado.Eventos[i].Numero.Should().Be(eventosEsperados[i].NumeroEvento);
-            resultado.Eventos[i].Tipo.Should().Be(eventosEsperados[i].Tipo.ToString());
-            resultado.Eventos[i].Valor.Should().Be(eventosEsperados[i].Valor.Valor);
+            EventoCronogramaItemDto dto = resultado.Eventos[i];
+            EventoCronogramaGerado esperado = eventosEsperados[i];
+
+            dto.Numero.Should().Be(esperado.NumeroEvento);
+            dto.Tipo.Should().Be(esperado.Tipo.ToString());
+            dto.Valor.Should().Be(esperado.Valor.Valor);
         }
     }
 
