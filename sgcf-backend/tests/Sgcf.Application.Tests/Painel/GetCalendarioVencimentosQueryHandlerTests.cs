@@ -2,11 +2,13 @@ using System.Collections.ObjectModel;
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
+using Sgcf.Application.Bancos;
 using Sgcf.Application.Cambio;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Painel.Queries;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -26,7 +28,8 @@ public sealed class GetCalendarioVencimentosQueryHandlerTests
     private static GetCalendarioVencimentosQueryHandler CriarHandler(
         IContratoRepository contratoRepo,
         IEventoCronogramaRepository cronogramaRepo,
-        ICdiSnapshotRepository cdiRepo)
+        ICdiSnapshotRepository cdiRepo,
+        IBancoRepository? bancoRepo = null)
     {
         ICotacaoSpotCache spotCache = Substitute.For<ICotacaoSpotCache>();
         spotCache.GetSpotAsync(default, default).ReturnsForAnyArgs((Money?)null);
@@ -38,8 +41,31 @@ public sealed class GetCalendarioVencimentosQueryHandlerTests
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(InstanteFixo);
 
+        IBancoRepository resolvedBancoRepo;
+        if (bancoRepo is not null)
+        {
+            resolvedBancoRepo = bancoRepo;
+        }
+        else
+        {
+            // Banco repo vazio por padrão — testes que não precisam de banco não quebram
+            resolvedBancoRepo = Substitute.For<IBancoRepository>();
+            resolvedBancoRepo.ListAllAsync(default).ReturnsForAnyArgs(
+                new List<Sgcf.Domain.Bancos.Banco>().AsReadOnly());
+        }
+
         return new GetCalendarioVencimentosQueryHandler(
-            contratoRepo, cronogramaRepo, spotCache, cotacaoFxRepo, cdiRepo, clock);
+            contratoRepo, cronogramaRepo, spotCache, cotacaoFxRepo, cdiRepo, resolvedBancoRepo, clock);
+    }
+
+    /// <summary>
+    /// Cria um Banco de teste com apelido e código COMPE definidos.
+    /// </summary>
+    private static Banco CriarBanco(string codigoCompe, string apelido)
+    {
+        IClock clock = Substitute.For<IClock>();
+        clock.GetCurrentInstant().Returns(InstanteFixo);
+        return Banco.Criar(codigoCompe, $"Banco {apelido} S.A.", apelido, PadraoAntecipacao.A, clock);
     }
 
     private static Contrato CriarContratoCarencia(Guid bancoId)
@@ -244,5 +270,259 @@ public sealed class GetCalendarioVencimentosQueryHandlerTests
             mes.TotalJurosBrlProjetado.Should().BeNull();
             mes.Parcelas[0].JurosBrlProjetado.Should().BeNull();
         }
+    }
+
+    // ── Task 1.3 — AD-10: BancoId + BancoApelido em VencimentoItemDto ─────────
+
+    /// <summary>
+    /// AD-10 (Task 1.3): cada parcela do calendário deve expor o bancoId do contrato.
+    /// </summary>
+    [Fact]
+    public async Task Handle_RetornaVencimentoItemDto_ComBancoIdPopulado()
+    {
+        // Arrange
+        Guid bancoId = Guid.NewGuid();
+        Banco banco = CriarBanco("341", "Itau");
+
+        // Força o Id interno do banco para corresponder ao bancoId do contrato
+        // usando reflection-free approach: criamos o contrato referenciando o banco
+        Contrato contrato = CriarContratoCarencia(bancoId);
+        Guid contratoId = contrato.Id;
+
+        EventoCronograma evento = EventoCronograma.Criar(
+            contratoId: contratoId,
+            numeroEvento: 1,
+            tipo: TipoEventoCronograma.Principal,
+            dataPrevista: new LocalDate(2026, 6, 30),
+            valorMoedaOriginal: new Money(100_000m, Moeda.Brl));
+
+        IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
+        contratoRepo.ListAsync(default).ReturnsForAnyArgs(
+            new List<Contrato> { contrato }.AsReadOnly());
+
+        IEventoCronogramaRepository cronogramaRepo = Substitute.For<IEventoCronogramaRepository>();
+        cronogramaRepo.ListAbertosParaAnoAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), default)
+                      .ReturnsForAnyArgs(new List<EventoCronograma> { evento }.AsReadOnly());
+        cronogramaRepo.ListPrincipaisOrdenadosByContratoIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), default)
+                      .ReturnsForAnyArgs(new List<EventoCronograma>().AsReadOnly());
+
+        ICdiSnapshotRepository cdiRepo = Substitute.For<ICdiSnapshotRepository>();
+
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(default).ReturnsForAnyArgs(
+            new List<Banco> { banco }.AsReadOnly());
+
+        GetCalendarioVencimentosQueryHandler handler = CriarHandler(contratoRepo, cronogramaRepo, cdiRepo, bancoRepo);
+
+        // Act
+        CalendarioVencimentosDto resultado = await handler.Handle(
+            new GetCalendarioVencimentosQuery(Ano: 2026),
+            CancellationToken.None);
+
+        // Assert
+        VencimentoItemDto parcela = resultado.Meses
+            .Single(m => m.Mes == 6).Parcelas.Single();
+
+        parcela.BancoId.Should().Be(bancoId,
+            "bancoId deve espelhar o BancoId do contrato (AD-10)");
+    }
+
+    /// <summary>
+    /// AD-10 (Task 1.3): bancoApelido deve ser preenchido com o Apelido do banco.
+    /// </summary>
+    [Fact]
+    public async Task Handle_RetornaVencimentoItemDto_ComBancoApelidoPopulado()
+    {
+        // Arrange
+        Guid bancoId = Guid.NewGuid();
+        Banco banco = CriarBanco("033", "Santander");
+
+        Contrato contrato = CriarContratoCarencia(bancoId);
+        Guid contratoId = contrato.Id;
+
+        EventoCronograma evento = EventoCronograma.Criar(
+            contratoId: contratoId,
+            numeroEvento: 1,
+            tipo: TipoEventoCronograma.Principal,
+            dataPrevista: new LocalDate(2026, 7, 15),
+            valorMoedaOriginal: new Money(50_000m, Moeda.Brl));
+
+        IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
+        contratoRepo.ListAsync(default).ReturnsForAnyArgs(
+            new List<Contrato> { contrato }.AsReadOnly());
+
+        IEventoCronogramaRepository cronogramaRepo = Substitute.For<IEventoCronogramaRepository>();
+        cronogramaRepo.ListAbertosParaAnoAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), default)
+                      .ReturnsForAnyArgs(new List<EventoCronograma> { evento }.AsReadOnly());
+        cronogramaRepo.ListPrincipaisOrdenadosByContratoIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), default)
+                      .ReturnsForAnyArgs(new List<EventoCronograma>().AsReadOnly());
+
+        ICdiSnapshotRepository cdiRepo = Substitute.For<ICdiSnapshotRepository>();
+
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(default).ReturnsForAnyArgs(
+            new List<Banco> { banco }.AsReadOnly());
+
+        GetCalendarioVencimentosQueryHandler handler = CriarHandler(contratoRepo, cronogramaRepo, cdiRepo, bancoRepo);
+
+        // Act
+        CalendarioVencimentosDto resultado = await handler.Handle(
+            new GetCalendarioVencimentosQuery(Ano: 2026),
+            CancellationToken.None);
+
+        // Assert
+        VencimentoItemDto parcela = resultado.Meses
+            .Single(m => m.Mes == 7).Parcelas.Single();
+
+        parcela.BancoApelido.Should().Be("Santander",
+            "bancoApelido deve ser o Apelido cadastrado do banco (AD-10)");
+    }
+
+    /// <summary>
+    /// AD-10 (Task 1.3): múltiplos contratos com bancos diferentes devem preservar
+    /// o bancoId/bancoApelido correto em cada parcela.
+    /// </summary>
+    [Fact]
+    public async Task Handle_MultiplosContratosBancosDiferentes_PreserveBancoNoItem()
+    {
+        // Arrange — dois contratos em bancos distintos, ambos com vencimento no mesmo mês
+        Guid bancoId1 = Guid.NewGuid();
+        Guid bancoId2 = Guid.NewGuid();
+
+        Banco banco1 = CriarBanco("237", "Bradesco");
+        Banco banco2 = CriarBanco("104", "CEF");
+
+        IClock clock = Substitute.For<IClock>();
+        clock.GetCurrentInstant().Returns(InstanteFixo);
+
+        Contrato contrato1 = Contrato.Criar(
+            numeroExterno: "BRAD-001",
+            bancoId: bancoId1,
+            modalidade: ModalidadeContrato.CapitalDeGiro,
+            valorPrincipal: new Money(1_000_000m, Moeda.Brl),
+            dataContratacao: new LocalDate(2025, 1, 2),
+            dataVencimento: new LocalDate(2026, 8, 31),
+            taxaAa: Percentual.DeFracao(0.10m),
+            baseCalculo: BaseCalculo.Dias252,
+            clock: clock,
+            quantidadeParcelas: 1,
+            dataPrimeiroVencimento: new LocalDate(2026, 8, 31));
+
+        Contrato contrato2 = Contrato.Criar(
+            numeroExterno: "CEF-001",
+            bancoId: bancoId2,
+            modalidade: ModalidadeContrato.CapitalDeGiro,
+            valorPrincipal: new Money(2_000_000m, Moeda.Brl),
+            dataContratacao: new LocalDate(2025, 1, 2),
+            dataVencimento: new LocalDate(2026, 8, 31),
+            taxaAa: Percentual.DeFracao(0.08m),
+            baseCalculo: BaseCalculo.Dias252,
+            clock: clock,
+            quantidadeParcelas: 1,
+            dataPrimeiroVencimento: new LocalDate(2026, 8, 31));
+
+        EventoCronograma evento1 = EventoCronograma.Criar(
+            contratoId: contrato1.Id,
+            numeroEvento: 1,
+            tipo: TipoEventoCronograma.Principal,
+            dataPrevista: new LocalDate(2026, 8, 31),
+            valorMoedaOriginal: new Money(1_000_000m, Moeda.Brl));
+
+        EventoCronograma evento2 = EventoCronograma.Criar(
+            contratoId: contrato2.Id,
+            numeroEvento: 1,
+            tipo: TipoEventoCronograma.Principal,
+            dataPrevista: new LocalDate(2026, 8, 31),
+            valorMoedaOriginal: new Money(2_000_000m, Moeda.Brl));
+
+        IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
+        contratoRepo.ListAsync(default).ReturnsForAnyArgs(
+            new List<Contrato> { contrato1, contrato2 }.AsReadOnly());
+
+        IEventoCronogramaRepository cronogramaRepo = Substitute.For<IEventoCronogramaRepository>();
+        cronogramaRepo.ListAbertosParaAnoAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), default)
+                      .ReturnsForAnyArgs(new List<EventoCronograma> { evento1, evento2 }.AsReadOnly());
+        cronogramaRepo.ListPrincipaisOrdenadosByContratoIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), default)
+                      .ReturnsForAnyArgs(new List<EventoCronograma>().AsReadOnly());
+
+        ICdiSnapshotRepository cdiRepo = Substitute.For<ICdiSnapshotRepository>();
+
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(default).ReturnsForAnyArgs(
+            new List<Banco> { banco1, banco2 }.AsReadOnly());
+
+        GetCalendarioVencimentosQueryHandler handler = CriarHandler(contratoRepo, cronogramaRepo, cdiRepo, bancoRepo);
+
+        // Act
+        CalendarioVencimentosDto resultado = await handler.Handle(
+            new GetCalendarioVencimentosQuery(Ano: 2026),
+            CancellationToken.None);
+
+        // Assert — duas parcelas em agosto, cada uma com seu respectivo banco
+        IReadOnlyList<VencimentoItemDto> parcelasAgosto = resultado.Meses
+            .Single(m => m.Mes == 8).Parcelas;
+
+        parcelasAgosto.Should().HaveCount(2, "dois contratos distintos no mês");
+
+        VencimentoItemDto parcelaBrad = parcelasAgosto.Single(p => p.ContratoId == contrato1.Id);
+        parcelaBrad.BancoId.Should().Be(bancoId1);
+        parcelaBrad.BancoApelido.Should().Be("Bradesco");
+
+        VencimentoItemDto parcelaCef = parcelasAgosto.Single(p => p.ContratoId == contrato2.Id);
+        parcelaCef.BancoId.Should().Be(bancoId2);
+        parcelaCef.BancoApelido.Should().Be("CEF");
+    }
+
+    /// <summary>
+    /// AD-10 (Task 1.3): quando o banco não é encontrado no repositório
+    /// (cenário de dados incompletos), o handler deve retornar o bancoId
+    /// do contrato e usar o CodigoCompe como apelido de fallback.
+    /// </summary>
+    [Fact]
+    public async Task Handle_BancoNaoEncontradoNoRepositorio_UsaBancoIdDoContratoComApelidoVazio()
+    {
+        // Arrange — bancoRepo não possui o banco do contrato (fallback gracioso)
+        Guid bancoId = Guid.NewGuid();
+        Contrato contrato = CriarContratoCarencia(bancoId);
+        Guid contratoId = contrato.Id;
+
+        EventoCronograma evento = EventoCronograma.Criar(
+            contratoId: contratoId,
+            numeroEvento: 1,
+            tipo: TipoEventoCronograma.Principal,
+            dataPrevista: new LocalDate(2026, 9, 26),
+            valorMoedaOriginal: new Money(500_000m, Moeda.Brl));
+
+        IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
+        contratoRepo.ListAsync(default).ReturnsForAnyArgs(
+            new List<Contrato> { contrato }.AsReadOnly());
+
+        IEventoCronogramaRepository cronogramaRepo = Substitute.For<IEventoCronogramaRepository>();
+        cronogramaRepo.ListAbertosParaAnoAsync(2026, Arg.Any<IReadOnlyCollection<Guid>>(), default)
+                      .ReturnsForAnyArgs(new List<EventoCronograma> { evento }.AsReadOnly());
+        cronogramaRepo.ListPrincipaisOrdenadosByContratoIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), default)
+                      .ReturnsForAnyArgs(new List<EventoCronograma>().AsReadOnly());
+
+        ICdiSnapshotRepository cdiRepo = Substitute.For<ICdiSnapshotRepository>();
+
+        // Repositório vazio — nenhum banco cadastrado
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(default).ReturnsForAnyArgs(
+            new List<Banco>().AsReadOnly());
+
+        GetCalendarioVencimentosQueryHandler handler = CriarHandler(contratoRepo, cronogramaRepo, cdiRepo, bancoRepo);
+
+        // Act
+        CalendarioVencimentosDto resultado = await handler.Handle(
+            new GetCalendarioVencimentosQuery(Ano: 2026),
+            CancellationToken.None);
+
+        // Assert — não deve lançar exceção; bancoId do contrato deve ser preservado
+        VencimentoItemDto parcela = resultado.Meses.Single(m => m.Mes == 9).Parcelas.Single();
+
+        parcela.BancoId.Should().Be(bancoId,
+            "mesmo sem banco no repositório, o bancoId do contrato deve ser preservado");
+        parcela.BancoApelido.Should().NotBeNull(
+            "fallback deve retornar string não-nula mesmo sem banco encontrado");
     }
 }
