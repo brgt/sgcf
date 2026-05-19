@@ -1,10 +1,10 @@
 # SPEC — Simulações de Contratação + Quadro da Dívida
 
-> **Status:** Draft para aprovação
+> **Status:** Entregue — v0.10.0 (2026-05-19)
 > **Data:** 2026-05-18
 > **Autor:** Análise técnica colaborativa (PO + arquitetura)
 > **Versão:** v1.0
-> **Release alvo:** v0.7.0
+> **Release alvo:** v0.7.0 → entregue como v0.10.0 (versão ajustada após sequência 0.7–0.9)
 > **Plano de execução:** `tasks/quadro-divida-simulacao/plan.md`
 
 ---
