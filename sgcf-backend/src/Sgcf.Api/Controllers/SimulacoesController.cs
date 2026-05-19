@@ -409,6 +409,57 @@ public sealed class SimulacoesController(IMediator mediator) : ControllerBase
         }
     }
 
+    // ── NOVO (Task 4.1) — Comparativo entre cenários ─────────────────────────
+
+    /// <summary>
+    /// Compara até 5 cenários de simulação retornando a projeção de cada um
+    /// com deltas mensais e anuais em relação ao primeiro cenário (baseline).
+    ///
+    /// <para>
+    /// O primeiro <c>cenarioId</c> da lista é o baseline — seus campos
+    /// <c>deltasMensais</c> e <c>deltaAnual</c> sempre são <c>null</c>.
+    /// </para>
+    ///
+    /// Mapeamento de erros:
+    /// <list type="bullet">
+    ///   <item>400 — lista vazia ou mais de 5 cenários.</item>
+    ///   <item>404 — algum <c>cenarioId</c> não existe.</item>
+    ///   <item>409 — cenários com <c>AnoBase</c> diferentes na mesma comparação.</item>
+    /// </list>
+    ///
+    /// SPEC §7 Task 4.1. AD-11: política Leitura.
+    /// </summary>
+    /// <param name="query">Body com o ano e a lista de <c>cenarioIds</c> a comparar.</param>
+    /// <param name="ct">Token de cancelamento propagado da requisição HTTP.</param>
+    [HttpPost("comparar")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<ResultadoComparacaoCenariosDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Comparar(
+        [FromBody] CompararCenariosQuery query,
+        CancellationToken ct)
+    {
+        try
+        {
+            ResultadoComparacaoCenariosDto resultado = await mediator.Send(query, ct);
+            return Ok(resultado);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
     /// <summary>
     /// Remove uma simulação de contratação do cenário (hard delete da filha, cenário permanece).
     /// Bloqueado se cenário estiver Arquivado (409).
