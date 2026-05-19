@@ -3,9 +3,12 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+using Sgcf.Api.Filters;
 using Sgcf.Application.Authorization;
+using Sgcf.Application.Simulacao.Commands;
 using Sgcf.Application.Simulacao.Dtos;
 using Sgcf.Application.Simulacao.Queries;
+using Sgcf.Domain.Simulacao;
 
 namespace Sgcf.Api.Controllers;
 
@@ -13,7 +16,8 @@ namespace Sgcf.Api.Controllers;
 /// Endpoints do módulo Simulações de Contratação.
 ///
 /// <para>
-/// SPEC §7.4 — Fase 2 Task 2.6.
+/// SPEC §7.4 (CRUD de Cenário) e §7.5 (Simulações dentro do Cenário).
+/// Task 2.5 estende Task 2.6 sem substituir o endpoint de preview.
 /// </para>
 ///
 /// <para>
@@ -24,12 +28,17 @@ namespace Sgcf.Api.Controllers;
 ///   <item><see cref="KeyNotFoundException"/> → 404 Not Found</item>
 /// </list>
 /// </para>
+///
+/// <para>
+/// AD-11: arquivar usa <see cref="Policies.Gerencial"/> (equivale ao papel Gerente
+/// previsto na decisão — o projeto não define "Gerente" como string separada).
+/// </para>
 /// </summary>
 [ApiController]
 [Route("api/v1/simulacoes")]
 public sealed class SimulacoesController(IMediator mediator) : ControllerBase
 {
-    // ── Preview de cronograma hipotético ─────────────────────────────────────
+    // ── EXISTENTE (Task 2.6) ─────────────────────────────────────────────────
 
     /// <summary>
     /// Pré-visualiza o cronograma de uma simulação hipotética sem persistir nada.
@@ -61,6 +70,318 @@ public sealed class SimulacoesController(IMediator mediator) : ControllerBase
         {
             CronogramaHipoteticoDto resultado = await mediator.Send(query, ct);
             return Ok(resultado);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    // ── NOVO (Task 2.5) — CRUD de Cenário ────────────────────────────────────
+
+    /// <summary>
+    /// Cria um novo cenário de simulação em status Rascunho.
+    /// Idempotente via <c>Idempotency-Key</c> header (TTL 24h).
+    /// SPEC §7.4. AD-11: política Escrita.
+    /// </summary>
+    [HttpPost("cenarios")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ServiceFilter(typeof(IdempotencyFilter))]
+    [ProducesResponseType<CenarioSimulacaoDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CriarCenario(
+        [FromBody] CriarCenarioSimulacaoCommand command,
+        CancellationToken ct)
+    {
+        try
+        {
+            CenarioSimulacaoDto result = await mediator.Send(command, ct);
+            return CreatedAtAction(nameof(GetCenarioPorId), new { id = result.Id }, result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Lista cenários com filtros opcionais por status, anoBase e criadoPor.
+    /// Retorna DTOs resumidos (sem simulações filhas) para eficiência de payload.
+    /// Soft-deletados são excluídos automaticamente.
+    /// SPEC §7.4. AD-11: política Leitura.
+    /// </summary>
+    [HttpGet("cenarios")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<IReadOnlyList<CenarioSimulacaoResumoDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListarCenarios(
+        [FromQuery] StatusCenarioSimulacao? status,
+        [FromQuery] int? anoBase,
+        [FromQuery] string? criadoPor,
+        CancellationToken ct)
+    {
+        IReadOnlyList<CenarioSimulacaoResumoDto> result = await mediator.Send(
+            new ListCenariosSimulacaoQuery(status, anoBase, criadoPor), ct);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Retorna o cenário completo com todas as simulações filhas pelo Id.
+    /// SPEC §7.4. AD-11: política Leitura.
+    /// </summary>
+    [HttpGet("cenarios/{id:guid}")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<CenarioSimulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCenarioPorId(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            CenarioSimulacaoDto result = await mediator.Send(new GetCenarioSimulacaoByIdQuery(id), ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>
+    /// Atualiza nome, descrição e/ou anoBase de um cenário.
+    /// Permitido em Rascunho e Ativo; bloqueado em Arquivado (409).
+    /// D-6 (Q1): qualquer membro da tesouraria pode editar qualquer cenário (sem owner check).
+    /// SPEC §7.4. AD-11: política Escrita.
+    /// </summary>
+    [HttpPatch("cenarios/{id:guid}")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType<CenarioSimulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AtualizarCenario(
+        Guid id,
+        [FromBody] AtualizarCenarioCommand body,
+        CancellationToken ct)
+    {
+        // Sobrescreve CenarioId do body com o valor da rota — evita inconsistência.
+        AtualizarCenarioCommand cmd = body with { CenarioId = id };
+
+        try
+        {
+            CenarioSimulacaoDto result = await mediator.Send(cmd, ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Transita o cenário de Rascunho para Ativo.
+    /// Lança 409 se o cenário já estiver em outro estado incompatível.
+    /// SPEC §7.4. AD-11: política Escrita.
+    /// </summary>
+    [HttpPost("cenarios/{id:guid}/ativar")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType<CenarioSimulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Ativar(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            CenarioSimulacaoDto result = await mediator.Send(new AtivarCenarioCommand(id), ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Arquiva um cenário Ativo ou Rascunho — operação irreversível via API.
+    /// AD-11: política Gerencial (equivale ao papel "Gerente" descrito na decisão;
+    /// o projeto usa <see cref="Policies.Gerencial"/> como constante correspondente).
+    /// SPEC §7.4.
+    /// </summary>
+    [HttpPost("cenarios/{id:guid}/arquivar")]
+    [Authorize(Policy = Policies.Gerencial)]
+    [ProducesResponseType<CenarioSimulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Arquivar(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            CenarioSimulacaoDto result = await mediator.Send(new ArquivarCenarioCommand(id), ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Cria uma cópia profunda do cenário em status Rascunho com novo Id.
+    /// Nome da cópia: "{original} (cópia)". Simulações filhas são copiadas com novos Ids.
+    /// Idempotente via <c>Idempotency-Key</c> header (TTL 24h).
+    /// SPEC D-10 / Q7. AD-11: política Escrita.
+    /// </summary>
+    [HttpPost("cenarios/{id:guid}/duplicar")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ServiceFilter(typeof(IdempotencyFilter))]
+    [ProducesResponseType<CenarioSimulacaoDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Duplicar(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            CenarioSimulacaoDto result = await mediator.Send(new DuplicarCenarioCommand(id), ct);
+            return CreatedAtAction(nameof(GetCenarioPorId), new { id = result.Id }, result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>
+    /// Soft-delete do cenário. O registro permanece no banco com flag DeletadoEm preenchido.
+    /// GET subsequente retorna 404. SPEC §7.4. AD-11: política Escrita.
+    /// </summary>
+    [HttpDelete("cenarios/{id:guid}")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Deletar(Guid id, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new DeletarCenarioCommand(id), ct);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    // ── NOVO (Task 2.5) — Simulações dentro do Cenário ───────────────────────
+
+    /// <summary>
+    /// Adiciona uma nova simulação de contratação ao cenário.
+    /// Retorna o cenário completo atualizado (incluindo a nova simulação).
+    /// Idempotente via <c>Idempotency-Key</c> header (TTL 24h).
+    /// Bloqueado se cenário estiver Arquivado (409).
+    /// SPEC §7.5. AD-11: política Escrita.
+    /// </summary>
+    [HttpPost("cenarios/{id:guid}/simulacoes")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ServiceFilter(typeof(IdempotencyFilter))]
+    [ProducesResponseType<CenarioSimulacaoDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AdicionarSimulacao(
+        Guid id,
+        [FromBody] AdicionarSimulacaoInput input,
+        CancellationToken ct)
+    {
+        try
+        {
+            CenarioSimulacaoDto result = await mediator.Send(new AdicionarSimulacaoCommand(id, input), ct);
+            return CreatedAtAction(nameof(GetCenarioPorId), new { id }, result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Remove uma simulação de contratação do cenário (hard delete da filha, cenário permanece).
+    /// Bloqueado se cenário estiver Arquivado (409).
+    /// SPEC §7.5. AD-11: política Escrita.
+    /// </summary>
+    [HttpDelete("cenarios/{id:guid}/simulacoes/{simId:guid}")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RemoverSimulacao(Guid id, Guid simId, CancellationToken ct)
+    {
+        try
+        {
+            await mediator.Send(new RemoverSimulacaoCommand(id, simId), ct);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Atualiza todos os campos mutáveis de uma simulação (substituição total, não parcial).
+    /// Version é incrementado automaticamente (AD-3) para invalidar cache Redis.
+    /// Bloqueado se cenário estiver Arquivado (409).
+    /// SPEC §7.5. AD-11: política Escrita.
+    /// </summary>
+    [HttpPatch("cenarios/{id:guid}/simulacoes/{simId:guid}")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType<CenarioSimulacaoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AtualizarSimulacao(
+        Guid id,
+        Guid simId,
+        [FromBody] AtualizarSimulacaoInput input,
+        CancellationToken ct)
+    {
+        try
+        {
+            CenarioSimulacaoDto result = await mediator.Send(new AtualizarSimulacaoCommand(id, simId, input), ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
         }
         catch (ArgumentException ex)
         {
