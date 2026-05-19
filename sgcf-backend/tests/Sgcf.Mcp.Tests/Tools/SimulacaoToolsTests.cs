@@ -7,6 +7,7 @@ using MediatR;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
+using Sgcf.Application.Painel;
 using Sgcf.Application.Painel.Queries;
 using Sgcf.Application.Simulacao.Dtos;
 using Sgcf.Application.Simulacao.Queries;
@@ -28,10 +29,10 @@ public sealed class SimulacaoToolsTests
         new(
             Ano: 2026,
             DataReferencia: new DateOnly(2026, 5, 19),
-            SnapshotInicial: new Sgcf.Application.Painel.SaldoPorBancoAtualDto(
-                DataReferencia: NodaTime.LocalDate.FromDateTime(DateTime.UtcNow),
-                Bancos: new List<Sgcf.Application.Painel.SaldoBancoDto>().AsReadOnly(),
-                TotalBrl: 0m),
+            SnapshotInicial: new SaldoPorBancoAtualDto(
+                Bancos: new List<SaldoBancoAtualDto>().AsReadOnly(),
+                SaldoTotalBrl: 0m,
+                DataReferencia: NodaTime.LocalDate.FromDateTime(DateTime.UtcNow)),
             Projecao: new QuadroDividaProjecaoDto(
                 Meses: new List<MesProjecaoDto>().AsReadOnly()),
             Sumario: new QuadroDividaSumarioDto(
