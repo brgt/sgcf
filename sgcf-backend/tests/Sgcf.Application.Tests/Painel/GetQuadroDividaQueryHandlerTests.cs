@@ -5,19 +5,24 @@ using NSubstitute;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Cambio;
 using Sgcf.Application.Contratos;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Painel.Queries;
+using Sgcf.Application.Simulacao;
+using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cronograma;
+using Sgcf.Domain.Simulacao;
 using Xunit;
 
 namespace Sgcf.Application.Tests.Painel;
 
 /// <summary>
 /// Testes unitários para <see cref="GetQuadroDividaQueryHandler"/>.
-/// 8 cenários definidos na Fase 1 Task 1.4.
+/// Fase 1 Task 1.4: 8 cenários base.
+/// Fase 3 Task 3.1: 7 cenários adicionais com cenarioId.
 /// </summary>
 [Trait("Category", "Unit")]
 public sealed class GetQuadroDividaQueryHandlerTests
@@ -35,7 +40,10 @@ public sealed class GetQuadroDividaQueryHandlerTests
         IBancoRepository? bancoRepo = null,
         ICotacaoSpotCache? spotCache = null,
         ICotacaoFxRepository? cotacaoFxRepo = null,
-        IClock? clock = null)
+        IClock? clock = null,
+        ICenarioSimulacaoRepository? cenarioRepo = null,
+        ICronogramaSimulacaoCache? cronogramaCache = null,
+        ICdiSnapshotRepository? cdiRepo = null)
     {
         mediator ??= CriarMediatorComSaldo(CriarSaldoVazio());
         contratoRepo ??= CriarContratoRepoVazio();
@@ -44,6 +52,8 @@ public sealed class GetQuadroDividaQueryHandlerTests
         spotCache ??= Substitute.For<ICotacaoSpotCache>();
         cotacaoFxRepo ??= Substitute.For<ICotacaoFxRepository>();
         clock ??= CriarClock();
+        cenarioRepo ??= Substitute.For<ICenarioSimulacaoRepository>();
+        cdiRepo ??= Substitute.For<ICdiSnapshotRepository>();
 
         return new GetQuadroDividaQueryHandler(
             mediator,
@@ -52,7 +62,10 @@ public sealed class GetQuadroDividaQueryHandlerTests
             bancoRepo,
             spotCache,
             cotacaoFxRepo,
-            clock);
+            clock,
+            cenarioRepo,
+            cronogramaCache,
+            cdiRepo);
     }
 
     // ── Helpers de setup ──────────────────────────────────────────────────────
@@ -480,5 +493,382 @@ public sealed class GetQuadroDividaQueryHandlerTests
         resultado.Sumario.SaldoTotalInicioAno.Should().Be(1_000_000m);
         resultado.Sumario.SaldoTotalFimAno.Should().Be(800_000m);
         resultado.Sumario.VariacaoAnualPercentual.Should().BeApproximately(-20m, 0.001m);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════
+    // Fase 3 Task 3.1 — GetQuadroDividaQuery com cenarioId
+    // ════════════════════════════════════════════════════════════════════════════
+
+    // ── Helpers para cenário e simulações ─────────────────────────────────────
+
+    private static CenarioSimulacao CriarCenarioAtivo(
+        int anoBase,
+        Action<CenarioSimulacao>? configurar = null)
+    {
+        IClock c = CriarClock();
+        CenarioSimulacao cenario = CenarioSimulacao.Criar(
+            nome: "Realista 2026",
+            anoBase: anoBase,
+            criadoPor: "user@test.com",
+            clock: c);
+        configurar?.Invoke(cenario);
+        return cenario;
+    }
+
+    private static SimulacaoContratacao CriarSimulacaoBulletBrl(
+        Guid cenarioId,
+        Guid bancoId,
+        decimal valorPrincipal,
+        LocalDate dataContratacao,
+        int mesesPrazo = 12)
+    {
+        // DataContratacaoPrevista deve ser >= hoje (clock fixo = 2026-05-19).
+        // Usamos uma data dentro do AnoBase válida (ex: 2026-07-01 para contratações no 2º semestre).
+        LocalDate dataPrimeiroVencimento = dataContratacao.PlusMonths(mesesPrazo);
+        IClock c = CriarClock();
+
+        return SimulacaoContratacao.Criar(
+            cenarioId: cenarioId,
+            bancoId: bancoId,
+            modalidade: ModalidadeContrato.CapitalDeGiro,
+            moeda: Moeda.Brl,
+            valorPrincipal: new Money(valorPrincipal, Moeda.Brl),
+            dataContratacaoPrevista: dataContratacao,
+            dataPrimeiroVencimento: dataPrimeiroVencimento,
+            tipoTaxa: TipoTaxa.Fixa,
+            taxaAa: Percentual.DeFracao(0.12m),
+            spreadAa: null,
+            baseCalculo: BaseCalculo.Dias252,
+            estruturaAmortizacao: EstruturaAmortizacao.Bullet,
+            periodicidade: Periodicidade.Bullet,
+            quantidadeParcelas: 1,
+            anchorDiaMes: AnchorDiaMes.DiaContratacao,
+            anchorDiaFixo: null,
+            garantiaExigidaPrevista: null,
+            observacoes: null,
+            clock: c,
+            anoBase: AnoCorrente);
+    }
+
+    private static ICenarioSimulacaoRepository CriarCenarioRepo(CenarioSimulacao cenario)
+    {
+        ICenarioSimulacaoRepository r = Substitute.For<ICenarioSimulacaoRepository>();
+        r.GetByIdAsync(cenario.Id, Arg.Any<CancellationToken>())
+         .Returns(cenario);
+        return r;
+    }
+
+    // ── Teste F3-T1: captação simulada aparece como Captação no mês correto ───
+
+    /// <summary>
+    /// Ao informar cenarioId, as captações das simulações do cenário devem ser
+    /// adicionadas como eventos de Captacao no mês da DataContratacaoPrevista (AD-6).
+    /// O saldo de fechamento do mês deve aumentar em relação ao saldo inicial.
+    /// </summary>
+    [Fact]
+    public async Task Handle_comCenarioId_incorporaCaptacoesDoCenarioNoMes()
+    {
+        // Arrange
+        Banco banco = CriarBanco("100", "BancoCenario");
+
+        // Saldo inicial vazio — sem contratos reais
+        IMediator mediator = CriarMediatorComSaldo(CriarSaldoVazio());
+
+        // Cenário com uma captação de 500k em julho de 2026
+        CenarioSimulacao cenario = CriarCenarioAtivo(AnoCorrente);
+        SimulacaoContratacao simulacao = CriarSimulacaoBulletBrl(
+            cenarioId: cenario.Id,
+            bancoId: banco.Id,
+            valorPrincipal: 500_000m,
+            dataContratacao: new LocalDate(AnoCorrente, 7, 1));
+        cenario.AdicionarSimulacao(simulacao, CriarClock());
+
+        ICenarioSimulacaoRepository cenarioRepo = CriarCenarioRepo(cenario);
+
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(Arg.Any<CancellationToken>())
+                 .Returns(new List<Banco> { banco }.AsReadOnly());
+
+        GetQuadroDividaQueryHandler handler = CriarHandler(
+            mediator: mediator,
+            bancoRepo: bancoRepo,
+            cenarioRepo: cenarioRepo);
+
+        // Act
+        QuadroDividaDto resultado = await handler.Handle(
+            new GetQuadroDividaQuery(AnoCorrente, cenario.Id), CancellationToken.None);
+
+        // Assert — julho (índice 6): captação de 500k deve elevar o saldo
+        MesProjecaoDto julho = resultado.Projecao.Meses[6];
+        julho.TotalCaptacaoMes.Should().Be(500_000m,
+            "a captação simulada de 500k em julho deve aparecer como evento de Captacao");
+        julho.SaldoTotalFim.Should().Be(500_000m,
+            "saldo inicial era 0; após captação de 500k o saldo de fechamento deve ser 500k");
+    }
+
+    // ── Teste F3-T2: amortizações das simulações somam com as reais ───────────
+
+    /// <summary>
+    /// O cronograma calculado pelo SimulacaoCronogramaCalculator produz eventos de
+    /// AmortizacaoPrincipal que devem ser adicionados à projeção junto com os eventos reais.
+    /// Para uma Bullet, a amortização ocorre na DataPrimeiroVencimento.
+    /// </summary>
+    [Fact]
+    public async Task Handle_comCenarioId_AmortizacoesDasSimulacoesSomamComReais()
+    {
+        // Arrange
+        Banco banco = CriarBanco("200", "BancoCenarioAmort");
+
+        // Contrato real: 1M com bullet vencendo em agosto 2026 (no período simulado)
+        Contrato contratoReal = CriarContratoBrl(banco.Id, 1_000_000m);
+
+        IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
+        contratoRepo.ListAsync(Arg.Any<CancellationToken>())
+                    .Returns(new List<Contrato> { contratoReal }.AsReadOnly());
+
+        // Evento real: amortização de 1M em agosto
+        IReadOnlyList<EventoCronograma> eventosReais =
+        [
+            CriarEventoPrincipal(contratoReal.Id, new LocalDate(AnoCorrente, 8, 1), 1_000_000m),
+        ];
+        IEventoCronogramaRepository cronogramaRepo = Substitute.For<IEventoCronogramaRepository>();
+        cronogramaRepo
+            .ListAbertosParaAnoAsync(Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(eventosReais);
+
+        // Cenário: captação de 300k em julho; bullet de 12 meses → amortização em julho 2027 (fora do ano)
+        CenarioSimulacao cenario = CriarCenarioAtivo(AnoCorrente);
+        SimulacaoContratacao simulacao = CriarSimulacaoBulletBrl(
+            cenarioId: cenario.Id,
+            bancoId: banco.Id,
+            valorPrincipal: 300_000m,
+            dataContratacao: new LocalDate(AnoCorrente, 7, 15),
+            mesesPrazo: 12);
+        cenario.AdicionarSimulacao(simulacao, CriarClock());
+
+        ICenarioSimulacaoRepository cenarioRepo = CriarCenarioRepo(cenario);
+
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(Arg.Any<CancellationToken>())
+                 .Returns(new List<Banco> { banco }.AsReadOnly());
+
+        GetQuadroDividaQueryHandler handler = CriarHandler(
+            mediator: CriarMediatorComSaldo(CriarSaldoUnicoBanco(banco, 1_000_000m)),
+            contratoRepo: contratoRepo,
+            cronogramaRepo: cronogramaRepo,
+            bancoRepo: bancoRepo,
+            cenarioRepo: cenarioRepo);
+
+        // Act
+        QuadroDividaDto resultado = await handler.Handle(
+            new GetQuadroDividaQuery(AnoCorrente, cenario.Id), CancellationToken.None);
+
+        // Assert — julho (índice 6): captação de 300k elevou saldo
+        resultado.Projecao.Meses[6].TotalCaptacaoMes.Should().Be(300_000m);
+
+        // Assert — agosto (índice 7): amortização real de 1M reduz saldo
+        resultado.Projecao.Meses[7].TotalAmortizacaoMes.Should().Be(1_000_000m);
+
+        // Assert — a amortização da simulação (bullet de 12 meses com data jul/2027)
+        // cai FORA do ano 2026, portanto não deve aparecer na projeção
+        decimal totalAmortizacaoAno = resultado.Sumario.TotalAmortizacaoNoAno;
+        totalAmortizacaoAno.Should().Be(1_000_000m,
+            "somente a amortização real de agosto contribui; a da simulação cai em 2027");
+    }
+
+    // ── Teste F3-T3: cenário inexistente → KeyNotFoundException ───────────────
+
+    /// <summary>
+    /// Quando o cenarioId informado não corresponde a nenhum registro, o handler deve
+    /// lançar KeyNotFoundException (controller mapeia para 404 Not Found).
+    /// </summary>
+    [Fact]
+    public async Task Handle_cenarioInexistente_lancaKeyNotFoundException()
+    {
+        // Arrange
+        Guid cenarioIdInexistente = Guid.NewGuid();
+
+        ICenarioSimulacaoRepository cenarioRepo = Substitute.For<ICenarioSimulacaoRepository>();
+        cenarioRepo.GetByIdAsync(cenarioIdInexistente, Arg.Any<CancellationToken>())
+                   .Returns((CenarioSimulacao?)null);
+
+        GetQuadroDividaQueryHandler handler = CriarHandler(cenarioRepo: cenarioRepo);
+
+        // Act & Assert
+        await handler
+            .Invoking(h => h.Handle(
+                new GetQuadroDividaQuery(AnoCorrente, cenarioIdInexistente),
+                CancellationToken.None))
+            .Should().ThrowAsync<KeyNotFoundException>();
+    }
+
+    // ── Teste F3-T4: cenário com AnoBase diferente → InvalidOperationException ─
+
+    /// <summary>
+    /// Um cenário com AnoBase = 2025 não pode ser aplicado em uma consulta para o ano 2026.
+    /// O handler deve detectar essa incompatibilidade e lançar InvalidOperationException
+    /// (controller mapeia para 409 Conflict).
+    /// </summary>
+    [Fact]
+    public async Task Handle_cenarioComAnoBaseDiferente_lancaInvalidOperationException()
+    {
+        // Arrange — cenário de 2025 aplicado em consulta para 2026
+        // Nota: o invariante I-2 de SimulacaoContratacao exige DataContratacaoPrevista >= hoje,
+        // portanto não adicionamos simulações neste cenário (ele existe só para testar a validação de AnoBase).
+        CenarioSimulacao cenario2025 = CenarioSimulacao.Criar(
+            nome: "Cenário 2025",
+            anoBase: 2025,
+            criadoPor: "user@test.com",
+            clock: CriarClock());
+
+        ICenarioSimulacaoRepository cenarioRepo = CriarCenarioRepo(cenario2025);
+
+        GetQuadroDividaQueryHandler handler = CriarHandler(cenarioRepo: cenarioRepo);
+
+        // Act & Assert
+        await handler
+            .Invoking(h => h.Handle(
+                new GetQuadroDividaQuery(AnoCorrente, cenario2025.Id),
+                CancellationToken.None))
+            .Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*AnoBase*2025*");
+    }
+
+    // ── Teste F3-T5: cenário arquivado ainda pode ser consultado ──────────────
+
+    /// <summary>
+    /// Cenários arquivados são imutáveis mas ainda consultáveis (auditoria, histórico).
+    /// O handler não deve bloquear a consulta com base no status do cenário.
+    /// </summary>
+    [Fact]
+    public async Task Handle_cenarioArquivado_aindaAplica()
+    {
+        // Arrange
+        Banco banco = CriarBanco("300", "BancoArquivado");
+
+        // Criamos um cenário com AnoBase = 2026, sem simulações, e o arquivamos
+        // (Arquivar requer status Ativo primeiro)
+        CenarioSimulacao cenario = CenarioSimulacao.Criar(
+            nome: "Cenário Arquivado",
+            anoBase: AnoCorrente,
+            criadoPor: "user@test.com",
+            clock: CriarClock());
+        cenario.Ativar(CriarClock());
+        cenario.Arquivar(CriarClock());
+
+        cenario.Status.Should().Be(StatusCenarioSimulacao.Arquivado);
+
+        ICenarioSimulacaoRepository cenarioRepo = CriarCenarioRepo(cenario);
+
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(Arg.Any<CancellationToken>())
+                 .Returns(new List<Banco> { banco }.AsReadOnly());
+
+        GetQuadroDividaQueryHandler handler = CriarHandler(
+            mediator: CriarMediatorComSaldo(CriarSaldoUnicoBanco(banco, 1_000_000m)),
+            bancoRepo: bancoRepo,
+            cenarioRepo: cenarioRepo);
+
+        // Act — não deve lançar exceção
+        QuadroDividaDto resultado = await handler.Handle(
+            new GetQuadroDividaQuery(AnoCorrente, cenario.Id), CancellationToken.None);
+
+        // Assert — cenário sem simulações não adiciona nada além dos dados reais
+        resultado.Sumario.TotalCaptacaoNoAno.Should().Be(0m);
+        resultado.CenarioAplicado.Should().NotBeNull();
+        resultado.CenarioAplicado!.Status.Should().Be("Arquivado");
+    }
+
+    // ── Teste F3-T6: sem cenarioId → retorna apenas real (AD-9) ───────────────
+
+    /// <summary>
+    /// Compatibilidade retroativa AD-9: chamadas sem cenarioId continuam retornando
+    /// apenas os dados reais (contratos ativos + amortizações futuras).
+    /// CenarioAplicado deve ser null.
+    /// </summary>
+    [Fact]
+    public async Task Handle_semCenarioId_retornaApenasReal_compatibilidade()
+    {
+        // Arrange
+        Banco banco = CriarBanco("001", "BancoAdNove");
+        Contrato contrato = CriarContratoBrl(banco.Id, 2_000_000m);
+
+        IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
+        contratoRepo.ListAsync(Arg.Any<CancellationToken>())
+                    .Returns(new List<Contrato> { contrato }.AsReadOnly());
+
+        IReadOnlyList<EventoCronograma> eventos =
+        [
+            CriarEventoPrincipal(contrato.Id, new LocalDate(AnoCorrente, 10, 1), 500_000m),
+        ];
+        IEventoCronogramaRepository cronogramaRepo = Substitute.For<IEventoCronogramaRepository>();
+        cronogramaRepo
+            .ListAbertosParaAnoAsync(Arg.Any<int>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(eventos);
+
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(Arg.Any<CancellationToken>())
+                 .Returns(new List<Banco> { banco }.AsReadOnly());
+
+        GetQuadroDividaQueryHandler handler = CriarHandler(
+            mediator: CriarMediatorComSaldo(CriarSaldoUnicoBanco(banco, 2_000_000m)),
+            contratoRepo: contratoRepo,
+            cronogramaRepo: cronogramaRepo,
+            bancoRepo: bancoRepo);
+
+        // Act — sem cenarioId (AD-9)
+        QuadroDividaDto resultado = await handler.Handle(
+            new GetQuadroDividaQuery(AnoCorrente), CancellationToken.None);
+
+        // Assert — apenas dados reais, sem captações simuladas
+        resultado.CenarioAplicado.Should().BeNull("sem cenarioId, CenarioAplicado deve ser null (AD-9)");
+        resultado.Sumario.TotalCaptacaoNoAno.Should().Be(0m,
+            "sem cenário, não há captações simuladas");
+        resultado.Sumario.TotalAmortizacaoNoAno.Should().Be(500_000m,
+            "apenas a amortização real de outubro deve aparecer");
+    }
+
+    // ── Teste F3-T7: DTO contém campo CenarioAplicado populado ───────────────
+
+    /// <summary>
+    /// Quando cenarioId é informado com sucesso, o DTO de resposta deve incluir
+    /// o campo CenarioAplicado com os metadados do cenário (Id, Nome, Status, AnoBase, QuantidadeSimulacoes).
+    /// </summary>
+    [Fact]
+    public async Task Handle_cenarioId_dto_contemCenarioAplicado()
+    {
+        // Arrange
+        Banco banco = CriarBanco("400", "BancoDtoTest");
+
+        CenarioSimulacao cenario = CriarCenarioAtivo(AnoCorrente);
+        SimulacaoContratacao sim = CriarSimulacaoBulletBrl(
+            cenarioId: cenario.Id,
+            bancoId: banco.Id,
+            valorPrincipal: 200_000m,
+            dataContratacao: new LocalDate(AnoCorrente, 9, 1));
+        cenario.AdicionarSimulacao(sim, CriarClock());
+
+        ICenarioSimulacaoRepository cenarioRepo = CriarCenarioRepo(cenario);
+
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.ListAllAsync(Arg.Any<CancellationToken>())
+                 .Returns(new List<Banco> { banco }.AsReadOnly());
+
+        GetQuadroDividaQueryHandler handler = CriarHandler(
+            mediator: CriarMediatorComSaldo(CriarSaldoVazio()),
+            bancoRepo: bancoRepo,
+            cenarioRepo: cenarioRepo);
+
+        // Act
+        QuadroDividaDto resultado = await handler.Handle(
+            new GetQuadroDividaQuery(AnoCorrente, cenario.Id), CancellationToken.None);
+
+        // Assert — campo CenarioAplicado populado corretamente
+        resultado.CenarioAplicado.Should().NotBeNull();
+        resultado.CenarioAplicado!.Id.Should().Be(cenario.Id);
+        resultado.CenarioAplicado.Nome.Should().Be("Realista 2026");
+        resultado.CenarioAplicado.AnoBase.Should().Be(AnoCorrente);
+        resultado.CenarioAplicado.QuantidadeSimulacoes.Should().Be(1);
+        resultado.CenarioAplicado.Status.Should().Be(nameof(StatusCenarioSimulacao.Rascunho));
     }
 }
