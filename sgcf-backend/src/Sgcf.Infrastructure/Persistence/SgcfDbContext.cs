@@ -12,6 +12,7 @@ using Sgcf.Domain.Cronograma;
 using Sgcf.Domain.Cotacoes;
 using Sgcf.Domain.Hedge;
 using Sgcf.Domain.Painel;
+using Sgcf.Domain.Simulacao;
 
 namespace Sgcf.Infrastructure.Persistence;
 
@@ -54,6 +55,8 @@ public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(
     public DbSet<LimiteBanco> LimitesBanco => Set<LimiteBanco>();
     public DbSet<EconomiaNegociacao> EconomiasNegociacao => Set<EconomiaNegociacao>();
     public DbSet<CdiSnapshot> CdiSnapshots => Set<CdiSnapshot>();
+    public DbSet<CenarioSimulacao> CenariosSimulacao => Set<CenarioSimulacao>();
+    public DbSet<SimulacaoContratacao> SimulacoesContratacao => Set<SimulacaoContratacao>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
