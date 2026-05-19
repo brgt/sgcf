@@ -173,6 +173,143 @@ Retorna o calendário de vencimentos de parcelas abertas para um ano específico
 
 ---
 
+### Quadro da Dívida
+
+```
+GET /api/v1/painel/quadro-divida
+Autorização: Leitura
+```
+
+Retorna, para um ano civil, o saldo da carteira de captações mês a mês com breakdown por banco, totais consolidados e variação anual. Reproduz a lógica da aba `Quadro_da_Divida` da planilha de Endividamento.
+
+Quando `cenarioId` é informado, a projeção incorpora as captações hipotéticas do cenário de simulação sobre os dados reais da carteira (AD-9). O campo `cenarioAplicado` do DTO de resposta indica os metadados do cenário aplicado.
+
+> **Restrição MVP (Q9):** apenas o ano corrente do servidor é suportado. Solicitar outro ano retorna `409 Conflict`.
+
+**Query Parameters:**
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|-----------|------|-------------|-----------|
+| `ano` | int | Não | Ano civil de referência (ex.: `2026`). Quando omitido, usa o ano corrente do servidor (timezone `America/Sao_Paulo`). |
+| `cenarioId` | guid | Não | Id de um cenário de simulação. Quando informado, incorpora as captações hipotéticas do cenário na projeção mensal. |
+
+**Responses:**
+- `200 OK` — `QuadroDividaDto`
+- `400 Bad Request` — Ano fora do intervalo válido (2020–2050)
+- `404 Not Found` — `cenarioId` informado não existe ou foi deletado
+- `409 Conflict` — Ano informado diferente do ano corrente (restrição MVP Q9)
+
+**Response 200 OK:**
+
+```json
+{
+  "ano": 2026,
+  "dataReferencia": "2026-05-19",
+  "snapshotInicial": {
+    "bancos": [
+      {
+        "bancoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "bancoApelido": "Caixa",
+        "bancoCodigoCompe": "104",
+        "saldoBrl": 15000000.00,
+        "quantidadeContratosAtivos": 3
+      }
+    ],
+    "saldoTotalBrl": 15000000.00,
+    "dataReferencia": "2026-05-19"
+  },
+  "projecao": {
+    "meses": [
+      {
+        "ano": 2026,
+        "mes": 1,
+        "bancos": [
+          {
+            "bancoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+            "bancoApelido": "Caixa",
+            "saldoInicio": 15000000.00,
+            "saldoFim": 14500000.00,
+            "totalAmortizacaoNoMes": 500000.00,
+            "totalCaptacaoNoMes": 0.00,
+            "sharePercentual": 100.00
+          }
+        ],
+        "saldoTotalInicio": 15000000.00,
+        "saldoTotalFim": 14500000.00,
+        "totalAmortizacaoMes": 500000.00,
+        "totalCaptacaoMes": 0.00
+      }
+    ]
+  },
+  "sumario": {
+    "saldoTotalInicioAno": 15000000.00,
+    "saldoTotalFimAno": 9000000.00,
+    "totalAmortizacaoNoAno": 6000000.00,
+    "totalCaptacaoNoAno": 0.00,
+    "variacaoAnualPercentual": -40.00
+  },
+  "alertas": [],
+  "cenarioAplicado": null
+}
+```
+
+**Campos da resposta:**
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `ano` | int | Ano civil consultado |
+| `dataReferencia` | date | Data em que o snapshot inicial foi calculado (hoje) |
+| `snapshotInicial` | `SaldoPorBancoAtualDto` | Saldo atual por banco — base da projeção |
+| `snapshotInicial.bancos[]` | array | Lista de bancos com saldo na carteira |
+| `snapshotInicial.bancos[].bancoId` | guid | Identificador do banco |
+| `snapshotInicial.bancos[].bancoApelido` | string | Apelido do banco (AD-10) |
+| `snapshotInicial.bancos[].bancoCodigoCompe` | string | Código COMPE do banco |
+| `snapshotInicial.bancos[].saldoBrl` | decimal | Saldo total em BRL (conversão via spot/PTAX corrente) |
+| `snapshotInicial.bancos[].quantidadeContratosAtivos` | int | Contratos ativos do banco |
+| `snapshotInicial.saldoTotalBrl` | decimal | Soma de `saldoBrl` de todos os bancos |
+| `projecao.meses[]` | array | Exatamente 12 entradas — índice 0 = janeiro, índice 11 = dezembro |
+| `projecao.meses[].ano` | int | Ano ao qual o mês pertence |
+| `projecao.meses[].mes` | int | Número do mês (1–12) |
+| `projecao.meses[].bancos[]` | array | Posição de cada banco no mês (inclui apenas bancos com saldo ou eventos) |
+| `projecao.meses[].bancos[].saldoInicio` | decimal | Saldo em BRL no início do mês |
+| `projecao.meses[].bancos[].saldoFim` | decimal | Saldo em BRL no fim do mês após eventos |
+| `projecao.meses[].bancos[].totalAmortizacaoNoMes` | decimal | Soma das amortizações de principal do banco no mês em BRL |
+| `projecao.meses[].bancos[].totalCaptacaoNoMes` | decimal | Soma das captações do banco no mês em BRL |
+| `projecao.meses[].bancos[].sharePercentual` | decimal | Percentual do banco no saldo total de fechamento do mês |
+| `projecao.meses[].saldoTotalInicio` | decimal | Soma de `saldoInicio` de todos os bancos do mês |
+| `projecao.meses[].saldoTotalFim` | decimal | Soma de `saldoFim` de todos os bancos do mês |
+| `projecao.meses[].totalAmortizacaoMes` | decimal | Total de amortizações de principal no mês em BRL |
+| `projecao.meses[].totalCaptacaoMes` | decimal | Total de captações no mês em BRL |
+| `sumario.saldoTotalInicioAno` | decimal | Saldo total no início do ano (= `saldoTotalInicio` do mês 1) |
+| `sumario.saldoTotalFimAno` | decimal | Saldo total no fim do ano (= `saldoTotalFim` do mês 12) |
+| `sumario.totalAmortizacaoNoAno` | decimal | Soma de todas as amortizações de principal no ano |
+| `sumario.totalCaptacaoNoAno` | decimal | Soma de todas as captações no ano |
+| `sumario.variacaoAnualPercentual` | decimal | `(SaldoFimAno − SaldoInicioAno) / SaldoInicioAno × 100`. Zero quando `SaldoInicioAno = 0` |
+| `alertas[]` | string[] | Alertas contextuais. Populado quando o tetão mensal configurável é ultrapassado (Task 3.4) |
+| `cenarioAplicado` | objeto\|null | Metadados do cenário aplicado. `null` quando `cenarioId` não foi informado |
+| `cenarioAplicado.id` | guid | Identificador do cenário |
+| `cenarioAplicado.nome` | string | Nome do cenário |
+| `cenarioAplicado.status` | string | `Rascunho`, `Ativo` ou `Arquivado` |
+| `cenarioAplicado.anoBase` | int | Ano-base das simulações do cenário |
+| `cenarioAplicado.quantidadeSimulacoes` | int | Quantidade de captações hipotéticas no cenário |
+
+> **Atalho por cenário:** o endpoint `GET /api/v1/simulacoes/cenarios/{id}/quadro-divida[?ano=YYYY]` é equivalente a chamar este endpoint com `cenarioId={id}`, usando `cenario.AnoBase` como ano padrão. Consulte [Simulações API](./simulacoes.md#atalho-quadro-da-dívida).
+
+---
+
+### VencimentoItemDto — Campos de Banco (AD-10)
+
+O DTO `VencimentoItemDto`, retornado por `GET /api/v1/painel/vencimentos`, foi estendido com dois campos adicionais que identificam o banco credor do contrato:
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `bancoId` | guid | Identificador do banco credor |
+| `bancoApelido` | string | Apelido do banco credor |
+
+Esses campos permitem ao frontend agrupar vencimentos por banco sem realizar lookups adicionais.
+
+---
+
 ### KPIs Executivos
 
 ```
