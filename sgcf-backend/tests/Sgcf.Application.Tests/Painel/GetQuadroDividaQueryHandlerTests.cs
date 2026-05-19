@@ -1,5 +1,6 @@
 using FluentAssertions;
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 using Sgcf.Application.Bancos;
@@ -9,6 +10,7 @@ using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Painel.Queries;
 using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Cache;
+using Sgcf.Application.Sistema;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Common;
@@ -43,7 +45,8 @@ public sealed class GetQuadroDividaQueryHandlerTests
         IClock? clock = null,
         ICenarioSimulacaoRepository? cenarioRepo = null,
         ICronogramaSimulacaoCache? cronogramaCache = null,
-        ICdiSnapshotRepository? cdiRepo = null)
+        ICdiSnapshotRepository? cdiRepo = null,
+        IParametroSistemaRepository? parametroSistemaRepo = null)
     {
         mediator ??= CriarMediatorComSaldo(CriarSaldoVazio());
         contratoRepo ??= CriarContratoRepoVazio();
@@ -54,6 +57,15 @@ public sealed class GetQuadroDividaQueryHandlerTests
         clock ??= CriarClock();
         cenarioRepo ??= Substitute.For<ICenarioSimulacaoRepository>();
         cdiRepo ??= Substitute.For<ICdiSnapshotRepository>();
+        parametroSistemaRepo ??= CriarParametroSistemaRepoVazio();
+
+        // Monta um ServiceProvider mínimo para resolver ICronogramaSimulacaoCache opcionalmente.
+        ServiceCollection services = new();
+        if (cronogramaCache is not null)
+        {
+            services.AddSingleton(cronogramaCache);
+        }
+        IServiceProvider sp = services.BuildServiceProvider();
 
         return new GetQuadroDividaQueryHandler(
             mediator,
@@ -64,8 +76,19 @@ public sealed class GetQuadroDividaQueryHandlerTests
             cotacaoFxRepo,
             clock,
             cenarioRepo,
-            cronogramaCache,
-            cdiRepo);
+            sp,
+            cdiRepo,
+            parametroSistemaRepo);
+    }
+
+    private static IParametroSistemaRepository CriarParametroSistemaRepoVazio()
+    {
+        IParametroSistemaRepository r = Substitute.For<IParametroSistemaRepository>();
+        IClock c = CriarClock();
+        Domain.Sistema.ParametroSistema parametros = Domain.Sistema.ParametroSistema.Criar(c);
+        r.GetOrCreateGlobalAsync(Arg.Any<IClock>(), Arg.Any<CancellationToken>())
+         .Returns(parametros);
+        return r;
     }
 
     // ── Helpers de setup ──────────────────────────────────────────────────────
