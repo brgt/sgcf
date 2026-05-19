@@ -55,7 +55,8 @@ builder.Services
     .WithTools<ContratoTools>()
     .WithTools<DividaTools>()
     .WithTools<HedgeTools>()
-    .WithTools<RagTools>();
+    .WithTools<RagTools>()
+    .WithTools<SimulacaoTools>();
 
 // ── Health ────────────────────────────────────────────────────────────────────
 builder.Services.AddHealthChecks();
