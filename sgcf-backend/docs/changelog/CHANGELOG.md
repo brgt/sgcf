@@ -11,6 +11,257 @@
 
 ---
 
+## [0.10.0] — 2026-05-19
+
+### Resumo executivo
+
+Entrega do módulo **Simulações de Contratação + Quadro da Dívida** em 4 fases. A tesouraria pode agora visualizar a posição da dívida mês a mês para um ano inteiro, criar cenários nomeados (Otimista/Realista/Pessimista) com captações hipotéticas, e aplicar qualquer cenário ao Quadro da Dívida para projetar o impacto das novas operações sobre saldo e share por banco.
+
+Documentação operacional em [`docs/api/painel.md`](../api/painel.md#quadro-da-dívida), [`docs/api/simulacoes.md`](../api/simulacoes.md) e [`docs/api/parametros-sistema.md`](../api/parametros-sistema.md).
+
+---
+
+### ADDITIVE — Painel — Quadro da Dívida
+
+**Novo endpoint:**
+
+```
+GET /api/v1/painel/quadro-divida?ano=YYYY[&cenarioId=guid]
+Política: Leitura
+```
+
+Retorna, para um ano civil, o saldo da carteira mês a mês com breakdown por banco, totais consolidados, variação anual e alertas contextuais. Reproduz a lógica da aba `Quadro_da_Divida` da planilha de Endividamento.
+
+**Comportamento sem `cenarioId`:** projeção baseada exclusivamente nos contratos ativos da carteira (AD-9).
+
+**Comportamento com `cenarioId`:** incorpora as captações hipotéticas do cenário de simulação informado na projeção mensal. O campo `cenarioAplicado` do DTO de resposta indica os metadados do cenário (AD-9).
+
+**DTOs novos:** `QuadroDividaDto`, `QuadroDividaProjecaoDto`, `MesProjecaoDto`, `SaldoBancoMesDto`, `QuadroDividaSumarioDto`, `CenarioAplicadoDto`, `SaldoPorBancoAtualDto`.
+
+**Componentes internos:**
+
+- `ProjetorSaldoMensal` — função pura em `Sgcf.Domain.Painel`. Recebe saldo inicial por banco + lista de eventos (`AmortizacaoPrincipal` / `Captacao`) e projeta 12 meses. Sem I/O. Invariante: `saldoFim[m] == saldoInicio[m+1]` por banco.
+- `GetSaldoPorBancoAtualQuery` — snapshot atual da carteira agrupado por banco em BRL, com conversão de moeda via spot/PTAX corrente flat.
+
+**Restrição MVP (Q9):** apenas o ano corrente do servidor é suportado. Ano diferente retorna `409 Conflict`.
+
+---
+
+### ADDITIVE — Painel — VencimentoItemDto estendido (AD-10)
+
+O DTO `VencimentoItemDto`, retornado por `GET /api/v1/painel/vencimentos`, recebeu dois campos adicionais:
+
+| Campo novo | Tipo | Descrição |
+|------------|------|-----------|
+| `bancoId` | guid | Identificador do banco credor do contrato |
+| `bancoApelido` | string | Apelido do banco credor |
+
+Campos aditivos — clientes existentes que ignoram campos desconhecidos não são impactados.
+
+---
+
+### ADDITIVE — Simulações — CRUD de Cenários
+
+**Novo controller:** `SimulacoesController`
+
+**Endpoints adicionados (13):**
+
+| Método | Path | Política |
+|--------|------|---------|
+| `POST` | `/api/v1/simulacoes/cronograma-hipotetico` | Escrita |
+| `POST` | `/api/v1/simulacoes/cenarios` | Escrita |
+| `GET` | `/api/v1/simulacoes/cenarios` | Leitura |
+| `GET` | `/api/v1/simulacoes/cenarios/{id}` | Leitura |
+| `PATCH` | `/api/v1/simulacoes/cenarios/{id}` | Escrita |
+| `POST` | `/api/v1/simulacoes/cenarios/{id}/ativar` | Escrita |
+| `POST` | `/api/v1/simulacoes/cenarios/{id}/arquivar` | Gerencial |
+| `POST` | `/api/v1/simulacoes/cenarios/{id}/duplicar` | Escrita |
+| `DELETE` | `/api/v1/simulacoes/cenarios/{id}` | Escrita |
+| `POST` | `/api/v1/simulacoes/cenarios/{id}/simulacoes` | Escrita |
+| `PATCH` | `/api/v1/simulacoes/cenarios/{id}/simulacoes/{simId}` | Escrita |
+| `DELETE` | `/api/v1/simulacoes/cenarios/{id}/simulacoes/{simId}` | Escrita |
+| `GET` | `/api/v1/simulacoes/cenarios/{id}/quadro-divida[?ano]` | Leitura |
+
+**DTOs novos:** `CenarioSimulacaoDto`, `CenarioSimulacaoResumoDto`, `SimulacaoContratacaoDto`, `AdicionarSimulacaoInput`, `AtualizarSimulacaoInput`.
+
+**Enums novos:** `StatusCenarioSimulacao` (`Rascunho` / `Ativo` / `Arquivado`), `TipoTaxa` (`Fixa` / `CdiSpread`).
+
+**Regras críticas:**
+
+- Lifecycle de cenário: `Rascunho → Ativo → Arquivado`. Arquivamento é irreversível via API.
+- Cenário `Arquivado` é imutável. Adição/edição/remoção de simulações retorna `409 Conflict`.
+- Qualquer membro com política `Escrita` pode editar qualquer cenário (sem controle de owner — D-6).
+- Arquivar exige política `Gerencial` (AD-11).
+- Soft-delete via `DELETE /cenarios/{id}`. Registro permanece no banco; GET subsequente retorna `404`.
+- `POST /cenarios/{id}/duplicar` cria cópia profunda com novo `Id`; nome recebe sufixo ` (cópia)`. Funciona em qualquer status, incluindo `Arquivado` (D-10 / Q7).
+
+**Idempotency-Key:** suportado em `POST /cenarios`, `POST /cenarios/{id}/duplicar` e `POST /cenarios/{id}/simulacoes` (TTL 24h via `IdempotencyFilter`).
+
+**Atalho:** `GET /cenarios/{id}/quadro-divida` é equivalente a `GET /painel/quadro-divida?cenarioId={id}&ano={cenario.AnoBase}`.
+
+---
+
+### ADDITIVE — Simulações — Cronograma Hipotético (Preview)
+
+**Endpoint:**
+
+```
+POST /api/v1/simulacoes/cronograma-hipotetico
+Política: Escrita
+```
+
+Calcula o cronograma de amortização de uma operação hipotética sem persistir nada. Reutiliza `CronogramaStrategyFactory` — resultado idêntico ao de um contrato real equivalente.
+
+**DTOs novos:** `CronogramaHipoteticoDto`, `EventoCronogramaItemDto`.
+
+**Campos suportados:** `tipoTaxa = Fixa` com `taxaAa` ou `tipoTaxa = CdiSpread` com `spreadAa + cdiReferenciaAaPercentual`. Estruturas: `Bullet`, `Price`, `Sac`, `Customizada`.
+
+---
+
+### ADDITIVE — Simulações — Cache Redis (AD-3)
+
+O cronograma de cada simulação é calculado on-the-fly e armazenado no Redis com TTL de 60 segundos.
+
+**Interface:** `ICronogramaSimulacaoCache` em `Sgcf.Application.Simulacao`.
+
+**Implementação:** `RedisCronogramaSimulacaoCache` em `Sgcf.Infrastructure.Cache`.
+
+**Chave de cache:**
+
+```
+sim:cronograma:{cenarioId}:{simulacaoId}:v{version}
+```
+
+O campo `version` de `SimulacaoContratacao` é incrementado a cada mutação (`Atualizar`, `Remover`). A chave anterior torna-se obsoleta e o próximo acesso recalcula, sem invalidação explícita.
+
+---
+
+### ADDITIVE — Sistema — Tetão Mensal Configurável (D-11 / Q8)
+
+**Novo controller:** `ParametrosSistemaController`
+
+**Endpoints adicionados (2):**
+
+| Método | Path | Política |
+|--------|------|---------|
+| `GET` | `/api/v1/parametros-sistema` | Leitura |
+| `PATCH` | `/api/v1/parametros-sistema/tetao-mensal` | Admin |
+
+O tetão mensal (`TetaoMensalCapacidadeBrl`) é um limite em BRL da soma de captações e amortizações de principal em qualquer mês do Quadro da Dívida. Quando configurado e ultrapassado, o sistema adiciona entradas descritivas no array `alertas[]` do `QuadroDividaDto`. Alerta não-bloqueante.
+
+**DTO novo:** `ParametrosSistemaDto`.
+
+**Componente interno:** `ValidadorTetaoMensal` — função pura injetada no `GetQuadroDividaQueryHandler`.
+
+---
+
+### INTERNAL — Migration S9 (`cenario_simulacao` + `simulacao_contratacao`)
+
+**Migration:** `20260519_S9_SimulacaoContratacao`
+
+**Tabelas criadas:**
+
+| Tabela | Schema | Descrição |
+|--------|--------|-----------|
+| `cenario_simulacao` | `sgcf` | Agregado raiz do cenário |
+| `simulacao_contratacao` | `sgcf` | Captações hipotéticas filhas |
+
+**Colunas principais — `cenario_simulacao`:**
+
+| Coluna | Tipo PG | Notas |
+|--------|---------|-------|
+| `id` | `uuid` | PK |
+| `nome` | `text` | NOT NULL, máx. 100 chars |
+| `descricao` | `text` | Nullable |
+| `ano_base` | `integer` | NOT NULL, [2020, 2050] |
+| `status` | `integer` | Enum `StatusCenarioSimulacao` |
+| `criado_por` | `text` | NOT NULL |
+| `deletado_em` | `timestamptz` | Nullable — soft delete |
+| `created_at` / `updated_at` | `timestamptz` | — |
+
+**Índices — `cenario_simulacao`:**
+
+| Nome | Colunas |
+|------|---------|
+| `ix_cenario_simulacao_status_criado_por` | `(status, criado_por)` |
+
+**Colunas principais — `simulacao_contratacao`:**
+
+| Coluna | Tipo PG | Notas |
+|--------|---------|-------|
+| `id` | `uuid` | PK |
+| `cenario_id` | `uuid` | FK → `cenario_simulacao.id` (CASCADE DELETE) |
+| `banco_id` | `uuid` | FK → `banco.id` |
+| `modalidade` | `integer` | Enum `ModalidadeContrato` |
+| `moeda` | `integer` | Enum `Moeda` |
+| `valor_principal` | `numeric(20,6)` | NOT NULL |
+| `data_contratacao_prevista` | `date` | NOT NULL |
+| `data_primeiro_vencimento` | `date` | NOT NULL |
+| `tipo_taxa` | `integer` | Enum `TipoTaxa` |
+| `taxa_aa` | `numeric(10,6)` | Nullable |
+| `spread_aa` | `numeric(10,6)` | Nullable |
+| `base_calculo` | `integer` | Enum `BaseCalculo` |
+| `estrutura_amortizacao` | `integer` | Enum `EstruturaAmortizacao` |
+| `periodicidade` | `integer` | Enum `Periodicidade` |
+| `quantidade_parcelas` | `integer` | NOT NULL |
+| `anchor_dia_mes` | `integer` | Enum `AnchorDiaMes` |
+| `anchor_dia_fixo` | `integer` | Nullable |
+| `garantia_exigida_prevista` | `text` | Nullable, máx. 500 chars |
+| `observacoes` | `text` | Nullable |
+| `version` | `integer` | NOT NULL, default 1 — cache invalidation |
+| `created_at` / `updated_at` | `timestamptz` | — |
+
+**Índices — `simulacao_contratacao`:**
+
+| Nome | Colunas |
+|------|---------|
+| `ix_simulacao_contratacao_cenario_id` | `cenario_id` |
+| `ix_simulacao_contratacao_banco_id` | `banco_id` |
+
+Soft delete implementado via query filter global em `CenarioSimulacaoRepository` (filtra por `deletadoEm IS NULL`).
+
+---
+
+### INTERNAL — Migration S10 (`parametro_sistema`)
+
+**Migration:** `20260519205808_S10_ParametroSistemaTetao`
+
+**Tabela criada:**
+
+| Tabela | Schema | Descrição |
+|--------|--------|-----------|
+| `parametro_sistema` | `sgcf` | Parâmetros globais do sistema (singleton get-or-create) |
+
+**Colunas:**
+
+| Coluna | Tipo PG | Notas |
+|--------|---------|-------|
+| `id` | `uuid` | PK |
+| `tetao_mensal_capacidade_brl` | `numeric(20,6)` | Nullable |
+| `created_at` / `updated_at` | `timestamptz` | — |
+
+---
+
+### Cobertura de testes
+
+| Suite | Antes | Depois | Delta |
+|-------|-------|--------|-------|
+| Fast (sem Docker) | 577 | 847 | +270 |
+| Slow (Testcontainers Postgres + Redis) | — | ~60 | — |
+
+**Novos grupos de testes fast:**
+
+- `ProjetorSaldoMensal` — 8 unit tests + 2 property tests (FsCheck)
+- `CenarioSimulacao` + `SimulacaoContratacao` — 20+ unit tests (criação, transições, invariantes)
+- `DuplicarComoRascunho` — 6 unit tests
+- `SimulacaoCronogramaCalculator` — 4 golden tests (Bullet, BulletComJuros, Price, SAC)
+- `ICronogramaSimulacaoCache` / `RedisCronogramaSimulacaoCache` — 6+ unit tests
+- CRUD handlers (commands + queries) — cobertura ≥ 85%
+- `ValidadorTetaoMensal` — 4 unit tests
+- E2E (Slow): cenário completo criar → adicionar 3 sims → ativar → duplicar → quadro com cenário → arquivar
+
+---
+
 ## [0.9.0] — 2026-05-18
 
 ### Resumo executivo
