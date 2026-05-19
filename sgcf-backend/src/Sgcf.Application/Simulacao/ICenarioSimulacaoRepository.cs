@@ -1,0 +1,40 @@
+using Sgcf.Domain.Simulacao;
+
+namespace Sgcf.Application.Simulacao;
+
+/// <summary>
+/// Contrato de persistência para o agregado <see cref="CenarioSimulacao"/>.
+/// A implementação vive em <c>Sgcf.Infrastructure</c> (Task 2.2).
+///
+/// Convenção de Unit-of-Work: <see cref="Add"/>, <see cref="Update"/> e <see cref="Remove"/>
+/// não persistem imediatamente — chamam <see cref="SaveChangesAsync"/> para confirmar.
+/// </summary>
+public interface ICenarioSimulacaoRepository
+{
+    /// <summary>Registra um novo cenário para inserção.</summary>
+    void Add(CenarioSimulacao cenario);
+
+    /// <summary>Marca um cenário existente para atualização.</summary>
+    void Update(CenarioSimulacao cenario);
+
+    /// <summary>Marca um cenário para remoção (hard delete — use <see cref="CenarioSimulacao.Deletar"/> para soft delete).</summary>
+    void Remove(CenarioSimulacao cenario);
+
+    /// <summary>Retorna o cenário pelo Id, incluindo todas as simulações filhas. Null se não encontrado (ou soft-deletado).</summary>
+    Task<CenarioSimulacao?> GetByIdAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lista cenários com filtros opcionais. Exclui soft-deletados por padrão (query filter).
+    /// </summary>
+    /// <param name="status">Filtra por status. Null retorna todos os status.</param>
+    /// <param name="anoBase">Filtra por ano-calendário de referência.</param>
+    /// <param name="criadoPor">Filtra pelo identificador do criador (sub do JWT).</param>
+    Task<IReadOnlyList<CenarioSimulacao>> ListAsync(
+        StatusCenarioSimulacao? status,
+        int? anoBase,
+        string? criadoPor,
+        CancellationToken ct = default);
+
+    /// <summary>Persiste todas as alterações pendentes na unit-of-work.</summary>
+    Task<int> SaveChangesAsync(CancellationToken ct = default);
+}
