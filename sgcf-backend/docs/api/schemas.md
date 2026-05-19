@@ -742,3 +742,286 @@ Estrutura de entrada para declarar uma garantia ao criar (`POST`) ou atualizar (
   "createdAt": "DateTimeOffset"
 }
 ```
+
+---
+
+## DTOs — Painel — Quadro da Dívida
+
+### QuadroDividaDto
+
+Resultado completo do Quadro da Dívida para um ano civil. Retornado por `GET /api/v1/painel/quadro-divida` e `GET /api/v1/simulacoes/cenarios/{id}/quadro-divida`.
+
+```json
+{
+  "ano": "int",
+  "dataReferencia": "YYYY-MM-DD",
+  "snapshotInicial": "SaldoPorBancoAtualDto",
+  "projecao": "QuadroDividaProjecaoDto",
+  "sumario": "QuadroDividaSumarioDto",
+  "alertas": "string[]",
+  "cenarioAplicado": "CenarioAplicadoDto | null"
+}
+```
+
+---
+
+### SaldoPorBancoAtualDto
+
+Saldo atual da carteira agrupado por banco, convertido para BRL.
+
+```json
+{
+  "bancos": [
+    {
+      "bancoId": "guid",
+      "bancoApelido": "string",
+      "bancoCodigoCompe": "string",
+      "saldoBrl": "decimal",
+      "quantidadeContratosAtivos": "int"
+    }
+  ],
+  "saldoTotalBrl": "decimal",
+  "dataReferencia": "YYYY-MM-DD"
+}
+```
+
+---
+
+### QuadroDividaProjecaoDto
+
+Container dos 12 meses projetados.
+
+```json
+{
+  "meses": "MesProjecaoDto[12]"
+}
+```
+
+---
+
+### MesProjecaoDto
+
+Projeção de um único mês calendário com breakdown por banco.
+
+```json
+{
+  "ano": "int",
+  "mes": "int (1–12)",
+  "bancos": "SaldoBancoMesDto[]",
+  "saldoTotalInicio": "decimal",
+  "saldoTotalFim": "decimal",
+  "totalAmortizacaoMes": "decimal",
+  "totalCaptacaoMes": "decimal"
+}
+```
+
+| Campo | Descrição |
+|-------|-----------|
+| `meses` | Exatamente 12 entradas; índice 0 = janeiro, índice 11 = dezembro |
+| `bancos` | Inclui apenas bancos com saldo ou eventos no mês |
+| `saldoTotalInicio` | Soma de `saldoInicio` de todos os bancos do mês |
+| `saldoTotalFim` | Soma de `saldoFim` de todos os bancos do mês |
+| `totalAmortizacaoMes` | Total de amortizações de principal no mês em BRL |
+| `totalCaptacaoMes` | Total de captações no mês em BRL |
+
+---
+
+### SaldoBancoMesDto
+
+Posição de um banco específico dentro de um mês projetado.
+
+```json
+{
+  "bancoId": "guid",
+  "bancoApelido": "string",
+  "saldoInicio": "decimal",
+  "saldoFim": "decimal",
+  "totalAmortizacaoNoMes": "decimal",
+  "totalCaptacaoNoMes": "decimal",
+  "sharePercentual": "decimal"
+}
+```
+
+| Campo | Descrição |
+|-------|-----------|
+| `sharePercentual` | Percentual do banco no `saldoTotalFim` do mês. Soma de todos os bancos = 100 (tolerância 0,01 pp) |
+
+---
+
+### QuadroDividaSumarioDto
+
+Totais anuais agregados da projeção.
+
+```json
+{
+  "saldoTotalInicioAno": "decimal",
+  "saldoTotalFimAno": "decimal",
+  "totalAmortizacaoNoAno": "decimal",
+  "totalCaptacaoNoAno": "decimal",
+  "variacaoAnualPercentual": "decimal"
+}
+```
+
+| Campo | Descrição |
+|-------|-----------|
+| `saldoTotalInicioAno` | Saldo total no início do ano (= `saldoTotalInicio` do mês 1) |
+| `saldoTotalFimAno` | Saldo total no fim do ano (= `saldoTotalFim` do mês 12) |
+| `variacaoAnualPercentual` | `(SaldoFimAno − SaldoInicioAno) / SaldoInicioAno × 100`. Zero quando `SaldoInicioAno = 0` |
+
+---
+
+### CenarioAplicadoDto
+
+Metadados do cenário de simulação aplicado na projeção do Quadro da Dívida. Presente somente quando `cenarioId` foi informado na query (AD-9).
+
+```json
+{
+  "id": "guid",
+  "nome": "string",
+  "status": "Rascunho | Ativo | Arquivado",
+  "anoBase": "int",
+  "quantidadeSimulacoes": "int"
+}
+```
+
+---
+
+## DTOs — Simulações
+
+### CenarioSimulacaoDto
+
+DTO completo do cenário incluindo simulações filhas. Ver [Simulações API](./simulacoes.md#cenariossimulacaodto).
+
+```json
+{
+  "id": "guid",
+  "nome": "string",
+  "descricao": "string | null",
+  "anoBase": "int",
+  "status": "Rascunho | Ativo | Arquivado",
+  "criadoPor": "string",
+  "createdAt": "DateTimeOffset",
+  "updatedAt": "DateTimeOffset",
+  "simulacoes": "SimulacaoContratacaoDto[]"
+}
+```
+
+---
+
+### CenarioSimulacaoResumoDto
+
+DTO resumido para listagens (sem simulações filhas).
+
+```json
+{
+  "id": "guid",
+  "nome": "string",
+  "status": "Rascunho | Ativo | Arquivado",
+  "anoBase": "int",
+  "qtdeSimulacoes": "int",
+  "criadoPor": "string",
+  "updatedAt": "DateTimeOffset"
+}
+```
+
+---
+
+### SimulacaoContratacaoDto
+
+DTO de uma captação hipotética dentro de um cenário. O campo `version` é usado como componente da chave de cache Redis (AD-3).
+
+```json
+{
+  "id": "guid",
+  "cenarioId": "guid",
+  "bancoId": "guid",
+  "modalidade": "string",
+  "moeda": "string",
+  "valorPrincipal": "decimal",
+  "dataContratacaoPrevista": "YYYY-MM-DD",
+  "dataPrimeiroVencimento": "YYYY-MM-DD",
+  "tipoTaxa": "Fixa | CdiSpread",
+  "taxaAa": "decimal | null",
+  "spreadAa": "decimal | null",
+  "baseCalculo": "string",
+  "estruturaAmortizacao": "string",
+  "periodicidade": "string",
+  "quantidadeParcelas": "int",
+  "anchorDiaMes": "string",
+  "anchorDiaFixo": "int | null",
+  "garantiaExigidaPrevista": "string | null",
+  "observacoes": "string | null",
+  "version": "int",
+  "createdAt": "DateTimeOffset",
+  "updatedAt": "DateTimeOffset"
+}
+```
+
+---
+
+### CronogramaHipoteticoDto
+
+Resultado do preview de cronograma hipotético (endpoint stateless).
+
+```json
+{
+  "taxaEfetivaAaPercentual": "decimal",
+  "quantidadeEventos": "int",
+  "principalTotal": "decimal",
+  "jurosTotal": "decimal",
+  "eventos": "EventoCronogramaItemDto[]"
+}
+```
+
+---
+
+### EventoCronogramaItemDto
+
+Item individual de evento no cronograma hipotético. Distinto de `EventoCronogramaDto` (que representa eventos de contratos reais).
+
+```json
+{
+  "numero": "int",
+  "tipo": "string",
+  "data": "YYYY-MM-DD",
+  "valor": "decimal",
+  "saldoDevedorApos": "decimal | null"
+}
+```
+
+---
+
+## DTOs — Sistema
+
+### ParametrosSistemaDto
+
+Parâmetros globais de configuração do sistema.
+
+```json
+{
+  "tetaoMensalCapacidadeBrl": "decimal | null"
+}
+```
+
+| Campo | Descrição |
+|-------|-----------|
+| `tetaoMensalCapacidadeBrl` | Limite de movimentação mensal em BRL (captações + amortizações). `null` = sem limite configurado |
+
+---
+
+## Enums — Simulações
+
+### StatusCenarioSimulacao
+
+| Valor | Descrição |
+|-------|-----------|
+| `Rascunho` | Cenário em edição; mutável |
+| `Ativo` | Cenário aprovado; ainda mutável |
+| `Arquivado` | Cenário encerrado; imutável via API |
+
+### TipoTaxa
+
+| Valor | Descrição |
+|-------|-----------|
+| `Fixa` | Taxa fixa anual. Requer `taxaAa` preenchido |
+| `CdiSpread` | CDI mais spread. Requer `spreadAa` e CDI de referência |
