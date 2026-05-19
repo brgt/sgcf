@@ -97,14 +97,17 @@ public sealed class PainelController(IMediator mediator, IClock clock) : Control
     /// <summary>
     /// Retorna o quadro da dívida para o ano informado: snapshot atual, projeção mês a mês e sumário anual.
     /// Sem <c>ano</c> usa o ano corrente. Apenas o ano corrente é suportado no MVP (Q9).
+    /// Quando <c>cenarioId</c> é informado, a projeção incorpora as captações hipotéticas do cenário (AD-9).
     /// </summary>
     [HttpGet("quadro-divida")]
     [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<QuadroDividaDto>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> GetQuadroDivida(
         [FromQuery] int? ano,
+        [FromQuery] Guid? cenarioId,
         CancellationToken cancellationToken)
     {
         int anoEfetivo = ano ?? clock.GetCurrentInstant()
@@ -114,8 +117,12 @@ public sealed class PainelController(IMediator mediator, IClock clock) : Control
         try
         {
             QuadroDividaDto resultado = await mediator.Send(
-                new GetQuadroDividaQuery(anoEfetivo), cancellationToken);
+                new GetQuadroDividaQuery(anoEfetivo, cenarioId), cancellationToken);
             return Ok(resultado);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { detail = ex.Message });
         }
         catch (ArgumentException ex)
         {
@@ -123,7 +130,7 @@ public sealed class PainelController(IMediator mediator, IClock clock) : Control
         }
         catch (InvalidOperationException ex)
         {
-            // AD-7: ano fora do suporte MVP (Q9) → 409 Conflict (convenção do projeto)
+            // AD-7: ano fora do suporte MVP (Q9) ou AnoBase incompatível → 409 Conflict
             return Conflict(new { detail = ex.Message });
         }
     }
