@@ -1,6 +1,8 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime;
+using NodaTime.TimeZones;
 using Sgcf.Application.Authorization;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Painel.Commands;
@@ -18,7 +20,7 @@ public sealed record UpsertEbitdaRequest(int Ano, int Mes, decimal ValorBrl);
 /// </summary>
 [ApiController]
 [Route("api/v1/painel")]
-public sealed class PainelController(IMediator mediator) : ControllerBase
+public sealed class PainelController(IMediator mediator, IClock clock) : ControllerBase
 {
     /// <summary>
     /// Retorna o painel consolidado de dívida com breakdown por moeda, ajuste MTM e alertas.
@@ -90,6 +92,40 @@ public sealed class PainelController(IMediator mediator) : ControllerBase
     {
         KpiDto resultado = await mediator.Send(new GetDashboardKpisQuery(), cancellationToken);
         return Ok(resultado);
+    }
+
+    /// <summary>
+    /// Retorna o quadro da dívida para o ano informado: snapshot atual, projeção mês a mês e sumário anual.
+    /// Sem <c>ano</c> usa o ano corrente. Apenas o ano corrente é suportado no MVP (Q9).
+    /// </summary>
+    [HttpGet("quadro-divida")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<QuadroDividaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> GetQuadroDivida(
+        [FromQuery] int? ano,
+        CancellationToken cancellationToken)
+    {
+        int anoEfetivo = ano ?? clock.GetCurrentInstant()
+            .InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"])
+            .Year;
+
+        try
+        {
+            QuadroDividaDto resultado = await mediator.Send(
+                new GetQuadroDividaQuery(anoEfetivo), cancellationToken);
+            return Ok(resultado);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { detail = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            // AD-7: ano fora do suporte MVP (Q9) → 409 Conflict (convenção do projeto)
+            return Conflict(new { detail = ex.Message });
+        }
     }
 
     /// <summary>
