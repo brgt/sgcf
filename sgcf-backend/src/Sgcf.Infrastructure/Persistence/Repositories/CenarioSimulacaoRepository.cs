@@ -28,10 +28,14 @@ internal sealed class CenarioSimulacaoRepository(SgcfDbContext context) : ICenar
         context.CenariosSimulacao.Remove(cenario);
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Usa tracking (sem AsNoTracking) para permitir que o chamador modifique
+    /// o agregado e chame Update/SaveChanges sem DbUpdateConcurrencyException.
+    /// O EF rastreia o estado original e detecta corretamente novas simulações filhas vs. existentes.
+    /// </remarks>
     public Task<CenarioSimulacao?> GetByIdAsync(Guid id, CancellationToken ct = default) =>
         context.CenariosSimulacao
             .Include(c => c.Simulacoes)
-            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     /// <inheritdoc/>
