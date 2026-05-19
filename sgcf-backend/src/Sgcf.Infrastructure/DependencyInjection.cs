@@ -15,7 +15,9 @@ using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Hedge;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Simulacao;
+using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Infrastructure.Antecipacao;
+using Sgcf.Infrastructure.Cache.Simulacao;
 using Sgcf.Infrastructure.Auditoria;
 using Sgcf.Infrastructure.Caching;
 using Sgcf.Infrastructure.Calendario;
@@ -48,6 +50,17 @@ public static class DependencyInjection
         if (!string.IsNullOrEmpty(redisConn))
         {
             services.AddStackExchangeRedisCache(opts => opts.Configuration = redisConn);
+
+            // IConnectionMultiplexer: necessário para RedisCronogramaSimulacaoCache,
+            // que usa a API de baixo nível (SET com TTL + índice via SADD) em vez de IDistributedCache.
+            services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(
+                _ => StackExchange.Redis.ConnectionMultiplexer.Connect(redisConn));
+
+            // Cache Redis para cronograma hipotético de simulação (AD-3)
+            // Registrado apenas quando Redis está disponível para evitar falha no startup.
+            services.Configure<CronogramaSimulacaoCacheOptions>(
+                configuration.GetSection("CronogramaSimulacaoCache"));
+            services.AddSingleton<ICronogramaSimulacaoCache, RedisCronogramaSimulacaoCache>();
         }
         else
         {
