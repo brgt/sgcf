@@ -285,19 +285,21 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
     [Fact]
     public async Task Handle_somaTotal_igualSomaDosSaldosPorBanco()
     {
-        // Arrange
+        // Arrange — criar contratos antes de configurar substitutos (evita conflito NSubstitute)
         IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
         Banco bancoA = CriarBancoNoRepo(bancoRepo, "006", "BancoSoma1");
         Banco bancoB = CriarBancoNoRepo(bancoRepo, "007", "BancoSoma2");
         Banco bancoC = CriarBancoNoRepo(bancoRepo, "008", "BancoSoma3");
 
-        IContratoRepository repo = Substitute.For<IContratoRepository>();
-        repo.ListAsync(default).ReturnsForAnyArgs(new List<Contrato>
-        {
+        List<Contrato> contratos =
+        [
             CriarContratoBrl(bancoA.Id, 1_111_111.11m),
             CriarContratoBrl(bancoB.Id, 2_222_222.22m),
             CriarContratoBrl(bancoC.Id, 3_333_333.33m),
-        }.AsReadOnly());
+        ];
+
+        IContratoRepository repo = Substitute.For<IContratoRepository>();
+        repo.ListAsync(default).ReturnsForAnyArgs(contratos.AsReadOnly());
 
         GetSaldoPorBancoAtualQueryHandler handler = CriarHandler(repo, bancoRepo);
 
