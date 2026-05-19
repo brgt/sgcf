@@ -386,17 +386,12 @@ public sealed class SimulacoesController(IMediator mediator) : ControllerBase
 
             int anoEfetivo = ano ?? cenario.AnoBase;
 
-            // 2. Delegar ao GetQuadroDividaQuery passando o ano efetivo.
-            //
-            // DÍVIDA TÉCNICA (Task 3.1):
-            //   Quando Task 3.1 mergear, GetQuadroDividaQuery passará a aceitar
-            //   um segundo parâmetro opcional CenarioId. Alterar a linha abaixo para:
-            //     new GetQuadroDividaQuery(anoEfetivo, id)
-            //   para que as simulações do cenário sejam aplicadas no projetor de saldo mensal.
-            //   Até lá, o quadro retornado reflete apenas dados reais (overlay do cenário ausente),
-            //   mas a rota, o schema e o comportamento de erro (404/400/409) já são os corretos.
+            // 2. Delegar ao GetQuadroDividaQuery com ano efetivo e cenarioId.
+            //    Task 3.1 adicionou o parâmetro opcional CenarioId; passá-lo aqui faz com
+            //    que o projetor de saldo mensal incorpore as captações hipotéticas do cenário
+            //    na projeção mês a mês (AD-6, AD-9).
             QuadroDividaDto resultado = await mediator.Send(
-                new GetQuadroDividaQuery(anoEfetivo), ct);
+                new GetQuadroDividaQuery(anoEfetivo, id), ct);
 
             return Ok(resultado);
         }
