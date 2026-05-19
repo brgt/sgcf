@@ -1,0 +1,169 @@
+{
+  "ano": 2026,
+  "saldoInicialTotalBrl": 10000000.00,
+  "meses": [
+    {
+      "mes": 1,
+      "label": "Janeiro/2026",
+      "saldoTotalInicio": 10000000.00,
+      "saldoTotalFim":    9500000.00,
+      "totalAmortizacaoMes": 500000.00,
+      "totalCaptacaoMes":         0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 5000000.00, "saldoFim": 4500000.00, "amort": 500000.00, "captacao": 0.00, "sharePct": 47.3684 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 3000000.00, "saldoFim": 3000000.00, "amort":       0.00, "captacao": 0.00, "sharePct": 31.5789 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 2000000.00, "saldoFim": 2000000.00, "amort":       0.00, "captacao": 0.00, "sharePct": 21.0526 }
+      ]
+    },
+    {
+      "mes": 2,
+      "label": "Fevereiro/2026",
+      "saldoTotalInicio": 9500000.00,
+      "saldoTotalFim":    9200000.00,
+      "totalAmortizacaoMes": 300000.00,
+      "totalCaptacaoMes":         0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 4500000.00, "saldoFim": 4500000.00, "amort":       0.00, "captacao": 0.00, "sharePct": 48.9130 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 3000000.00, "saldoFim": 2700000.00, "amort": 300000.00, "captacao": 0.00, "sharePct": 29.3478 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 2000000.00, "saldoFim": 2000000.00, "amort":       0.00, "captacao": 0.00, "sharePct": 21.7391 }
+      ]
+    },
+    {
+      "mes": 3,
+      "label": "Marco/2026",
+      "saldoTotalInicio": 9200000.00,
+      "saldoTotalFim":    9200000.00,
+      "totalAmortizacaoMes": 0.00,
+      "totalCaptacaoMes":    0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 4500000.00, "saldoFim": 4500000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 48.9130 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 29.3478 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 2000000.00, "saldoFim": 2000000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 21.7391 }
+      ]
+    },
+    {
+      "mes": 4,
+      "label": "Abril/2026",
+      "saldoTotalInicio": 9200000.00,
+      "saldoTotalFim":    9200000.00,
+      "totalAmortizacaoMes": 0.00,
+      "totalCaptacaoMes":    0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 4500000.00, "saldoFim": 4500000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 48.9130 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 29.3478 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 2000000.00, "saldoFim": 2000000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 21.7391 }
+      ]
+    },
+    {
+      "mes": 5,
+      "label": "Maio/2026",
+      "saldoTotalInicio": 9200000.00,
+      "saldoTotalFim":    9200000.00,
+      "totalAmortizacaoMes": 0.00,
+      "totalCaptacaoMes":    0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 4500000.00, "saldoFim": 4500000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 48.9130 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 29.3478 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 2000000.00, "saldoFim": 2000000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 21.7391 }
+      ]
+    },
+    {
+      "mes": 6,
+      "label": "Junho/2026",
+      "saldoTotalInicio": 9200000.00,
+      "saldoTotalFim":    8200000.00,
+      "totalAmortizacaoMes": 1000000.00,
+      "totalCaptacaoMes":          0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 4500000.00, "saldoFim": 4500000.00, "amort":       0.00, "captacao": 0.00, "sharePct": 54.8780 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort":       0.00, "captacao": 0.00, "sharePct": 32.9268 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 2000000.00, "saldoFim": 1000000.00, "amort": 1000000.00, "captacao": 0.00, "sharePct": 12.1951 }
+      ]
+    },
+    {
+      "mes": 7,
+      "label": "Julho/2026",
+      "saldoTotalInicio": 8200000.00,
+      "saldoTotalFim":    8200000.00,
+      "totalAmortizacaoMes": 0.00,
+      "totalCaptacaoMes":    0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 4500000.00, "saldoFim": 4500000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 54.8780 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 32.9268 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 1000000.00, "saldoFim": 1000000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 12.1951 }
+      ]
+    },
+    {
+      "mes": 8,
+      "label": "Agosto/2026",
+      "saldoTotalInicio": 8200000.00,
+      "saldoTotalFim":    8200000.00,
+      "totalAmortizacaoMes": 0.00,
+      "totalCaptacaoMes":    0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 4500000.00, "saldoFim": 4500000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 54.8780 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 32.9268 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 1000000.00, "saldoFim": 1000000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 12.1951 }
+      ]
+    },
+    {
+      "mes": 9,
+      "label": "Setembro/2026",
+      "saldoTotalInicio": 8200000.00,
+      "saldoTotalFim":    7200000.00,
+      "totalAmortizacaoMes": 1000000.00,
+      "totalCaptacaoMes":          0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 4500000.00, "saldoFim": 3500000.00, "amort": 1000000.00, "captacao": 0.00, "sharePct": 48.6111 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort":       0.00, "captacao": 0.00, "sharePct": 37.5000 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 1000000.00, "saldoFim": 1000000.00, "amort":       0.00, "captacao": 0.00, "sharePct": 13.8889 }
+      ]
+    },
+    {
+      "mes": 10,
+      "label": "Outubro/2026",
+      "saldoTotalInicio": 7200000.00,
+      "saldoTotalFim":    7200000.00,
+      "totalAmortizacaoMes": 0.00,
+      "totalCaptacaoMes":    0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 3500000.00, "saldoFim": 3500000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 48.6111 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 37.5000 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 1000000.00, "saldoFim": 1000000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 13.8889 }
+      ]
+    },
+    {
+      "mes": 11,
+      "label": "Novembro/2026",
+      "saldoTotalInicio": 7200000.00,
+      "saldoTotalFim":    7200000.00,
+      "totalAmortizacaoMes": 0.00,
+      "totalCaptacaoMes":    0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 3500000.00, "saldoFim": 3500000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 48.6111 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 37.5000 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 1000000.00, "saldoFim": 1000000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 13.8889 }
+      ]
+    },
+    {
+      "mes": 12,
+      "label": "Dezembro/2026",
+      "saldoTotalInicio": 7200000.00,
+      "saldoTotalFim":    7200000.00,
+      "totalAmortizacaoMes": 0.00,
+      "totalCaptacaoMes":    0.00,
+      "bancos": [
+        { "bancoId": "00000000-0000-0000-0000-000000000001", "saldoInicio": 3500000.00, "saldoFim": 3500000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 48.6111 },
+        { "bancoId": "00000000-0000-0000-0000-000000000002", "saldoInicio": 2700000.00, "saldoFim": 2700000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 37.5000 },
+        { "bancoId": "00000000-0000-0000-0000-000000000003", "saldoInicio": 1000000.00, "saldoFim": 1000000.00, "amort": 0.00, "captacao": 0.00, "sharePct": 13.8889 }
+      ]
+    }
+  ],
+  "sumarioAnual": {
+    "saldoInicioAno":           10000000.00,
+    "saldoFimAno":               7200000.00,
+    "totalAmortizacaoAno":       2800000.00,
+    "totalCaptacaoAno":                0.00,
+    "variacaoAnualPercentual":      -28.00
+  }
+}

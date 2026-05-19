@@ -1,0 +1,14 @@
+{
+  "ano": 2026,
+  "saldoInicialPorBanco": [
+    { "bancoId": "00000000-0000-0000-0000-000000000001", "bancoApelido": "BB",       "saldoBrl": 5000000.00 },
+    { "bancoId": "00000000-0000-0000-0000-000000000002", "bancoApelido": "Bradesco", "saldoBrl": 3000000.00 },
+    { "bancoId": "00000000-0000-0000-0000-000000000003", "bancoApelido": "Itau",     "saldoBrl": 2000000.00 }
+  ],
+  "eventos": [
+    { "bancoId": "00000000-0000-0000-0000-000000000001", "data": "2026-01-15", "tipo": "AmortizacaoPrincipal", "valorBrl": 500000.00 },
+    { "bancoId": "00000000-0000-0000-0000-000000000002", "data": "2026-02-20", "tipo": "AmortizacaoPrincipal", "valorBrl": 300000.00 },
+    { "bancoId": "00000000-0000-0000-0000-000000000003", "data": "2026-06-10", "tipo": "AmortizacaoPrincipal", "valorBrl": 1000000.00 },
+    { "bancoId": "00000000-0000-0000-0000-000000000001", "data": "2026-09-30", "tipo": "AmortizacaoPrincipal", "valorBrl": 1000000.00 }
+  ]
+}
