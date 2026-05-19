@@ -7,7 +7,7 @@
 
 ## Bloqueio externo
 
-- [ ] **Aprovação humana** das 12 Decisões Arquiteturais (plan.md §2)
+- [x] **Aprovação humana** das 12 Decisões Arquiteturais (plan.md §2) — concluído em 2026-05-19; AD-3 evoluiu para "on-the-fly + cache Redis TTL curto" (gerou Task 2.4b abaixo). Demais 11 ADs confirmadas como propostas.
 - [x] **Decisão** das 8 Open Questions (plan.md §10) — concluído em 2026-05-19; 3 mudanças vs proposta MVP (Q6, Q7, Q8) geraram 3 tasks novas abaixo.
 
 ---
@@ -96,6 +96,16 @@
   - [ ] Reusa `CronogramaStrategyFactory.Criar(estrutura).Gerar(...)`
   - [ ] 4 golden tests (Bullet, BulletComJuros, Price, SAC)
   - [ ] Acceptance: cronograma idêntico ao de um contrato real equivalente
+
+- [ ] **2.4b [S] (AD-3)** Cache Redis com TTL curto para cronograma hipotético
+  - [ ] Interface `ICronogramaSimulacaoCache` em `Sgcf.Application.Simulacao`
+  - [ ] Implementação `RedisCronogramaSimulacaoCache` em `Sgcf.Infrastructure.Cache`
+  - [ ] Chave: `sim:cronograma:{cenarioId}:{simulacaoId}:v{version}`; TTL 60s
+  - [ ] `SimulacaoContratacao` ganha `Version : int` incrementado em cada mutação
+  - [ ] Invalidação automática quando `AdicionarSimulacao`/`AtualizarSimulacao`/`RemoverSimulacao` é chamado (toggle `version` no agregado)
+  - [ ] Wrapper no `SimulacaoCronogramaCalculator` consulta cache antes; cache miss recalcula e popula
+  - [ ] 6+ unit tests (cache hit; cache miss; invalidação em mutação; TTL expirado; serialização do payload; concurrency safe)
+  - [ ] Acceptance: 2ª consulta consecutiva do mesmo cenário não recalcula cronograma
 
 - [ ] **2.5 [M]** API REST CRUD — `SimulacoesController`
   - [ ] 10 endpoints (POST/GET/PATCH/DELETE de cenário + simulação + ativar/arquivar/**duplicar**) **(D-10, Q7)**
