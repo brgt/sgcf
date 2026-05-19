@@ -1,0 +1,18 @@
+[
+  {
+    "numeroEvento": 1,
+    "tipo": "Juros",
+    "dataPrevista": "2027-09-01",
+    "moeda": "Usd",
+    "valorDecimal": 60833.33,
+    "saldoDevedorApos": null
+  },
+  {
+    "numeroEvento": 1,
+    "tipo": "Principal",
+    "dataPrevista": "2027-09-01",
+    "moeda": "Usd",
+    "valorDecimal": 1000000,
+    "saldoDevedorApos": 0
+  }
+]

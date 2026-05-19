@@ -1,0 +1,19 @@
+{
+  "cenarioId": "00000001-0000-0000-0000-000000000004",
+  "bancoId": "00000002-0000-0000-0000-000000000002",
+  "modalidade": "Nce",
+  "moeda": "Brl",
+  "valorPrincipal": 500000,
+  "dataContratacaoPrevista": "2026-08-01",
+  "dataPrimeiroVencimento": "2026-09-01",
+  "tipoTaxa": "Fixa",
+  "taxaAaPercentual": 12.0,
+  "spreadAaPercentual": null,
+  "baseCalculo": "Dias360",
+  "estruturaAmortizacao": "Price",
+  "periodicidade": "Mensal",
+  "quantidadeParcelas": 12,
+  "anchorDiaMes": "DiaContratacao",
+  "anchorDiaFixo": null,
+  "cdiReferenciaAaPercentual": null
+}

@@ -1,0 +1,20 @@
+{
+  "cenarioId": "00000001-0000-0000-0000-000000000005",
+  "bancoId": "00000002-0000-0000-0000-000000000002",
+  "modalidade": "Lei4131",
+  "moeda": "Usd",
+  "valorPrincipal": 3000000,
+  "dataContratacaoPrevista": "2026-07-01",
+  "dataPrimeiroVencimento": "2027-01-01",
+  "tipoTaxa": "Fixa",
+  "taxaAaPercentual": 4.5,
+  "spreadAaPercentual": null,
+  "baseCalculo": "Dias360",
+  "estruturaAmortizacao": "Sac",
+  "periodicidade": "Semestral",
+  "quantidadeParcelas": 4,
+  "anchorDiaMes": "DiaContratacao",
+  "anchorDiaFixo": null,
+  "cdiReferenciaAaPercentual": null,
+  "nota": "DataVencimento = DataPrimeiroVencimento + (4-1)*6meses = 2027-01-01 + 18meses = 2028-07-01. totalDias = 730."
+}

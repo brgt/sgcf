@@ -1,0 +1,19 @@
+{
+  "cenarioId": "00000001-0000-0000-0000-000000000001",
+  "bancoId": "00000002-0000-0000-0000-000000000002",
+  "modalidade": "Finimp",
+  "moeda": "Usd",
+  "valorPrincipal": 1000000,
+  "dataContratacaoPrevista": "2026-09-01",
+  "dataPrimeiroVencimento": "2027-09-01",
+  "tipoTaxa": "Fixa",
+  "taxaAaPercentual": 6.00,
+  "spreadAaPercentual": null,
+  "baseCalculo": "Dias360",
+  "estruturaAmortizacao": "Bullet",
+  "periodicidade": "Anual",
+  "quantidadeParcelas": 1,
+  "anchorDiaMes": "DiaContratacao",
+  "anchorDiaFixo": null,
+  "cdiReferenciaAaPercentual": null
+}

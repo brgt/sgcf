@@ -1,0 +1,20 @@
+{
+  "cenarioId": "00000001-0000-0000-0000-000000000003",
+  "bancoId": "00000002-0000-0000-0000-000000000002",
+  "modalidade": "Finimp",
+  "moeda": "Usd",
+  "valorPrincipal": 2000000,
+  "dataContratacaoPrevista": "2026-07-01",
+  "dataPrimeiroVencimento": "2027-01-01",
+  "tipoTaxa": "Fixa",
+  "taxaAaPercentual": 5.5,
+  "spreadAaPercentual": null,
+  "baseCalculo": "Dias360",
+  "estruturaAmortizacao": "BulletComJurosPeriodicos",
+  "periodicidade": "Semestral",
+  "quantidadeParcelas": 1,
+  "anchorDiaMes": "DiaContratacao",
+  "anchorDiaFixo": null,
+  "cdiReferenciaAaPercentual": null,
+  "nota": "PeriodicidadeJuros = Semestral (mapeada de Periodicidade). BulletComJuros: principal único no vencimento, juros semestral."
+}

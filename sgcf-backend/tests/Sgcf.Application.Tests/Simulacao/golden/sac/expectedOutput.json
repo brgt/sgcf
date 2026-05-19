@@ -1,0 +1,10 @@
+[
+  { "numeroParcela": 1, "tipo": "Juros",     "dataPrevista": "2026-12-30", "moeda": "Usd", "valorDecimal": 68250.00, "saldoDevedorApos": null },
+  { "numeroParcela": 1, "tipo": "Principal", "dataPrevista": "2026-12-30", "moeda": "Usd", "valorDecimal": 750000,   "saldoDevedorApos": 2250000 },
+  { "numeroParcela": 2, "tipo": "Juros",     "dataPrevista": "2027-07-01", "moeda": "Usd", "valorDecimal": 51468.75, "saldoDevedorApos": null },
+  { "numeroParcela": 2, "tipo": "Principal", "dataPrevista": "2027-07-01", "moeda": "Usd", "valorDecimal": 750000,   "saldoDevedorApos": 1500000 },
+  { "numeroParcela": 3, "tipo": "Juros",     "dataPrevista": "2027-12-31", "moeda": "Usd", "valorDecimal": 34312.50, "saldoDevedorApos": null },
+  { "numeroParcela": 3, "tipo": "Principal", "dataPrevista": "2027-12-31", "moeda": "Usd", "valorDecimal": 750000,   "saldoDevedorApos": 750000 },
+  { "numeroParcela": 4, "tipo": "Juros",     "dataPrevista": "2028-07-01", "moeda": "Usd", "valorDecimal": 17156.25, "saldoDevedorApos": null },
+  { "numeroParcela": 4, "tipo": "Principal", "dataPrevista": "2028-07-01", "moeda": "Usd", "valorDecimal": 750000,   "saldoDevedorApos": 0 }
+]
