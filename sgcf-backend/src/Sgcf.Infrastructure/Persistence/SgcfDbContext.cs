@@ -13,6 +13,7 @@ using Sgcf.Domain.Cotacoes;
 using Sgcf.Domain.Hedge;
 using Sgcf.Domain.Painel;
 using Sgcf.Domain.Simulacao;
+using Sgcf.Domain.Sistema;
 
 namespace Sgcf.Infrastructure.Persistence;
 
@@ -57,6 +58,7 @@ public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(
     public DbSet<CdiSnapshot> CdiSnapshots => Set<CdiSnapshot>();
     public DbSet<CenarioSimulacao> CenariosSimulacao => Set<CenarioSimulacao>();
     public DbSet<SimulacaoContratacao> SimulacoesContratacao => Set<SimulacaoContratacao>();
+    public DbSet<ParametroSistema> ParametrosSistema => Set<ParametroSistema>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
