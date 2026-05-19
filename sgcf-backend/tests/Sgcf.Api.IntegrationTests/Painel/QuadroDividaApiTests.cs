@@ -6,6 +6,65 @@ using Xunit;
 
 namespace Sgcf.Api.IntegrationTests.Painel;
 
+// Helpers de seed reutilizáveis entre testes de quadro-divida
+file static class QuadroDividaSeedHelper
+{
+    public static async Task<Guid> CriarBancoAsync(HttpClient client, string codigo, string apelido)
+    {
+        HttpResponseMessage res = await client.PostAsJsonAsync("/api/v1/bancos", new
+        {
+            codigoCompe = codigo,
+            razaoSocial = $"Banco {apelido} S.A.",
+            apelido,
+            padraoAntecipacao = "A"
+        });
+        res.IsSuccessStatusCode.Should().BeTrue($"seed banco falhou ({res.StatusCode})");
+        return (await res.Content.ReadFromJsonAsync<JsonElement>(new JsonSerializerOptions(JsonSerializerDefaults.Web)))
+               .GetProperty("id").GetGuid();
+    }
+
+    public static async Task<Guid> CriarCenarioAsync(HttpClient client, int anoBase)
+    {
+        HttpResponseMessage res = await client.PostAsJsonAsync("/api/v1/simulacoes/cenarios", new
+        {
+            nome = $"Cenário E2E {anoBase}",
+            anoBase
+        });
+        res.IsSuccessStatusCode.Should().BeTrue($"seed cenario falhou ({res.StatusCode}): {await res.Content.ReadAsStringAsync()}");
+        return (await res.Content.ReadFromJsonAsync<JsonElement>(new JsonSerializerOptions(JsonSerializerDefaults.Web)))
+               .GetProperty("id").GetGuid();
+    }
+
+    public static async Task AdicionarSimulacaoAsync(
+        HttpClient client,
+        Guid cenarioId,
+        Guid bancoId,
+        decimal valorPrincipal,
+        string dataContratacao,
+        string dataPrimeiroVencimento)
+    {
+        HttpResponseMessage res = await client.PostAsJsonAsync(
+            $"/api/v1/simulacoes/cenarios/{cenarioId}/simulacoes",
+            new
+            {
+                bancoId,
+                modalidade = "CapitalDeGiro",
+                moeda = "Brl",
+                valorPrincipal,
+                dataContratacaoPrevista = dataContratacao,
+                dataPrimeiroVencimento,
+                tipoTaxa = "Fixa",
+                taxaAaPercentual = 12.0m,
+                baseCalculo = "Dias252",
+                estruturaAmortizacao = "Bullet",
+                periodicidade = "Bullet",
+                quantidadeParcelas = 1,
+                anchorDiaMes = "DiaContratacao"
+            });
+        res.IsSuccessStatusCode.Should().BeTrue($"seed simulacao falhou ({res.StatusCode}): {await res.Content.ReadAsStringAsync()}");
+    }
+}
+
 /// <summary>
 /// Testes E2E do endpoint <c>GET /api/v1/painel/quadro-divida</c>.
 ///
@@ -16,6 +75,8 @@ namespace Sgcf.Api.IntegrationTests.Painel;
 ///   9.  Ano corrente com pelo menos um banco + contrato → retorna estrutura válida com snapshot e projeção.
 ///   10. Sem parâmetro ano → usa o ano corrente (2026) automaticamente.
 ///   11. Ano inválido (fora 2020–2050) → HTTP 400.
+///   12. (Fase 3) Com cenarioId válido → retorna cenarioAplicado + captação no mês correto.
+///   13. (Fase 3) Com cenarioId inexistente → HTTP 404.
 /// </summary>
 [Collection("PainelVencimentosApi")]
 [Trait("Category", "Slow")]
@@ -163,5 +224,69 @@ public sealed class QuadroDividaApiTests(PainelVencimentosApiFixture fixture)
         // Act — ano muito no futuro
         HttpResponseMessage r2 = await client.GetAsync("/api/v1/painel/quadro-divida?ano=2099");
         r2.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ── Teste 12: (Fase 3) cenarioId válido → retorna cenarioAplicado ─────────
+
+    /// <summary>
+    /// Cria cenário com uma simulação de 400k em julho de 2026.
+    /// Valida que o endpoint retorna cenarioAplicado populado e que julho
+    /// apresenta totalCaptacaoMes &gt; 0.
+    /// </summary>
+    [Fact]
+    public async Task GetQuadroDivida_ComCenarioId_RetornaCenarioAplicado()
+    {
+        // Arrange
+        using HttpClient client = fixture.CreateAuthenticatedClient();
+
+        Guid bancoId = await QuadroDividaSeedHelper.CriarBancoAsync(client, "999", "BancoCenarioE2E");
+        Guid cenarioId = await QuadroDividaSeedHelper.CriarCenarioAsync(client, 2026);
+        await QuadroDividaSeedHelper.AdicionarSimulacaoAsync(
+            client,
+            cenarioId,
+            bancoId,
+            valorPrincipal: 400_000m,
+            dataContratacao: "2026-07-01",
+            dataPrimeiroVencimento: "2027-07-01");
+
+        // Act
+        HttpResponseMessage response = await client.GetAsync(
+            $"/api/v1/painel/quadro-divida?ano=2026&cenarioId={cenarioId}");
+
+        // Assert — HTTP 200
+        response.StatusCode.Should().Be(HttpStatusCode.OK,
+            $"resposta foi {response.StatusCode}: {await response.Content.ReadAsStringAsync()}");
+
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOpts);
+
+        // cenarioAplicado deve estar presente
+        body.TryGetProperty("cenarioAplicado", out JsonElement cenarioAplicado).Should().BeTrue();
+        cenarioAplicado.GetProperty("id").GetGuid().Should().Be(cenarioId);
+        cenarioAplicado.GetProperty("quantidadeSimulacoes").GetInt32().Should().Be(1);
+
+        // Julho (índice 6) deve ter captação
+        JsonElement julho = body.GetProperty("projecao").GetProperty("meses")[6];
+        julho.GetProperty("totalCaptacaoMes").GetDecimal().Should().BeGreaterThan(0m,
+            "a simulação de 400k em julho deve elevar o totalCaptacaoMes");
+    }
+
+    // ── Teste 13: (Fase 3) cenarioId inexistente → HTTP 404 ──────────────────
+
+    /// <summary>
+    /// Verifica que um cenarioId que não existe retorna 404 Not Found.
+    /// </summary>
+    [Fact]
+    public async Task GetQuadroDivida_CenarioIdInexistente_Retorna404()
+    {
+        // Arrange
+        using HttpClient client = fixture.CreateAuthenticatedClient();
+        Guid cenarioIdFake = Guid.NewGuid();
+
+        // Act
+        HttpResponseMessage response = await client.GetAsync(
+            $"/api/v1/painel/quadro-divida?ano=2026&cenarioId={cenarioIdFake}");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
