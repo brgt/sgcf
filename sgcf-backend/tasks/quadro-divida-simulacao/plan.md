@@ -1,6 +1,6 @@
 # Plano — Quadro da Dívida + Simulação de Contratação
 
-**Status final:** ENTREGUE em 2026-05-19 — todas as 4 fases completas (itens 4.1, 4.2 e 4.4 movidos para próximo sprint por decisão de escopo)
+**Status final:** ENTREGUE em 2026-05-19 — todas as 4 fases completas, incluindo tasks 4.1 (Comparativo), 4.2 (Golden Dataset) e 4.4 (MCP Tools) entregues em sessão complementar
 **Autor:** Planning agent
 **Data:** 2026-05-18
 **Versão alvo:** v0.7.0 → entregue como **v0.10.0** (sequência ajustada após releases 0.7, 0.8 e 0.9)
