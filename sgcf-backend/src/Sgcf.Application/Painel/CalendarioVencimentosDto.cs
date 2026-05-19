@@ -5,6 +5,7 @@ namespace Sgcf.Application.Painel;
 /// Principal e Juros do mesmo vencimento/contrato são combinados em um único item.
 /// <c>JurosBrlProjetado</c> é preenchido quando <c>cdiAnualPct</c> é informado na query
 /// e o contrato tem juros indexados ao CDI (valor original zero).
+/// <c>BancoId</c> e <c>BancoApelido</c> identificam o banco credor do contrato (AD-10, Task 1.3).
 /// </summary>
 public sealed record VencimentoItemDto(
     string Data,
@@ -13,7 +14,10 @@ public sealed record VencimentoItemDto(
     decimal PrincipalBrl,
     decimal JurosBrl,
     decimal TotalBrl,
-    decimal? JurosBrlProjetado = null);
+    decimal? JurosBrlProjetado = null,
+    // === Adicionados (Task 1.3 — AD-10): banco como dimensão primária no breakdown ===
+    Guid BancoId = default,
+    string BancoApelido = "");
 
 /// <summary>Totais de principal e juros a vencer em um mês específico, com o detalhe por dia.</summary>
 public sealed record MesVencimentoDto(

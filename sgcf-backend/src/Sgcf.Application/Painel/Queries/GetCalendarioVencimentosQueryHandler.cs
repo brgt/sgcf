@@ -1,8 +1,10 @@
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cambio;
 using Sgcf.Application.Cotacoes;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cambio;
@@ -15,6 +17,7 @@ namespace Sgcf.Application.Painel.Queries;
 /// Monta o calendário de vencimentos para um ano civil lendo EventoCronograma
 /// (tabela cronograma_pagamento). Converte valores em moeda estrangeira para BRL
 /// via spot ou PTAX D-1. Meses sem eventos são incluídos com valores zero.
+/// Cada parcela expõe BancoId e BancoApelido do contrato credor (AD-10, Task 1.3).
 /// </summary>
 public sealed class GetCalendarioVencimentosQueryHandler(
     IContratoRepository contratoRepo,
@@ -22,6 +25,7 @@ public sealed class GetCalendarioVencimentosQueryHandler(
     ICotacaoSpotCache spotCache,
     ICotacaoFxRepository cotacaoFxRepo,
     ICdiSnapshotRepository cdiSnapshotRepo,
+    IBancoRepository bancoRepo,
     IClock clock)
     : IRequestHandler<GetCalendarioVencimentosQuery, CalendarioVencimentosDto>
 {
@@ -54,6 +58,14 @@ public sealed class GetCalendarioVencimentosQueryHandler(
         // Mapas contratoId → moeda e → número de contrato
         Dictionary<Guid, Moeda> moedaPorContrato = contratos.ToDictionary(c => c.Id, c => c.Moeda);
         Dictionary<Guid, string> numeroPorContrato = contratos.ToDictionary(c => c.Id, c => c.NumeroExterno);
+
+        // AD-10 (Task 1.3): mapa bancoId → banco para popular BancoId/BancoApelido em cada parcela.
+        // Carregamos todos os bancos uma vez e indexamos por Id — evita N+1 por contrato.
+        IReadOnlyList<Banco> todosBancos = await bancoRepo.ListAllAsync(cancellationToken);
+        Dictionary<Guid, Banco> bancoPorId = todosBancos.ToDictionary(b => b.Id);
+
+        // Mapa contratoId → bancoId para lookup eficiente ao construir os DTOs
+        Dictionary<Guid, Guid> bancoIdPorContrato = contratos.ToDictionary(c => c.Id, c => c.BancoId);
 
         // Busca eventos abertos do ano diretamente na tabela de cronograma
         IReadOnlyList<EventoCronograma> eventos =
@@ -129,6 +141,12 @@ public sealed class GetCalendarioVencimentosQueryHandler(
                 jurosProjetadoArred = Math.Round(jp, 2, MidpointRounding.AwayFromZero);
             }
 
+            // AD-10 (Task 1.3): resolve banco do contrato; fallback gracioso quando não encontrado
+            Guid bancoDaParcelaId = bancoIdPorContrato.TryGetValue(contratoId, out Guid bid) ? bid : Guid.Empty;
+            string bancoDaParcelaApelido = bancoPorId.TryGetValue(bancoDaParcelaId, out Banco? banco)
+                ? banco.Apelido
+                : bancoDaParcelaId.ToString();
+
             itensPorMes[mes].Add(new VencimentoItemDto(
                 Data: data.ToString("yyyy-MM-dd", null),
                 ContratoId: contratoId,
@@ -136,7 +154,9 @@ public sealed class GetCalendarioVencimentosQueryHandler(
                 PrincipalBrl: principalArred,
                 JurosBrl: jurosArred,
                 TotalBrl: Math.Round(principalArred + jurosArred, 2, MidpointRounding.AwayFromZero),
-                JurosBrlProjetado: jurosProjetadoArred));
+                JurosBrlProjetado: jurosProjetadoArred,
+                BancoId: bancoDaParcelaId,
+                BancoApelido: bancoDaParcelaApelido));
         }
 
         List<MesVencimentoDto> meses = new(12);
