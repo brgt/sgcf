@@ -3,6 +3,22 @@ using NodaTime;
 namespace Sgcf.Application.Painel.Queries;
 
 /// <summary>
+/// Metadados do cenário de simulação aplicado na projeção.
+/// Presente somente quando a consulta inclui <c>cenarioId</c> (AD-9).
+/// </summary>
+/// <param name="Id">Identificador do cenário.</param>
+/// <param name="Nome">Nome legível do cenário (ex: "Realista 2026").</param>
+/// <param name="Status">Status do ciclo de vida: "Rascunho", "Ativo" ou "Arquivado".</param>
+/// <param name="AnoBase">Ano-calendário de referência das simulações.</param>
+/// <param name="QuantidadeSimulacoes">Quantidade de captações hipotéticas no cenário.</param>
+public sealed record CenarioAplicadoDto(
+    Guid Id,
+    string Nome,
+    string Status,
+    int AnoBase,
+    int QuantidadeSimulacoes);
+
+/// <summary>
 /// Resultado completo do quadro de dívida para um ano civil.
 /// Combina o snapshot atual da carteira, a projeção mês a mês e os totais anuais.
 /// </summary>
@@ -12,13 +28,17 @@ namespace Sgcf.Application.Painel.Queries;
 /// <param name="Projecao">12 meses projetados com breakdown por banco.</param>
 /// <param name="Sumario">Totais anuais agregados (início, fim, amortizações, captações, variação %).</param>
 /// <param name="Alertas">Lista de alertas contextuais. Vazio no MVP — populado na Task 3.4.</param>
+/// <param name="CenarioAplicado">
+/// Metadados do cenário de simulação aplicado. Null quando a consulta não inclui cenarioId (AD-9).
+/// </param>
 public sealed record QuadroDividaDto(
     int Ano,
     DateOnly DataReferencia,
     SaldoPorBancoAtualDto SnapshotInicial,
     QuadroDividaProjecaoDto Projecao,
     QuadroDividaSumarioDto Sumario,
-    IReadOnlyList<string> Alertas);
+    IReadOnlyList<string> Alertas,
+    CenarioAplicadoDto? CenarioAplicado = null);
 
 /// <summary>
 /// Container dos 12 meses projetados.
