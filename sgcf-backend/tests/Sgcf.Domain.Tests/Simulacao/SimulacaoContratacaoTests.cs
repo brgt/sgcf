@@ -38,6 +38,13 @@ public sealed class SimulacaoContratacaoTests
     /// Fábrica de simulação válida com defaults razoáveis.
     /// Substitua os parâmetros que deseja testar.
     /// </summary>
+    /// <summary>
+    /// Sentinel para distinguir "não passou spread" de "passou spread null intencionalmente".
+    /// Quando passado, o helper usa Percentual.De(3m) como padrão (CdiSpread válido).
+    /// Quando o teste passa null explicitamente (sem usar o sentinel), usa null de verdade.
+    /// </summary>
+    private static readonly Percentual DefaultSpread = Percentual.De(3m);
+
     private static SimulacaoContratacao CriarSimulacaoValida(
         Guid? cenarioId = null,
         Guid? bancoId = null,
@@ -49,6 +56,7 @@ public sealed class SimulacaoContratacaoTests
         TipoTaxa tipoTaxa = TipoTaxa.CdiSpread,
         Percentual? taxaAa = null,
         Percentual? spreadAa = null,
+        bool usarSpreadPadrao = true,   // false = força spreadAa = null (para testes de I-6/I-7)
         BaseCalculo baseCalculo = BaseCalculo.Dias252,
         EstruturaAmortizacao estrutura = EstruturaAmortizacao.Bullet,
         Periodicidade periodicidade = Periodicidade.Bullet,
@@ -59,6 +67,12 @@ public sealed class SimulacaoContratacaoTests
         string? observacoes = null,
         IClock? clock = null)
     {
+        // Quando usarSpreadPadrao=true e o caller não passou spreadAa, usa 3% (CdiSpread válido).
+        // Quando usarSpreadPadrao=false, respeita exatamente o que foi passado (null ou valor).
+        Percentual? spreadEfetivo = usarSpreadPadrao
+            ? (spreadAa ?? DefaultSpread)
+            : spreadAa;
+
         return SimulacaoContratacao.Criar(
             cenarioId: cenarioId ?? Guid.NewGuid(),
             bancoId: bancoId ?? Guid.NewGuid(),
@@ -69,7 +83,7 @@ public sealed class SimulacaoContratacaoTests
             dataPrimeiroVencimento: dataPrimeiroVencimento ?? new LocalDate(2026, 8, 15),
             tipoTaxa: tipoTaxa,
             taxaAa: taxaAa,
-            spreadAa: spreadAa ?? Percentual.De(3m),  // CDI+spread padrão
+            spreadAa: spreadEfetivo,
             baseCalculo: baseCalculo,
             estruturaAmortizacao: estrutura,
             periodicidade: periodicidade,
@@ -168,20 +182,52 @@ public sealed class SimulacaoContratacaoTests
     [Fact]
     public void Criar_TipoTaxaFixa_exigeTaxaAa()
     {
-        // TipoTaxa.Fixa sem TaxaAa deve lançar
-        Action semTaxa = () => CriarSimulacaoValida(
+        // TipoTaxa.Fixa sem TaxaAa deve lançar — chamada direta, sem depender do helper
+        Action semTaxa = () => SimulacaoContratacao.Criar(
+            cenarioId: Guid.NewGuid(),
+            bancoId: Guid.NewGuid(),
+            modalidade: ModalidadeContrato.CapitalDeGiro,
+            moeda: Moeda.Brl,
+            valorPrincipal: new Money(1_000_000m, Moeda.Brl),
+            dataContratacaoPrevista: new LocalDate(2026, 7, 15),
+            dataPrimeiroVencimento: new LocalDate(2026, 8, 15),
             tipoTaxa: TipoTaxa.Fixa,
-            taxaAa: null,
-            spreadAa: null);
+            taxaAa: null,           // ausente — deve lançar
+            spreadAa: null,
+            baseCalculo: BaseCalculo.Dias252,
+            estruturaAmortizacao: EstruturaAmortizacao.Bullet,
+            periodicidade: Periodicidade.Bullet,
+            quantidadeParcelas: 1,
+            anchorDiaMes: AnchorDiaMes.DiaFixo,
+            anchorDiaFixo: 15,
+            garantiaExigidaPrevista: null,
+            observacoes: null,
+            clock: ClockPadrao());
 
         semTaxa.Should().Throw<ArgumentException>()
             .WithMessage("*taxa*", because: "I-6: Fixa exige TaxaAa");
 
         // TipoTaxa.Fixa com SpreadAa deve lançar (SpreadAa é exclusivo do CdiSpread)
-        Action comSpread = () => CriarSimulacaoValida(
+        Action comSpread = () => SimulacaoContratacao.Criar(
+            cenarioId: Guid.NewGuid(),
+            bancoId: Guid.NewGuid(),
+            modalidade: ModalidadeContrato.CapitalDeGiro,
+            moeda: Moeda.Brl,
+            valorPrincipal: new Money(1_000_000m, Moeda.Brl),
+            dataContratacaoPrevista: new LocalDate(2026, 7, 15),
+            dataPrimeiroVencimento: new LocalDate(2026, 8, 15),
             tipoTaxa: TipoTaxa.Fixa,
             taxaAa: Percentual.De(12m),
-            spreadAa: Percentual.De(2m));
+            spreadAa: Percentual.De(2m),   // deve lançar — SpreadAa é exclusivo de CdiSpread
+            baseCalculo: BaseCalculo.Dias252,
+            estruturaAmortizacao: EstruturaAmortizacao.Bullet,
+            periodicidade: Periodicidade.Bullet,
+            quantidadeParcelas: 1,
+            anchorDiaMes: AnchorDiaMes.DiaFixo,
+            anchorDiaFixo: 15,
+            garantiaExigidaPrevista: null,
+            observacoes: null,
+            clock: ClockPadrao());
 
         comSpread.Should().Throw<ArgumentException>()
             .WithMessage("*spread*", because: "I-6: Fixa não aceita SpreadAa");
@@ -192,22 +238,52 @@ public sealed class SimulacaoContratacaoTests
     [Fact]
     public void Criar_TipoTaxaCdiSpread_exigeSpread_e_MoedaBrl()
     {
-        // CdiSpread sem SpreadAa deve lançar
-        Action semSpread = () => CriarSimulacaoValida(
+        // CdiSpread sem SpreadAa deve lançar — chamada direta
+        Action semSpread = () => SimulacaoContratacao.Criar(
+            cenarioId: Guid.NewGuid(),
+            bancoId: Guid.NewGuid(),
+            modalidade: ModalidadeContrato.CapitalDeGiro,
+            moeda: Moeda.Brl,
+            valorPrincipal: new Money(1_000_000m, Moeda.Brl),
+            dataContratacaoPrevista: new LocalDate(2026, 7, 15),
+            dataPrimeiroVencimento: new LocalDate(2026, 8, 15),
             tipoTaxa: TipoTaxa.CdiSpread,
-            spreadAa: null,
-            taxaAa: null);
+            taxaAa: null,
+            spreadAa: null,     // ausente — deve lançar
+            baseCalculo: BaseCalculo.Dias252,
+            estruturaAmortizacao: EstruturaAmortizacao.Bullet,
+            periodicidade: Periodicidade.Bullet,
+            quantidadeParcelas: 1,
+            anchorDiaMes: AnchorDiaMes.DiaFixo,
+            anchorDiaFixo: 15,
+            garantiaExigidaPrevista: null,
+            observacoes: null,
+            clock: ClockPadrao());
 
         semSpread.Should().Throw<ArgumentException>()
             .WithMessage("*spread*", because: "I-7: CdiSpread exige SpreadAa");
 
-        // CdiSpread com moeda USD deve lançar
-        Action moedaErrada = () => CriarSimulacaoValida(
-            modalidade: ModalidadeContrato.Finimp,
-            moeda: Moeda.Usd,
+        // CdiSpread com moeda USD deve lançar — chamada direta para eliminar ambiguidade
+        Action moedaErrada = () => SimulacaoContratacao.Criar(
+            cenarioId: Guid.NewGuid(),
+            bancoId: Guid.NewGuid(),
+            modalidade: ModalidadeContrato.CapitalDeGiro,
+            moeda: Moeda.Usd,              // Usd — deve lançar com CDI
+            valorPrincipal: new Money(1_000_000m, Moeda.Usd),
+            dataContratacaoPrevista: new LocalDate(2026, 7, 15),
+            dataPrimeiroVencimento: new LocalDate(2026, 8, 15),
             tipoTaxa: TipoTaxa.CdiSpread,
+            taxaAa: null,
             spreadAa: Percentual.De(3m),
-            taxaAa: null);
+            baseCalculo: BaseCalculo.Dias252,
+            estruturaAmortizacao: EstruturaAmortizacao.Bullet,
+            periodicidade: Periodicidade.Bullet,
+            quantidadeParcelas: 1,
+            anchorDiaMes: AnchorDiaMes.DiaFixo,
+            anchorDiaFixo: 15,
+            garantiaExigidaPrevista: null,
+            observacoes: null,
+            clock: ClockPadrao());
 
         moedaErrada.Should().Throw<ArgumentException>()
             .WithMessage("*CDI*", because: "I-7: CdiSpread só faz sentido em BRL");
@@ -218,12 +294,27 @@ public sealed class SimulacaoContratacaoTests
     [Fact]
     public void Criar_modalidadeFinimp_naoAceitaBrl()
     {
-        Action ato = () => CriarSimulacaoValida(
+        // Chamada direta — Fixa + sem spread + Finimp + BRL
+        Action ato = () => SimulacaoContratacao.Criar(
+            cenarioId: Guid.NewGuid(),
+            bancoId: Guid.NewGuid(),
             modalidade: ModalidadeContrato.Finimp,
-            moeda: Moeda.Brl,
+            moeda: Moeda.Brl,              // BRL com FINIMP — deve lançar
+            valorPrincipal: new Money(1_000_000m, Moeda.Brl),
+            dataContratacaoPrevista: new LocalDate(2026, 7, 15),
+            dataPrimeiroVencimento: new LocalDate(2026, 8, 15),
             tipoTaxa: TipoTaxa.Fixa,
             taxaAa: Percentual.De(8m),
-            spreadAa: null);
+            spreadAa: null,
+            baseCalculo: BaseCalculo.Dias360,
+            estruturaAmortizacao: EstruturaAmortizacao.Bullet,
+            periodicidade: Periodicidade.Bullet,
+            quantidadeParcelas: 1,
+            anchorDiaMes: AnchorDiaMes.DiaFixo,
+            anchorDiaFixo: 15,
+            garantiaExigidaPrevista: null,
+            observacoes: null,
+            clock: ClockPadrao());
 
         ato.Should().Throw<ArgumentException>()
             .WithMessage("*modalidade*", because: "I-8: FINIMP não aceita BRL");
