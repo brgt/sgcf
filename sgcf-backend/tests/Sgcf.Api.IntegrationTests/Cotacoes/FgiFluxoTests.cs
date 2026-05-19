@@ -21,9 +21,15 @@ public sealed class FgiFluxoTests(CotacoesApiFixture fixture)
 
     // ─── Seed Helpers ─────────────────────────────────────────────────────────
 
+    // Contador determinístico iniciando em 300 evita colisões com outros testes na mesma fixture
+    // (BalcaoCaixa 900-999, Lei4131 500-699, Refinimp 100-299; FGI 300-499).
+    private static int _codigoCounter = 299;
+
     private static async Task<Guid> SeedBancoAsync(HttpClient client)
     {
-        string codigo = Random.Shared.Next(300, 499).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        int next = System.Threading.Interlocked.Increment(ref _codigoCounter);
+        if (next > 499) { System.Threading.Interlocked.Exchange(ref _codigoCounter, 299); next = 300; }
+        string codigo = next.ToString(System.Globalization.CultureInfo.InvariantCulture);
         HttpResponseMessage res = await client.PostAsJsonAsync("/api/v1/bancos", new
         {
             codigoCompe = codigo,

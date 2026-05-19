@@ -81,6 +81,12 @@ public sealed class TetaoMensalApiTests(PainelVencimentosApiFixture fixture)
         // Arrange
         using HttpClient client = fixture.CreateAuthenticatedClient();
 
+        // Reset: outros testes na mesma fixture podem ter configurado o tetão.
+        // O singleton ParametroSistema persiste entre testes — limpar via PATCH null.
+        await client.PatchAsJsonAsync(
+            "/api/v1/parametros-sistema/tetao-mensal",
+            new { tetaoMensalCapacidadeBrl = (decimal?)null });
+
         await CriarBancoAsync(client, "301", "BancoTetaoT1");
 
         // Act

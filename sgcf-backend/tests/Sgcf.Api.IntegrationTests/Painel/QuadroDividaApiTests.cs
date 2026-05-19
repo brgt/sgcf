@@ -54,7 +54,7 @@ file static class QuadroDividaSeedHelper
                 dataContratacaoPrevista = dataContratacao,
                 dataPrimeiroVencimento,
                 tipoTaxa = "Fixa",
-                taxaAaPercentual = 12.0m,
+                taxaAa = 12.0m,
                 baseCalculo = "Dias252",
                 estruturaAmortizacao = "Bullet",
                 periodicidade = "Bullet",
