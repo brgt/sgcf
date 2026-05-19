@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 using Sgcf.Api.Filters;
 using Sgcf.Application.Authorization;
+using Sgcf.Application.Painel.Queries;
 using Sgcf.Application.Simulacao.Commands;
 using Sgcf.Application.Simulacao.Dtos;
 using Sgcf.Application.Simulacao.Queries;
@@ -314,6 +315,90 @@ public sealed class SimulacoesController(IMediator mediator) : ControllerBase
         {
             CenarioSimulacaoDto result = await mediator.Send(new AdicionarSimulacaoCommand(id, input), ct);
             return CreatedAtAction(nameof(GetCenarioPorId), new { id }, result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
+    // ── NOVO (Task 3.3) — Atalho Cenário → Quadro da Dívida ──────────────────
+
+    /// <summary>
+    /// Endpoint de conveniência: retorna o Quadro da Dívida com o cenário de simulação
+    /// informado já aplicado.
+    ///
+    /// <para>
+    /// Internamente executa dois passos:
+    /// <list type="number">
+    ///   <item>Busca o cenário via <c>GetCenarioSimulacaoByIdQuery</c> para obter <c>AnoBase</c>.</item>
+    ///   <item>Delega para <c>GetQuadroDividaQuery</c> passando o ano efetivo e o <c>cenarioId</c>.
+    ///        A integração completa (cenário aplicado no quadro) depende da Task 3.1;
+    ///        enquanto 3.1 não estiver mergeada, o quadro retornado reflete apenas dados reais
+    ///        (sem overlay das simulações do cenário) mas a rota e o schema são os corretos.</item>
+    /// </list>
+    /// </para>
+    ///
+    /// <para>
+    /// O parâmetro opcional <c>?ano=</c> sobrepõe o <c>AnoBase</c> do cenário.
+    /// Útil para testes e para consultas históricas quando o cenário foi criado para um ano
+    /// diferente do ano corrente do servidor.
+    /// </para>
+    ///
+    /// Mapeamento de erros:
+    /// <list type="bullet">
+    ///   <item>404 — cenário não encontrado (soft-deletado ou Id inexistente).</item>
+    ///   <item>400 — ano informado fora do intervalo válido (2020–2050).</item>
+    ///   <item>409 — restrição MVP Q9: ano diferente do ano corrente do servidor.</item>
+    /// </list>
+    ///
+    /// SPEC §7.3 (Endpoint Atalho Cenário → Quadro). Fase 3 Task 3.3. AD-11: política Leitura.
+    /// </summary>
+    /// <param name="id">Id do cenário de simulação.</param>
+    /// <param name="ano">
+    /// Ano de referência para a projeção. Quando omitido, usa <c>cenario.AnoBase</c>.
+    /// </param>
+    /// <param name="ct">Token de cancelamento propagado da requisição HTTP.</param>
+    [HttpGet("cenarios/{id:guid}/quadro-divida")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<QuadroDividaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> GetQuadroDividaDoCenario(
+        Guid id,
+        [FromQuery] int? ano,
+        CancellationToken ct)
+    {
+        try
+        {
+            // 1. Buscar o cenário para obter AnoBase — lança KeyNotFoundException se não existir.
+            CenarioSimulacaoDto cenario = await mediator.Send(
+                new GetCenarioSimulacaoByIdQuery(id), ct);
+
+            int anoEfetivo = ano ?? cenario.AnoBase;
+
+            // 2. Delegar ao GetQuadroDividaQuery passando o ano efetivo.
+            //
+            // DÍVIDA TÉCNICA (Task 3.1):
+            //   Quando Task 3.1 mergear, GetQuadroDividaQuery passará a aceitar
+            //   um segundo parâmetro opcional CenarioId. Alterar a linha abaixo para:
+            //     new GetQuadroDividaQuery(anoEfetivo, id)
+            //   para que as simulações do cenário sejam aplicadas no projetor de saldo mensal.
+            //   Até lá, o quadro retornado reflete apenas dados reais (overlay do cenário ausente),
+            //   mas a rota, o schema e o comportamento de erro (404/400/409) já são os corretos.
+            QuadroDividaDto resultado = await mediator.Send(
+                new GetQuadroDividaQuery(anoEfetivo), ct);
+
+            return Ok(resultado);
         }
         catch (KeyNotFoundException)
         {
