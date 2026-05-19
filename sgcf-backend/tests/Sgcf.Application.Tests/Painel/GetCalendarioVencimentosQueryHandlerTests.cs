@@ -280,12 +280,10 @@ public sealed class GetCalendarioVencimentosQueryHandlerTests
     [Fact]
     public async Task Handle_RetornaVencimentoItemDto_ComBancoIdPopulado()
     {
-        // Arrange
-        Guid bancoId = Guid.NewGuid();
+        // Arrange — usa banco.Id como bancoId do contrato para que o lookup funcione
         Banco banco = CriarBanco("341", "Itau");
+        Guid bancoId = banco.Id;
 
-        // Força o Id interno do banco para corresponder ao bancoId do contrato
-        // usando reflection-free approach: criamos o contrato referenciando o banco
         Contrato contrato = CriarContratoCarencia(bancoId);
         Guid contratoId = contrato.Id;
 
@@ -333,9 +331,9 @@ public sealed class GetCalendarioVencimentosQueryHandlerTests
     [Fact]
     public async Task Handle_RetornaVencimentoItemDto_ComBancoApelidoPopulado()
     {
-        // Arrange
-        Guid bancoId = Guid.NewGuid();
+        // Arrange — usa banco.Id como bancoId do contrato para que o lookup funcione
         Banco banco = CriarBanco("033", "Santander");
+        Guid bancoId = banco.Id;
 
         Contrato contrato = CriarContratoCarencia(bancoId);
         Guid contratoId = contrato.Id;
@@ -386,11 +384,11 @@ public sealed class GetCalendarioVencimentosQueryHandlerTests
     public async Task Handle_MultiplosContratosBancosDiferentes_PreserveBancoNoItem()
     {
         // Arrange — dois contratos em bancos distintos, ambos com vencimento no mesmo mês
-        Guid bancoId1 = Guid.NewGuid();
-        Guid bancoId2 = Guid.NewGuid();
-
+        // Usa banco.Id como bancoId do contrato para que o lookup funcione
         Banco banco1 = CriarBanco("237", "Bradesco");
         Banco banco2 = CriarBanco("104", "CEF");
+        Guid bancoId1 = banco1.Id;
+        Guid bancoId2 = banco2.Id;
 
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(InstanteFixo);
