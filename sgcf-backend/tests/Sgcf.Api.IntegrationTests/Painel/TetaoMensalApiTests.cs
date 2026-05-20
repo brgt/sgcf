@@ -16,12 +16,38 @@ namespace Sgcf.Api.IntegrationTests.Painel;
 ///   T1. GET quadro-divida sem tetão configurado → alertas vazio.
 ///   T2. PATCH parametros-sistema/tetao-mensal → 200 OK com valor persistido.
 ///   T3. GET quadro-divida após configurar tetão → alerta aparece nos meses excedidos.
+///
+/// Isolamento: <see cref="IAsyncLifetime.InitializeAsync"/> reseta o singleton
+/// ParametroSistema via PATCH null antes de cada teste, eliminando a necessidade
+/// de workarounds manuais por teste.
 /// </summary>
 [Collection("PainelVencimentosApi")]
 [Trait("Category", "Slow")]
-public sealed class TetaoMensalApiTests(PainelVencimentosApiFixture fixture)
+public sealed class TetaoMensalApiTests : IAsyncLifetime
 {
+    private readonly PainelVencimentosApiFixture _fixture;
+
     private static readonly JsonSerializerOptions JsonOpts = new(JsonSerializerDefaults.Web);
+
+    public TetaoMensalApiTests(PainelVencimentosApiFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    /// <summary>
+    /// Reset do singleton ParametroSistema antes de cada teste.
+    /// O singleton persiste entre testes da mesma fixture — sem este reset,
+    /// um teste que configura o tetão contaminaria os testes seguintes.
+    /// </summary>
+    public async Task InitializeAsync()
+    {
+        using HttpClient client = _fixture.CreateAuthenticatedClient();
+        await client.PatchAsJsonAsync(
+            "/api/v1/parametros-sistema/tetao-mensal",
+            new { tetaoMensalCapacidadeBrl = (decimal?)null });
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
@@ -74,18 +100,14 @@ public sealed class TetaoMensalApiTests(PainelVencimentosApiFixture fixture)
     /// <summary>
     /// Sem tetão configurado, o campo <c>alertas</c> deve ser um array vazio
     /// independentemente do volume de movimentação.
+    /// O reset via <see cref="InitializeAsync"/> garante que este teste não é
+    /// afetado por testes anteriores que possam ter configurado o tetão.
     /// </summary>
     [Fact]
     public async Task Get_QuadroDivida_SemTetaoConfigurado_AlertasVazio()
     {
-        // Arrange
-        using HttpClient client = fixture.CreateAuthenticatedClient();
-
-        // Reset: outros testes na mesma fixture podem ter configurado o tetão.
-        // O singleton ParametroSistema persiste entre testes — limpar via PATCH null.
-        await client.PatchAsJsonAsync(
-            "/api/v1/parametros-sistema/tetao-mensal",
-            new { tetaoMensalCapacidadeBrl = (decimal?)null });
+        // Arrange — InitializeAsync já garantiu tetão = null antes deste teste
+        using HttpClient client = _fixture.CreateAuthenticatedClient();
 
         await CriarBancoAsync(client, "301", "BancoTetaoT1");
 
@@ -108,8 +130,8 @@ public sealed class TetaoMensalApiTests(PainelVencimentosApiFixture fixture)
     [Fact]
     public async Task Patch_ParametrosSistema_TetaoMensal_ConfiguraValor()
     {
-        // Arrange
-        using HttpClient client = fixture.CreateAuthenticatedClient();
+        // Arrange — InitializeAsync já garantiu tetão = null
+        using HttpClient client = _fixture.CreateAuthenticatedClient();
 
         // Act — configura tetão de 5 milhões
         HttpResponseMessage patchRes = await client.PatchAsJsonAsync(
@@ -149,8 +171,8 @@ public sealed class TetaoMensalApiTests(PainelVencimentosApiFixture fixture)
     [Fact]
     public async Task Get_QuadroDivida_AposConfigurarTetao_AlertaAparecePorMesExcedido()
     {
-        // Arrange
-        using HttpClient client = fixture.CreateAuthenticatedClient();
+        // Arrange — InitializeAsync já garantiu tetão = null
+        using HttpClient client = _fixture.CreateAuthenticatedClient();
 
         // Configura tetão de R$ 1 (qualquer movimentação > 1 dispara alerta)
         HttpResponseMessage patchRes = await client.PatchAsJsonAsync(
