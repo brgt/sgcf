@@ -156,6 +156,15 @@ public sealed class CenarioSimulacao : Entity, IAuditable
 
         if (anoBase.HasValue)
         {
+            // Invariante: AnoBase altera o significado de todas as simulações filhas
+            // (datas previstas relativas ao ano-base). Permitido apenas em Rascunho.
+            if (Status != StatusCenarioSimulacao.Rascunho && anoBase.Value != AnoBase)
+            {
+                throw new InvalidOperationException(
+                    $"AnoBase não pode ser alterado em cenário com status {Status}. " +
+                    "Duplique como Rascunho para experimentar outro ano-base.");
+            }
+
             ValidarAnoBase(anoBase.Value);
             AnoBase = anoBase.Value;
         }

@@ -1,8 +1,8 @@
 using MediatR;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Common;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Simulacao;
@@ -57,8 +57,8 @@ public sealed record GetQuadroDividaQuery(int Ano, Guid? CenarioId = null) : IRe
 /// Nota sobre CDI (Fase 3): simulações com TipoTaxa = CdiSpread requerem snapshot de CDI.
 /// Se não houver snapshot disponível, lança <see cref="InvalidOperationException"/> com mensagem clara.
 ///
-/// Nota sobre cache (<see cref="ICronogramaSimulacaoCache"/>): opcional — null é aceito quando
-/// Redis não está configurado no ambiente. Sem cache, o cronograma é calculado on-the-fly.
+/// Nota sobre cache (<see cref="ICronogramaSimulacaoCache"/>): sempre injetado via DI — em ambientes
+/// sem Redis, <c>NullCronogramaSimulacaoCache</c> é registrado como fallback explícito (AD-3).
 /// </summary>
 public sealed class GetQuadroDividaQueryHandler(
     IMediator mediator,
@@ -69,7 +69,7 @@ public sealed class GetQuadroDividaQueryHandler(
     ICotacaoFxRepository cotacaoFxRepo,
     IClock clock,
     ICenarioSimulacaoRepository cenarioRepo,
-    IServiceProvider serviceProvider,
+    ICronogramaSimulacaoCache cronogramaCache,
     ICdiSnapshotRepository cdiRepo,
     IParametroSistemaRepository parametroSistemaRepo) : IRequestHandler<GetQuadroDividaQuery, QuadroDividaDto>
 {
@@ -82,107 +82,31 @@ public sealed class GetQuadroDividaQueryHandler(
         CancellationToken cancellationToken)
     {
         ValidarAno(request.Ano);
+        ValidarAnoCorrenteMvp(request.Ano, clock.GetCurrentInstant().InZone(FusoBrasilia).Year);
 
-        int anoCorrente = clock.GetCurrentInstant().InZone(FusoBrasilia).Year;
-        ValidarAnoCorrenteMvp(request.Ano, anoCorrente);
-
-        // 1. Snapshot atual da carteira por banco (via GetSaldoPorBancoAtualQuery — Task 1.2)
-        SaldoPorBancoAtualDto snapshot = await mediator.Send(
-            new GetSaldoPorBancoAtualQuery(), cancellationToken);
-
-        // 2. Contratos ativos para construir o mapa ContratoId → BancoId
-        //    (EventoCronograma vincula-se por ContratoId, não por BancoId)
-        IReadOnlyList<Contrato> contratos = await contratoRepo.ListAsync(cancellationToken);
-        List<Contrato> ativos = contratos.Where(c => c.Status == StatusContrato.Ativo).ToList();
-
-        Dictionary<Guid, Guid> bancoIdPorContrato = ativos.ToDictionary(c => c.Id, c => c.BancoId);
-        Dictionary<Guid, Moeda> moedaPorContrato = ativos.ToDictionary(c => c.Id, c => c.Moeda);
-
-        // 3. Saldo inicial por banco como dicionário BancoId → Money(BRL)
-        //    Vem do snapshot — garante consistência com PainelDivida.DividaBrutaBrl (AD-8)
-        Dictionary<Guid, Money> saldoInicialPorBanco = snapshot.Bancos
-            .ToDictionary(
-                b => b.BancoId,
-                b => new Money(b.SaldoBrl, Moeda.Brl));
-
-        // 4. Eventos de amortização de principal do cronograma para o ano
-        IReadOnlyList<Guid> contratoIds = ativos.Select(c => c.Id).ToList().AsReadOnly();
-
-        IReadOnlyList<EventoCronograma> eventosDb =
-            await cronogramaRepo.ListAbertosParaAnoAsync(request.Ano, contratoIds, cancellationToken);
-
-        // 5. Converte para EventoProjecao usando taxa BRL corrente (spot → PTAX D-1 mid-rate)
         LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
 
-        IReadOnlySet<Moeda> moedasEstrangeiras = ativos
-            .Where(c => c.Moeda != Moeda.Brl)
-            .Select(c => c.Moeda)
-            .ToHashSet();
+        SaldoPorBancoAtualDto snapshot = await CarregarSnapshotAsync(cancellationToken);
+        (List<Contrato> ativos, Dictionary<Guid, Guid> bancoIdPorContrato, Dictionary<Guid, Moeda> moedaPorContrato)
+            = await CarregarContratosAtivosAsync(cancellationToken);
 
-        Dictionary<Moeda, decimal> taxas =
-            await ResolverCotacoesAsync(moedasEstrangeiras, hoje, cancellationToken);
+        Dictionary<Guid, Money> saldoInicialPorBanco = ExtrairSaldoInicialPorBanco(snapshot);
+        List<EventoProjecao> eventosProjecao = await CarregarEventosProjecaoAsync(
+            request.Ano, ativos, bancoIdPorContrato, moedaPorContrato, hoje, cancellationToken);
 
-        List<EventoProjecao> eventosProjecao = ConverterParaEventosProjecao(
-            eventosDb,
-            bancoIdPorContrato,
-            moedaPorContrato,
-            taxas);
+        CenarioAplicadoDto? cenarioAplicadoDto = await AplicarCenarioSeInformadoAsync(
+            request, hoje, eventosProjecao, cancellationToken);
 
-        // 6. (Fase 3) Incorporar eventos do cenário de simulação — AD-9
-        CenarioAplicadoDto? cenarioAplicadoDto = null;
-
-        if (request.CenarioId.HasValue)
-        {
-            CenarioSimulacao cenario = await cenarioRepo.GetByIdAsync(request.CenarioId.Value, cancellationToken)
-                ?? throw new KeyNotFoundException(
-                    $"Cenário de simulação '{request.CenarioId.Value}' não encontrado.");
-
-            ValidarAnoBaseCenario(cenario, request.Ano);
-
-            // CDI lazy: carregado no máximo uma vez por chamada, somente se alguma simulação usar CdiSpread.
-            // Usamos um CdiLoader com estado interno para evitar 'ref' em closure.
-            var cdiLoader = new CdiLoader(cdiRepo, hoje);
-
-            List<EventoProjecao> eventosCenario = await GerarEventosDoCenarioAsync(
-                cenario,
-                request.Ano,
-                () => cdiLoader.ObterAsync(cancellationToken),
-                cancellationToken);
-
-            eventosProjecao.AddRange(eventosCenario);
-
-            cenarioAplicadoDto = new CenarioAplicadoDto(
-                Id: cenario.Id,
-                Nome: cenario.Nome,
-                Status: cenario.Status.ToString(),
-                AnoBase: cenario.AnoBase,
-                QuantidadeSimulacoes: cenario.Simulacoes.Count);
-        }
-
-        // 7. Projetor puro (AD-5) — retorna exatamente 12 MesProjecao
         QuadroDividaProjecao projecao = ProjetorSaldoMensal.Projetar(
-            saldoInicialPorBanco,
-            eventosProjecao,
-            request.Ano);
+            saldoInicialPorBanco, eventosProjecao, request.Ano);
 
-        // 8. Apelidos dos bancos para enriquecer DTOs (AD-10)
-        IReadOnlyList<Banco> bancos = await bancoRepo.ListAllAsync(cancellationToken);
-        Dictionary<Guid, string> apelidos = bancos.ToDictionary(b => b.Id, b => b.Apelido);
-
-        // 9. Mapeia domain → DTOs
+        Dictionary<Guid, string> apelidos = await CarregarApelidosBancosAsync(cancellationToken);
         QuadroDividaProjecaoDto projecaoDto = MapearProjecaoDto(projecao, apelidos);
         QuadroDividaSumarioDto sumario = CalcularSumario(projecao);
 
-        // 10. (Task 3.4 — D-11) Alertas de tetão mensal: pure function, nenhuma I/O adicional
-        Domain.Sistema.ParametroSistema parametros =
-            await parametroSistemaRepo.GetOrCreateGlobalAsync(clock, cancellationToken);
+        IReadOnlyList<string> alertasTetao = await CalcularAlertasTetaoAsync(projecaoDto, cancellationToken);
 
-        IReadOnlyList<string> alertasTetao = ValidadorTetaoMensal.Validar(
-            projecaoDto,
-            parametros.TetaoMensalCapacidadeBrl?.Valor);
-
-        LocalDate dataRef = snapshot.DataReferencia;
-        DateOnly dataReferencia = new(dataRef.Year, dataRef.Month, dataRef.Day);
+        DateOnly dataReferencia = new(snapshot.DataReferencia.Year, snapshot.DataReferencia.Month, snapshot.DataReferencia.Day);
 
         return new QuadroDividaDto(
             Ano: request.Ano,
@@ -192,6 +116,115 @@ public sealed class GetQuadroDividaQueryHandler(
             Sumario: sumario,
             Alertas: alertasTetao,
             CenarioAplicado: cenarioAplicadoDto);
+    }
+
+    // ── Orquestração — passos extraídos do Handle ──────────────────────────────
+
+    /// <summary>Obtém o snapshot atual via GetSaldoPorBancoAtualQuery (Task 1.2).</summary>
+    private Task<SaldoPorBancoAtualDto> CarregarSnapshotAsync(CancellationToken ct) =>
+        mediator.Send(new GetSaldoPorBancoAtualQuery(), ct);
+
+    /// <summary>
+    /// Carrega contratos ativos e constrói os mapas de lookup ContratoId→BancoId e ContratoId→Moeda.
+    /// EventoCronograma vincula-se por ContratoId, não por BancoId — estes mapas são necessários.
+    /// </summary>
+    private async Task<(List<Contrato> Ativos, Dictionary<Guid, Guid> BancoIdPorContrato, Dictionary<Guid, Moeda> MoedaPorContrato)>
+        CarregarContratosAtivosAsync(CancellationToken ct)
+    {
+        IReadOnlyList<Contrato> todos = await contratoRepo.ListAsync(ct);
+        List<Contrato> ativos = todos.Where(c => c.Status == StatusContrato.Ativo).ToList();
+        return (
+            ativos,
+            ativos.ToDictionary(c => c.Id, c => c.BancoId),
+            ativos.ToDictionary(c => c.Id, c => c.Moeda));
+    }
+
+    /// <summary>Converte o snapshot em BancoId → Money(BRL). Garante consistência com PainelDivida (AD-8).</summary>
+    private static Dictionary<Guid, Money> ExtrairSaldoInicialPorBanco(SaldoPorBancoAtualDto snapshot) =>
+        snapshot.Bancos.ToDictionary(b => b.BancoId, b => new Money(b.SaldoBrl, Moeda.Brl));
+
+    /// <summary>
+    /// Carrega eventos do cronograma e os converte em <see cref="EventoProjecao"/>,
+    /// resolvendo cotações spot → PTAX D-1 para moedas estrangeiras.
+    /// </summary>
+    private async Task<List<EventoProjecao>> CarregarEventosProjecaoAsync(
+        int ano,
+        List<Contrato> ativos,
+        Dictionary<Guid, Guid> bancoIdPorContrato,
+        Dictionary<Guid, Moeda> moedaPorContrato,
+        LocalDate hoje,
+        CancellationToken ct)
+    {
+        IReadOnlyList<Guid> contratoIds = ativos.Select(c => c.Id).ToList().AsReadOnly();
+        IReadOnlyList<EventoCronograma> eventosDb =
+            await cronogramaRepo.ListAbertosParaAnoAsync(ano, contratoIds, ct);
+
+        IReadOnlySet<Moeda> moedasEstrangeiras = ativos
+            .Where(c => c.Moeda != Moeda.Brl)
+            .Select(c => c.Moeda)
+            .ToHashSet();
+
+        Dictionary<Moeda, decimal> taxas = await ResolverCotacoesAsync(moedasEstrangeiras, hoje, ct);
+
+        return ConverterParaEventosProjecao(eventosDb, bancoIdPorContrato, moedaPorContrato, taxas);
+    }
+
+    /// <summary>
+    /// Quando <see cref="GetQuadroDividaQuery.CenarioId"/> está presente, carrega e valida o cenário,
+    /// gera eventos hipotéticos e os adiciona a <paramref name="eventosProjecao"/> in-place.
+    /// Retorna o DTO de metadados do cenário, ou null quando não há cenário (AD-9).
+    /// </summary>
+    private async Task<CenarioAplicadoDto?> AplicarCenarioSeInformadoAsync(
+        GetQuadroDividaQuery request,
+        LocalDate hoje,
+        List<EventoProjecao> eventosProjecao,
+        CancellationToken ct)
+    {
+        if (!request.CenarioId.HasValue)
+        {
+            return null;
+        }
+
+        CenarioSimulacao cenario = await cenarioRepo.GetByIdAsync(request.CenarioId.Value, ct)
+            ?? throw new KeyNotFoundException(
+                $"Cenário de simulação '{request.CenarioId.Value}' não encontrado.");
+
+        ValidarAnoBaseCenario(cenario, request.Ano);
+
+        // CDI lazy: carregado no máximo uma vez por chamada, somente se alguma simulação usar CdiSpread.
+        var cdiLoader = new CdiLoader(cdiRepo, hoje);
+
+        List<EventoProjecao> eventosCenario = await GerarEventosDoCenarioAsync(
+            cenario, request.Ano, () => cdiLoader.ObterAsync(ct), ct);
+
+        eventosProjecao.AddRange(eventosCenario);
+
+        return new CenarioAplicadoDto(
+            Id: cenario.Id,
+            Nome: cenario.Nome,
+            Status: cenario.Status.ToString(),
+            AnoBase: cenario.AnoBase,
+            QuantidadeSimulacoes: cenario.Simulacoes.Count);
+    }
+
+    /// <summary>Carrega apelidos de todos os bancos para enriquecer os DTOs (AD-10).</summary>
+    private async Task<Dictionary<Guid, string>> CarregarApelidosBancosAsync(CancellationToken ct)
+    {
+        IReadOnlyList<Banco> bancos = await bancoRepo.ListAllAsync(ct);
+        return bancos.ToDictionary(b => b.Id, b => b.Apelido);
+    }
+
+    /// <summary>
+    /// Carrega o parâmetro de tetão e executa a validação pura — nenhuma I/O adicional
+    /// além da leitura do parâmetro (Task 3.4 — D-11).
+    /// </summary>
+    private async Task<IReadOnlyList<string>> CalcularAlertasTetaoAsync(
+        QuadroDividaProjecaoDto projecaoDto,
+        CancellationToken ct)
+    {
+        Domain.Sistema.ParametroSistema parametros =
+            await parametroSistemaRepo.GetOrCreateGlobalAsync(clock, ct);
+        return ValidadorTetaoMensal.Validar(projecaoDto, parametros.TetaoMensalCapacidadeBrl?.Valor);
     }
 
     // ── Cenário de simulação (Fase 3 Task 3.1) ────────────────────────────────
@@ -221,8 +254,8 @@ public sealed class GetQuadroDividaQueryHandler(
     ///     calculado pelo <see cref="SimulacaoCronogramaCalculator"/>. Eventos fora do ano
     ///     são incluídos aqui — o projetor os filtrará (AD-5 / P-5).
     ///
-    /// O cache Redis (<see cref="ICronogramaSimulacaoCache"/>) é usado quando disponível.
-    /// Quando null (Redis ausente no ambiente), o cronograma é calculado on-the-fly.
+    /// O cache (<see cref="ICronogramaSimulacaoCache"/>) é sempre injetado — em ambientes sem Redis
+    /// o <c>NullCronogramaSimulacaoCache</c> é o fallback, que recalcula on-the-fly (AD-3).
     /// </summary>
     private async Task<List<EventoProjecao>> GerarEventosDoCenarioAsync(
         CenarioSimulacao cenario,
@@ -246,17 +279,14 @@ public sealed class GetQuadroDividaQueryHandler(
                 ? await obterCdi()
                 : null;
 
-            // Cronograma hipotético — via cache Redis se disponível, on-the-fly caso contrário (AD-3).
-            // GetService retorna null quando ICronogramaSimulacaoCache não está registrado (Redis ausente).
-            ICronogramaSimulacaoCache? cache = serviceProvider.GetService<ICronogramaSimulacaoCache>();
-            IReadOnlyList<EventoCronogramaGerado> cronograma = cache is not null
-                ? await cache.GetOrCreateAsync(
-                    cenario.Id,
-                    simulacao.Id,
-                    simulacao.Version,
-                    () => Task.FromResult(SimulacaoCronogramaCalculator.Calcular(simulacao, cdiAa)),
-                    ct)
-                : SimulacaoCronogramaCalculator.Calcular(simulacao, cdiAa);
+            // Cronograma hipotético via cache injetado (AD-3).
+            // NullCronogramaSimulacaoCache é o fallback quando Redis não está configurado.
+            IReadOnlyList<EventoCronogramaGerado> cronograma = await cronogramaCache.GetOrCreateAsync(
+                cenario.Id,
+                simulacao.Id,
+                simulacao.Version,
+                () => Task.FromResult(SimulacaoCronogramaCalculator.Calcular(simulacao, cdiAa)),
+                ct);
 
             // Converte apenas eventos de Principal em AmortizacaoPrincipal (juros não entram — AD-6)
             foreach (EventoCronogramaGerado evento in cronograma)
@@ -371,11 +401,11 @@ public sealed class GetQuadroDividaQueryHandler(
                     BancoApelido: apelidos.TryGetValue(b.BancoId, out string? apelido)
                         ? apelido
                         : b.BancoId.ToString("N"),
-                    SaldoInicio: b.SaldoInicio.Valor,
-                    SaldoFim: b.SaldoFim.Valor,
-                    TotalAmortizacaoNoMes: b.TotalAmortizacaoNoMes.Valor,
-                    TotalCaptacaoNoMes: b.TotalCaptacaoNoMes.Valor,
-                    SharePercentual: b.SharePercentual))
+                    SaldoInicio: DecimalArredondamento.Mostrar(b.SaldoInicio.Valor),
+                    SaldoFim: DecimalArredondamento.Mostrar(b.SaldoFim.Valor),
+                    TotalAmortizacaoNoMes: DecimalArredondamento.Mostrar(b.TotalAmortizacaoNoMes.Valor),
+                    TotalCaptacaoNoMes: DecimalArredondamento.Mostrar(b.TotalCaptacaoNoMes.Valor),
+                    SharePercentual: DecimalArredondamento.Mostrar(b.SharePercentual)))
                 .ToList();
 
             decimal totalAmortizacaoMes = bancosDto.Sum(b => b.TotalAmortizacaoNoMes);
@@ -385,10 +415,10 @@ public sealed class GetQuadroDividaQueryHandler(
                 Ano: mes.AnoCalendar,
                 Mes: mes.Mes,
                 Bancos: bancosDto.AsReadOnly(),
-                SaldoTotalInicio: mes.SaldoTotalInicio.Valor,
-                SaldoTotalFim: mes.SaldoTotalFim.Valor,
-                TotalAmortizacaoMes: totalAmortizacaoMes,
-                TotalCaptacaoMes: totalCaptacaoMes));
+                SaldoTotalInicio: DecimalArredondamento.Mostrar(mes.SaldoTotalInicio.Valor),
+                SaldoTotalFim: DecimalArredondamento.Mostrar(mes.SaldoTotalFim.Valor),
+                TotalAmortizacaoMes: DecimalArredondamento.Mostrar(totalAmortizacaoMes),
+                TotalCaptacaoMes: DecimalArredondamento.Mostrar(totalCaptacaoMes)));
         }
 
         return new QuadroDividaProjecaoDto(meses.AsReadOnly());
@@ -419,11 +449,11 @@ public sealed class GetQuadroDividaQueryHandler(
                 MidpointRounding.AwayFromZero);
 
         return new QuadroDividaSumarioDto(
-            SaldoTotalInicioAno: saldoInicioAno,
-            SaldoTotalFimAno: saldoFimAno,
-            TotalAmortizacaoNoAno: totalAmortizacao,
-            TotalCaptacaoNoAno: totalCaptacao,
-            VariacaoAnualPercentual: variacao);
+            SaldoTotalInicioAno: DecimalArredondamento.Mostrar(saldoInicioAno),
+            SaldoTotalFimAno: DecimalArredondamento.Mostrar(saldoFimAno),
+            TotalAmortizacaoNoAno: DecimalArredondamento.Mostrar(totalAmortizacao),
+            TotalCaptacaoNoAno: DecimalArredondamento.Mostrar(totalCaptacao),
+            VariacaoAnualPercentual: DecimalArredondamento.Mostrar(variacao));
     }
 
     // ── Resolução de cotações (estratégia idêntica ao GetSaldoPorBancoAtualQueryHandler) ──

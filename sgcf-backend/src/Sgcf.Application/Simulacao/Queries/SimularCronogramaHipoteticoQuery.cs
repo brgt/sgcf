@@ -2,6 +2,7 @@ using MediatR;
 
 using NodaTime;
 
+using Sgcf.Application.Common;
 using Sgcf.Application.Simulacao.Dtos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -89,8 +90,8 @@ public sealed class SimularCronogramaHipoteticoQueryHandler(IClock clock)
                 Numero: e.NumeroEvento,
                 Tipo: e.Tipo.ToString(),
                 Data: new DateOnly(e.DataPrevista.Year, e.DataPrevista.Month, e.DataPrevista.Day),
-                Valor: e.Valor.Valor,
-                SaldoDevedorApos: e.SaldoDevedorApos))
+                Valor: DecimalArredondamento.Mostrar(e.Valor.Valor),
+                SaldoDevedorApos: DecimalArredondamento.Mostrar(e.SaldoDevedorApos)))
             .ToList();
 
         string principalStr = TipoEventoCronograma.Principal.ToString();
@@ -106,10 +107,10 @@ public sealed class SimularCronogramaHipoteticoQueryHandler(IClock clock)
 
         // CronogramaHipoteticoDto está em Sgcf.Application.Simulacao.Dtos
         CronogramaHipoteticoDto resultado = new(
-            TaxaEfetivaAaPercentual: taxaEfetiva,
+            TaxaEfetivaAaPercentual: DecimalArredondamento.Mostrar(taxaEfetiva),
             QuantidadeEventos: eventosDto.Count,
-            PrincipalTotal: principalTotal,
-            JurosTotal: jurosTotal,
+            PrincipalTotal: DecimalArredondamento.Mostrar(principalTotal),
+            JurosTotal: DecimalArredondamento.Mostrar(jurosTotal),
             Eventos: eventosDto);
 
         return Task.FromResult(resultado);

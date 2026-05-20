@@ -1,5 +1,6 @@
 using NodaTime;
 
+using Sgcf.Application.Common;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Simulacao;
@@ -42,7 +43,7 @@ public sealed record SimulacaoContratacaoDto(
             s.BancoId,
             s.Modalidade.ToString(),
             s.Moeda.ToString(),
-            s.ValorPrincipal.Valor,
+            DecimalArredondamento.Mostrar(s.ValorPrincipal.Valor),
             ToDateOnly(s.DataContratacaoPrevista),
             ToDateOnly(s.DataPrimeiroVencimento),
             s.TipoTaxa.ToString(),
