@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 
 using NodaTime;
+using NodaTime.TimeZones;
 
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -29,6 +30,14 @@ namespace Sgcf.Domain.Simulacao;
 /// </summary>
 public sealed class SimulacaoContratacao : Entity
 {
+    // ── Fuso horário brasileiro (Brasília) ────────────────────────────────────
+    // Datas de calendário (vencimento, contratação prevista) representam dias
+    // úteis brasileiros e devem ser derivadas a partir do horário local BRT,
+    // não de UTC. Entre 21h e 23:59 BRT, a data UTC já avançou para o dia
+    // seguinte, mas o calendário BR ainda está no dia anterior.
+    private static readonly DateTimeZone FusoBrasilia =
+        DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     // ── Modalidades que exigem moeda estrangeira (não aceitam BRL) ────────────
 
     private static readonly FrozenSet<ModalidadeContrato> ModalidadesCambiais =
@@ -127,7 +136,10 @@ public sealed class SimulacaoContratacao : Entity
         ArgumentNullException.ThrowIfNull(clock);
 
         Instant agora = clock.GetCurrentInstant();
-        LocalDate hoje = agora.InUtc().Date;
+        // Datas de calendário brasileiras derivam do fuso BRT, não UTC.
+        // Entre 21h–23:59 BRT, a data UTC já é o dia seguinte — usar UTC
+        // rejeitaria indevidamente "dataContratacaoPrevista = hoje BRT".
+        LocalDate hoje = agora.InZone(FusoBrasilia).Date;
 
         // I-1: ValorPrincipal > 0
         if (valorPrincipal.Valor <= 0m)
