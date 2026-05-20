@@ -246,6 +246,14 @@ public sealed class CenarioSimulacao : Entity, IAuditable
         ArgumentNullException.ThrowIfNull(origem);
         ArgumentNullException.ThrowIfNull(clock);
 
+        // Invariante: cenário deletado não pode ser ressuscitado via duplicação.
+        // O cliente deve restaurar explicitamente ou partir de outro cenário.
+        if (origem.DeletedAt is not null)
+        {
+            throw new InvalidOperationException(
+                "Cenário deletado não pode ser duplicado. Restaure-o primeiro ou parta de outro cenário.");
+        }
+
         Instant agora = clock.GetCurrentInstant();
 
         CenarioSimulacao copia = new()
