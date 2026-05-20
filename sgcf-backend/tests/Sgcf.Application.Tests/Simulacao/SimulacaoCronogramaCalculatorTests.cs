@@ -299,24 +299,7 @@ public sealed class SimulacaoCronogramaCalculatorTests
             .WithMessage("*cdiReferenciaAaPercentual*");
     }
 
-    // ── Teste 8: Fixa sem TaxaAa lança InvalidOperationException ───────────────
-
-    [Fact]
-    public void Calcular_FixaSemTaxaAa_lancaInvalidOperationException()
-    {
-        // Construímos via reflexão/acesso interno para simular estado inválido
-        // que não passaria pelas invariantes da factory. Como a factory impede isso,
-        // testamos que o calculador também se protege — via a guarda no ResolverTaxaEfetiva.
-        // Nota: este caso não é alcançável via Criar() mas importa para robustez.
-        // Usamos o stub interno (CriarComTaxaAaNull) — ver nota de implementação.
-        // Por enquanto, validamos via o método público como confirmação de contrato.
-
-        // O calculador deve falhar graciosamente se receber estado inválido.
-        // Este teste é documentativo; o estado inválido não é criável via factory pública.
-        Assert.True(true); // placeholder — ver nota abaixo
-    }
-
-    // ── Teste 9: total Principal == ValorPrincipal (property) ───────────────────
+    // ── Teste 8: total Principal == ValorPrincipal (property) ───────────────────
 
     [Theory]
     [InlineData("Bullet")]
