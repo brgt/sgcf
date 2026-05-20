@@ -106,6 +106,7 @@ public static class DependencyInjection
         services.AddScoped<ICdiSnapshotRepository, CdiSnapshotRepository>();
         services.AddScoped<ICenarioSimulacaoRepository, CenarioSimulacaoRepository>();
         services.AddScoped<IParametroSistemaRepository, ParametroSistemaRepository>();
+        services.AddScoped<ITenantRepository, TenantRepository>();
 
         return services;
     }

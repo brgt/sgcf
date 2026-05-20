@@ -14,11 +14,13 @@ using Sgcf.Domain.Hedge;
 using Sgcf.Domain.Painel;
 using Sgcf.Domain.Simulacao;
 using Sgcf.Domain.Sistema;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Infrastructure.Persistence;
 
 public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(options)
 {
+    public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Banco> Bancos => Set<Banco>();
     public DbSet<Contrato> Contratos => Set<Contrato>();
     public DbSet<Parcela> Parcelas => Set<Parcela>();

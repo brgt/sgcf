@@ -141,7 +141,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy(Policies.Gerencial, p => p.RequireRole("gerente", "diretor", "admin"));
     options.AddPolicy(Policies.Executivo, p => p.RequireRole("tesouraria", "gerente", "diretor", "admin"));
     options.AddPolicy(Policies.Auditoria, p => p.RequireRole("contabilidade", "auditor", "admin"));
-    options.AddPolicy(Policies.Admin,     p => p.RequireRole("admin"));
+    options.AddPolicy(Policies.Admin,      p => p.RequireRole("admin"));
+    options.AddPolicy(Policies.SuperAdmin, p => p.RequireRole("super-admin"));
 });
 
 builder.Services.AddCors(opts =>
