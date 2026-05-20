@@ -28,6 +28,13 @@ public sealed class TestAuthHandler(
     /// <summary>Header name used to inject a custom sub value per request.</summary>
     public const string SubHeader = "X-Test-User-Sub";
 
+    /// <summary>
+    /// Optional header to override the tenant_id claim in tests.
+    /// Falls back to <see cref="ProxysDevTenant.Id"/> when absent,
+    /// preserving backward compatibility with all existing tests.
+    /// </summary>
+    public const string TenantIdHeader = "X-Test-Tenant-Id";
+
     /// <inheritdoc/>
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -39,11 +46,17 @@ public sealed class TestAuthHandler(
 
         string sub = Request.Headers[SubHeader].FirstOrDefault() ?? "dev-user-id";
 
+        // X-Test-Tenant-Id allows cross-tenant isolation tests to impersonate different tenants.
+        // Falls back to ProxysDevTenant.Id so every existing test continues to work unchanged.
+        string tenantId = Request.Headers[TenantIdHeader].FirstOrDefault()
+            ?? ProxysDevTenant.Id.ToString();
+
         Claim[] claims =
         [
             new Claim("sub",                                           sub),
             new Claim(ClaimTypes.NameIdentifier,                       sub),
             new Claim(ClaimTypes.Name,                                 "test-user"),
+            new Claim("tenant_id",                                     tenantId),
             new Claim(ClaimTypes.Role,                                 "admin"),
             new Claim(ClaimTypes.Role,                                 "tesouraria"),
         ];
