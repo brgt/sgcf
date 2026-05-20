@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
+using Sgcf.Api.HostedServices;
 using Sgcf.Api.Middleware;
 using Sgcf.Api.Services;
 using Sgcf.Application;
@@ -106,24 +107,38 @@ builder.Services
                 SignatureValidator       = (_, _) => new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken("eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.e30."),
             };
 
-            // Accept any Bearer token in dev — create a fully-privileged dev principal
+            // Accept any Bearer token in dev — create a fully-privileged dev principal.
+            // Inclui tenant_id do seed dev (proxys) para o TenantResolverMiddleware funcionar.
+            // Header X-Dev-Role: super-admin adiciona role "super-admin" ao principal.
             options.Events = new JwtBearerEvents
             {
                 OnMessageReceived = ctx =>
                 {
                     if (ctx.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
                     {
-                        var claims = new[]
-                        {
+                        bool wantsSuperAdmin = ctx.Request.Headers.TryGetValue(
+                            "X-Dev-Role", out Microsoft.Extensions.Primitives.StringValues devRole)
+                            && devRole.ToString().Equals("super-admin", StringComparison.OrdinalIgnoreCase);
+
+                        System.Collections.Generic.List<System.Security.Claims.Claim> claims =
+                        [
                             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "dev-user"),
                             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.NameIdentifier, "dev-user-id"),
+                            new System.Security.Claims.Claim("tenant_id", DevTenantSeederService.ProxysTenantId.ToString()),
                             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "admin"),
                             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "tesouraria"),
                             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "gerente"),
                             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "diretor"),
                             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "contabilidade"),
                             new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, "auditor"),
-                        };
+                        ];
+
+                        if (wantsSuperAdmin)
+                        {
+                            claims.Add(new System.Security.Claims.Claim(
+                                System.Security.Claims.ClaimTypes.Role, "super-admin"));
+                        }
+
                         ctx.Principal = new System.Security.Claims.ClaimsPrincipal(
                             new System.Security.Claims.ClaimsIdentity(claims, "DevMock"));
                         ctx.Success();
@@ -173,10 +188,21 @@ if (app.Environment.IsDevelopment())
     SecurityLogs.DevBypassAtivo(app.Logger);
 }
 
+// Registrar DevTenantSeederService apenas em Development.
+// Deve ser feito APÓS builder.Build() para que o IServiceProvider esteja disponível.
+if (app.Environment.IsDevelopment())
+{
+    // Inicia o seed do tenant "proxys" via hosted service scope-based.
+    using IServiceScope seedScope = app.Services.CreateScope();
+    Sgcf.Api.HostedServices.DevTenantSeederService seeder = new(app.Services);
+    await seeder.StartAsync(default);
+}
+
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseCors();
 app.UseAuthentication();
+app.UseMiddleware<TenantResolverMiddleware>();
 app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" })).AllowAnonymous();
 app.MapControllers();

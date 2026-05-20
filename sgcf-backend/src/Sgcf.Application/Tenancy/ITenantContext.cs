@@ -20,4 +20,10 @@ public interface ITenantContext
 
     /// <summary>Retorna true se o contexto foi resolvido pelo middleware para este escopo.</summary>
     public bool IsResolved { get; }
+
+    /// <summary>
+    /// Resolve o contexto para este escopo. Deve ser chamado exatamente uma vez pelo middleware.
+    /// Lança <see cref="InvalidOperationException"/> se chamado mais de uma vez.
+    /// </summary>
+    public void Resolve(Guid tenantId, string slug, bool isSuperAdmin, bool isImpersonating);
 }

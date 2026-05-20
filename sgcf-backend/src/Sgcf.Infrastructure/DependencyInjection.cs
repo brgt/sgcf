@@ -45,6 +45,19 @@ public static class DependencyInjection
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
 
+        // TenantCache: singleton porque usa MemoryCache (também singleton).
+        // IConnectionMultiplexer é opcional — quando ausente, invalidação é somente local.
+        // IMemoryCache é registrado via AddMemoryCache() no Program.cs do host (API/Jobs).
+        services.AddSingleton<TenantCache>(sp =>
+        {
+            Microsoft.Extensions.Caching.Memory.IMemoryCache mc =
+                sp.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>();
+            StackExchange.Redis.IConnectionMultiplexer? mux =
+                sp.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            return new TenantCache(mc, mux);
+        });
+        services.AddSingleton<ITenantCache>(sp => sp.GetRequiredService<TenantCache>());
+
         services.AddScoped<AuditInterceptor>();
         services.AddScoped<ICurrentUserService, SystemCurrentUserService>();
         services.AddScoped<IRequestContextService, SystemRequestContextService>();
@@ -68,6 +81,9 @@ public static class DependencyInjection
             services.Configure<CronogramaSimulacaoCacheOptions>(
                 configuration.GetSection("CronogramaSimulacaoCache"));
             services.AddSingleton<ICronogramaSimulacaoCache, RedisCronogramaSimulacaoCache>();
+
+            // Subscriber de invalidação de cache de tenant via Redis pub/sub.
+            services.AddHostedService<TenantCacheInvalidationSubscriber>();
         }
         else
         {
