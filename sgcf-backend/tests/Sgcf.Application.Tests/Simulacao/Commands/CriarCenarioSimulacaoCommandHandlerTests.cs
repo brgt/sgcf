@@ -6,6 +6,7 @@ using Sgcf.Application.Common;
 using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Commands;
 using Sgcf.Application.Simulacao.Dtos;
+using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Simulacao;
 using Xunit;
 
@@ -52,8 +53,8 @@ public sealed class CriarCenarioSimulacaoCommandHandlerTests
         // Act
         CenarioSimulacaoDto resultado = await handler.Handle(cmd, default);
 
-        // Assert — fallback para "sistema"
-        resultado.CriadoPor.Should().Be("sistema");
+        // Assert — fallback para AuditConstants.SystemActor ("SYSTEM") em contexto sem HTTP
+        resultado.CriadoPor.Should().Be(AuditConstants.SystemActor);
     }
 
     [Fact]

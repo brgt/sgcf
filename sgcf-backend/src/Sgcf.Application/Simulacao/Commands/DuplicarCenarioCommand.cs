@@ -3,6 +3,7 @@ using NodaTime;
 
 using Sgcf.Application.Common;
 using Sgcf.Application.Simulacao.Dtos;
+using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Simulacao;
 
 namespace Sgcf.Application.Simulacao.Commands;
@@ -24,8 +25,6 @@ public sealed class DuplicarCenarioCommandHandler(
     IClock clock,
     ICurrentUserService? currentUser = null) : IRequestHandler<DuplicarCenarioCommand, CenarioSimulacaoDto>
 {
-    private const string UsuarioSistema = "sistema";
-
     /// <inheritdoc/>
     public async Task<CenarioSimulacaoDto> Handle(
         DuplicarCenarioCommand cmd,
@@ -34,7 +33,7 @@ public sealed class DuplicarCenarioCommandHandler(
         CenarioSimulacao origem = await repo.GetByIdAsync(cmd.CenarioOrigemId, cancellationToken)
             ?? throw new KeyNotFoundException($"Cenário origem '{cmd.CenarioOrigemId}' não encontrado.");
 
-        string novoCriadoPor = currentUser?.ActorSub ?? UsuarioSistema;
+        string novoCriadoPor = currentUser?.ActorSub ?? AuditConstants.SystemActor;
 
         CenarioSimulacao copia = CenarioSimulacao.DuplicarComoRascunho(origem, novoCriadoPor, clock);
 

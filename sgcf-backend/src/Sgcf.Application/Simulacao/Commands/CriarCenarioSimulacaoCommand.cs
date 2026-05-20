@@ -4,6 +4,7 @@ using NodaTime;
 
 using Sgcf.Application.Common;
 using Sgcf.Application.Simulacao.Dtos;
+using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Simulacao;
 
 namespace Sgcf.Application.Simulacao.Commands;
@@ -39,14 +40,12 @@ public sealed class CriarCenarioSimulacaoCommandHandler(
     IClock clock,
     ICurrentUserService? currentUser = null) : IRequestHandler<CriarCenarioSimulacaoCommand, CenarioSimulacaoDto>
 {
-    private const string UsuarioSistema = "sistema";
-
     /// <inheritdoc/>
     public async Task<CenarioSimulacaoDto> Handle(
         CriarCenarioSimulacaoCommand cmd,
         CancellationToken cancellationToken)
     {
-        string criadoPor = currentUser?.ActorSub ?? UsuarioSistema;
+        string criadoPor = currentUser?.ActorSub ?? AuditConstants.SystemActor;
 
         CenarioSimulacao cenario = CenarioSimulacao.Criar(
             cmd.Nome,
