@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -24,7 +25,7 @@ public sealed class AtivarArquivarCenarioCommandHandlerTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        AtivarCenarioCommandHandler handler = new(repo, _clock);
+        AtivarCenarioCommandHandler handler = new(repo, _clock, NullLogger<AtivarCenarioCommandHandler>.Instance);
         CenarioSimulacaoDto resultado = await handler.Handle(new AtivarCenarioCommand(cenario.Id), default);
 
         resultado.Status.Should().Be("Ativo");
@@ -38,7 +39,7 @@ public sealed class AtivarArquivarCenarioCommandHandlerTests
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
         repo.GetByIdAsync(Arg.Any<Guid>(), default).Returns((CenarioSimulacao?)null);
 
-        AtivarCenarioCommandHandler handler = new(repo, _clock);
+        AtivarCenarioCommandHandler handler = new(repo, _clock, NullLogger<AtivarCenarioCommandHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new AtivarCenarioCommand(Guid.NewGuid()), default);
         await act.Should().ThrowAsync<KeyNotFoundException>();
@@ -51,7 +52,7 @@ public sealed class AtivarArquivarCenarioCommandHandlerTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioAtivo(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        AtivarCenarioCommandHandler handler = new(repo, _clock);
+        AtivarCenarioCommandHandler handler = new(repo, _clock, NullLogger<AtivarCenarioCommandHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new AtivarCenarioCommand(cenario.Id), default);
         await act.Should().ThrowAsync<InvalidOperationException>()
@@ -67,7 +68,7 @@ public sealed class AtivarArquivarCenarioCommandHandlerTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioAtivo(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        ArquivarCenarioCommandHandler handler = new(repo, _clock);
+        ArquivarCenarioCommandHandler handler = new(repo, _clock, NullLogger<ArquivarCenarioCommandHandler>.Instance);
         CenarioSimulacaoDto resultado = await handler.Handle(new ArquivarCenarioCommand(cenario.Id), default);
 
         resultado.Status.Should().Be("Arquivado");
@@ -81,7 +82,7 @@ public sealed class AtivarArquivarCenarioCommandHandlerTests
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
         repo.GetByIdAsync(Arg.Any<Guid>(), default).Returns((CenarioSimulacao?)null);
 
-        ArquivarCenarioCommandHandler handler = new(repo, _clock);
+        ArquivarCenarioCommandHandler handler = new(repo, _clock, NullLogger<ArquivarCenarioCommandHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new ArquivarCenarioCommand(Guid.NewGuid()), default);
         await act.Should().ThrowAsync<KeyNotFoundException>();
@@ -95,7 +96,7 @@ public sealed class AtivarArquivarCenarioCommandHandlerTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        ArquivarCenarioCommandHandler handler = new(repo, _clock);
+        ArquivarCenarioCommandHandler handler = new(repo, _clock, NullLogger<ArquivarCenarioCommandHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new ArquivarCenarioCommand(cenario.Id), default);
         await act.Should().ThrowAsync<InvalidOperationException>()

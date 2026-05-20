@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -82,7 +83,7 @@ public sealed class AuditLoggingTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        AtivarCenarioCommandHandler handler = new(repo, _clock);
+        AtivarCenarioCommandHandler handler = new(repo, _clock, NullLogger<AtivarCenarioCommandHandler>.Instance);
         await handler.Handle(new AtivarCenarioCommand(cenario.Id), default);
 
         repo.Received(1).Update(Arg.Is<CenarioSimulacao>(c => c is IAuditable));
@@ -95,7 +96,7 @@ public sealed class AuditLoggingTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioAtivo(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        ArquivarCenarioCommandHandler handler = new(repo, _clock);
+        ArquivarCenarioCommandHandler handler = new(repo, _clock, NullLogger<ArquivarCenarioCommandHandler>.Instance);
         await handler.Handle(new ArquivarCenarioCommand(cenario.Id), default);
 
         repo.Received(1).Update(Arg.Is<CenarioSimulacao>(c => c is IAuditable));
@@ -108,7 +109,7 @@ public sealed class AuditLoggingTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        DeletarCenarioCommandHandler handler = new(repo, _clock);
+        DeletarCenarioCommandHandler handler = new(repo, _clock, NullLogger<DeletarCenarioCommandHandler>.Instance);
         await handler.Handle(new DeletarCenarioCommand(cenario.Id), default);
 
         repo.Received(1).Update(Arg.Is<CenarioSimulacao>(c => c is IAuditable));

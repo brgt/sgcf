@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 
@@ -21,7 +22,7 @@ public sealed class DeletarCenarioCommandHandlerTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        DeletarCenarioCommandHandler handler = new(repo, _clock);
+        DeletarCenarioCommandHandler handler = new(repo, _clock, NullLogger<DeletarCenarioCommandHandler>.Instance);
         await handler.Handle(new DeletarCenarioCommand(cenario.Id), default);
 
         // DeletedAt deve ter sido preenchido pelo domínio.
@@ -36,7 +37,7 @@ public sealed class DeletarCenarioCommandHandlerTests
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
         repo.GetByIdAsync(Arg.Any<Guid>(), default).Returns((CenarioSimulacao?)null);
 
-        DeletarCenarioCommandHandler handler = new(repo, _clock);
+        DeletarCenarioCommandHandler handler = new(repo, _clock, NullLogger<DeletarCenarioCommandHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new DeletarCenarioCommand(Guid.NewGuid()), default);
         await act.Should().ThrowAsync<KeyNotFoundException>();
@@ -50,7 +51,7 @@ public sealed class DeletarCenarioCommandHandlerTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioArquivado(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        DeletarCenarioCommandHandler handler = new(repo, _clock);
+        DeletarCenarioCommandHandler handler = new(repo, _clock, NullLogger<DeletarCenarioCommandHandler>.Instance);
 
         Func<Task> act = () => handler.Handle(new DeletarCenarioCommand(cenario.Id), default);
         await act.Should().NotThrowAsync();
