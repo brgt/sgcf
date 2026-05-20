@@ -21,6 +21,9 @@ internal sealed partial class RecalcularMtmJob(
     private static readonly TimeOnly InicioMercadoUtc = new(12, 0);
     private static readonly TimeOnly FimMercadoUtc = new(21, 0);
 
+    // "hoje" is a BR calendar date used to look up PTAX D-1 for the current BR business day.
+    private static readonly DateTimeZone FusoBrasilia = DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     [LoggerMessage(Level = LogLevel.Information,
         Message = "RecalcularMtmJob: processando {Count} hedges ativos.")]
     private static partial void LogProcessando(ILogger logger, int count);
@@ -74,7 +77,7 @@ internal sealed partial class RecalcularMtmJob(
         IHedgeRepository hedgeRepo = sp.GetRequiredService<IHedgeRepository>();
         ICotacaoSpotCache spotCache = sp.GetRequiredService<ICotacaoSpotCache>();
         ICotacaoFxRepository cotacaoRepo = sp.GetRequiredService<ICotacaoFxRepository>();
-        LocalDate hoje = agora.InUtc().Date;
+        LocalDate hoje = agora.InZone(FusoBrasilia).Date;
 
         IReadOnlyList<InstrumentoHedge> hedges = await hedgeRepo.ListAtivosAsync(cancellationToken);
         LogProcessando(logger, hedges.Count);

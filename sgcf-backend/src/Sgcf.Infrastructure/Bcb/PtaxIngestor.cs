@@ -34,7 +34,9 @@ public sealed partial class PtaxIngestor(
 
     public async Task IngestirAsync(CancellationToken cancellationToken)
     {
-        LocalDate dataAtual = clock.GetCurrentInstant().InUtc().Date;
+        // dataAtual is a BR calendar date used to fetch BCB bulletins for "today".
+        // Must use BRT — at 23:30 BRT InUtc().Date would request tomorrow's bulletins.
+        LocalDate dataAtual = clock.GetCurrentInstant().InZone(ZonaBrasilia).Date;
 
         foreach (Moeda moeda in MoedasSuportadas)
         {

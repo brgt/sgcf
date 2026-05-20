@@ -13,10 +13,15 @@ namespace Sgcf.Application.Tests.Cotacoes;
 [Trait("Category", "Domain")]
 public sealed class CotacaoResolverServiceTests
 {
+    // Clock must return an instant whose BRT date equals dataAtual.
+    // Using noon BRT (15h00 UTC) avoids any day-boundary ambiguity.
+    private static readonly DateTimeZone FusoBrasilia = DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     private static IClock CriarClock(LocalDate dataAtual)
     {
         IClock clock = Substitute.For<IClock>();
-        clock.GetCurrentInstant().Returns(dataAtual.AtMidnight().InUtc().ToInstant());
+        Instant meiodiaBrt = dataAtual.AtStartOfDayInZone(FusoBrasilia).ToInstant() + Duration.FromHours(12);
+        clock.GetCurrentInstant().Returns(meiodiaBrt);
         return clock;
     }
 

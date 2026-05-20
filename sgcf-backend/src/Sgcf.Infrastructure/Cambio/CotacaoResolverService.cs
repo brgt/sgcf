@@ -12,6 +12,10 @@ internal sealed class CotacaoResolverService(
     ICotacaoSpotCache spotCache,
     IClock clock) : IResolveTipoCotacaoService
 {
+    // dataRef is a BR calendar date (vencimento context) — must use BRT, not UTC.
+    // At 23:30 BRT (02:30 UTC+1d) InUtc().Date would return tomorrow's date.
+    private static readonly DateTimeZone FusoBrasilia = DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     public async Task<ResultadoCotacao?> ResolveAsync(
         Moeda moeda,
         Guid bancoId,
@@ -21,7 +25,7 @@ internal sealed class CotacaoResolverService(
         IReadOnlyList<ParametroCotacao> parametros = await parametroRepo.ListAtivosAsync(cancellationToken);
         TipoCotacao tipo = ResolveTipoCotacaoService.Resolve(parametros, bancoId, modalidade);
 
-        LocalDate dataRef = clock.GetCurrentInstant().InUtc().Date;
+        LocalDate dataRef = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
 
         if (tipo == TipoCotacao.SpotIntraday)
         {

@@ -22,6 +22,9 @@ internal sealed partial class LiquidarNdfJob(
     // Target time: 14h00 BRT = 17h00 UTC
     private static readonly TimeOnly HoraExecucaoUtc = new(17, 0);
 
+    // "hoje" is a BR calendar date — hedge vencimento must be compared in BRT.
+    private static readonly DateTimeZone FusoBrasilia = DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     [LoggerMessage(Level = LogLevel.Information,
         Message = "LiquidarNdfJob: processando {Count} hedges vencendo hoje ({Data}).")]
     private static partial void LogProcessando(ILogger logger, int count, LocalDate data);
@@ -75,7 +78,7 @@ internal sealed partial class LiquidarNdfJob(
         ICotacaoFxRepository cotacaoRepo = sp.GetRequiredService<ICotacaoFxRepository>();
 
         Instant agora = clock.GetCurrentInstant();
-        LocalDate hoje = agora.InUtc().Date;
+        LocalDate hoje = agora.InZone(FusoBrasilia).Date;
 
         IReadOnlyList<InstrumentoHedge> hedges = await hedgeRepo.ListAtivosVencendoEmAsync(hoje, cancellationToken);
         LogProcessando(logger, hedges.Count, hoje);

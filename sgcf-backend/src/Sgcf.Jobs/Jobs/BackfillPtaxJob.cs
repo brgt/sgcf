@@ -11,6 +11,9 @@ internal sealed partial class BackfillPtaxJob(
     IClock clock,
     ILogger<BackfillPtaxJob> logger) : BackgroundService
 {
+    // "hoje" is a BR calendar date — backfill range must align with the BR business day.
+    private static readonly DateTimeZone FusoBrasilia = DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Backfill PTAX iniciado: {Inicio} a {Fim}.")]
     private static partial void LogIniciado(ILogger logger, LocalDate inicio, LocalDate fim);
 
@@ -22,7 +25,7 @@ internal sealed partial class BackfillPtaxJob(
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        LocalDate hoje = clock.GetCurrentInstant().InUtc().Date;
+        LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
         LocalDate inicio = hoje.PlusDays(-30);
         LocalDate fim = hoje.PlusDays(-1);
 

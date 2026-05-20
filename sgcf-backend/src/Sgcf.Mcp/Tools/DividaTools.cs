@@ -18,6 +18,9 @@ public sealed class DividaTools(
     ICotacaoFxRepository cotacaoRepo,
     IClock clock)
 {
+    // "hoje" here is a BR calendar date (PTAX D-1 boundary, vencimento context).
+    // Must use BRT — at 23:30 BRT InUtc().Date would incorrectly return tomorrow.
+    private static readonly DateTimeZone FusoBrasilia = DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
     [McpServerTool(Name = "get_posicao_divida")]
     [Description("Retorna a posição consolidada de dívida em múltiplas moedas, com ajuste MTM de hedges e alertas de contratos sem cobertura cambial.")]
     public async Task<string> GetPosicaoDividaAsync(
@@ -87,7 +90,7 @@ public sealed class DividaTools(
                 McpJsonOptions.Default);
         }
 
-        LocalDate hoje = clock.GetCurrentInstant().InUtc().Date;
+        LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
         CotacaoFx? ptax = await cotacaoRepo.GetMaisRecenteAsync(moedaEnum, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
         if (ptax is not null)

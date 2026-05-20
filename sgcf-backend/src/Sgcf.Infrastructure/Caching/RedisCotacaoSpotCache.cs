@@ -16,6 +16,9 @@ internal sealed partial class RedisCotacaoSpotCache(
 {
     private static readonly TimeSpan Ttl = TimeSpan.FromSeconds(30);
 
+    // dataRef is a BR calendar date — must use BRT, not UTC.
+    private static readonly DateTimeZone FusoBrasilia = DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     [LoggerMessage(Level = LogLevel.Debug, Message = "Cache hit para spot {Moeda}.")]
     private static partial void LogCacheHit(ILogger logger, Moeda moeda);
 
@@ -32,8 +35,10 @@ internal sealed partial class RedisCotacaoSpotCache(
             return new Money(cachedRate, Moeda.Brl);
         }
 
+        // dataRef is a BR calendar date used to bound the spot query to today's data.
+        // Must use BRT — at 23:30 BRT InUtc().Date would incorrectly return tomorrow.
         LogCacheMiss(logger, moeda);
-        LocalDate dataRef = clock.GetCurrentInstant().InUtc().Date;
+        LocalDate dataRef = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
         CotacaoFx? cotacao = await cotacaoRepo.GetMaisRecenteAsync(moeda, TipoCotacao.SpotIntraday, dataRef, cancellationToken);
         if (cotacao is null)
         {
