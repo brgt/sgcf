@@ -231,6 +231,73 @@ public sealed class ProjetorSaldoMensalTests
         mes5.SaldoFim.Valor.Should().Be(440_000m);
     }
 
+    // ── Teste 9: banco zerado reaparece após novo evento de captação (P-4/P-6) ─
+
+    /// <summary>
+    /// Verifica invariante P-4: banco com evento de captação deve ser incluído na projeção
+    /// mesmo que seu saldo inicial fosse zero (ou tenha chegado a zero anteriormente).
+    ///
+    /// Cenário:
+    ///   - Banco X com saldo inicial R$ 100.000.
+    ///   - Amortização de R$ 100.000 no mês de março → saldo zera.
+    ///   - Sem eventos em abril → banco ausente (P-6: sem eventos, sem saldo).
+    ///   - Captação de R$ 50.000 no mês de maio → banco reaparece com saldo R$ 50.000.
+    ///   - Junho a dezembro: saldo estável em R$ 50.000 (sem novos eventos).
+    /// </summary>
+    [Fact]
+    public void Projetar_BancoZeradoEmMarcoCaptacaoEmMaio_ReapareceEmMaio()
+    {
+        // Arrange
+        var bancoId = Guid.NewGuid();
+        var saldoInicial = new Dictionary<Guid, Money> { [bancoId] = Brl(100_000m) };
+        var eventos = new List<EventoProjecao>
+        {
+            Amortizacao(bancoId, 3, 100_000m), // março: zera saldo
+            Captacao(bancoId, 5, 50_000m),     // maio: novo aporte
+        };
+
+        // Act
+        QuadroDividaProjecao resultado = ProjetorSaldoMensal.Projetar(saldoInicial, eventos, AnoBase);
+
+        // Assert — resultado tem sempre 12 meses (P-2)
+        resultado.Meses.Should().HaveCount(12);
+
+        // Meses 1 e 2 (jan/fev): banco presente com saldo de 100k
+        resultado.Meses[0].SaldosPorBanco.Should().ContainSingle(s => s.BancoId == bancoId);
+        resultado.Meses[0].SaldosPorBanco.Single(s => s.BancoId == bancoId).SaldoFim.Valor.Should().Be(100_000m);
+        resultado.Meses[1].SaldosPorBanco.Single(s => s.BancoId == bancoId).SaldoFim.Valor.Should().Be(100_000m);
+
+        // Mês 3 (março): amortização de 100k → saldo fim = 0
+        SaldoBancoMes marc = resultado.Meses[2].SaldosPorBanco.Single(s => s.BancoId == bancoId);
+        marc.TotalAmortizacaoNoMes.Valor.Should().Be(100_000m);
+        marc.SaldoFim.Valor.Should().Be(0m);
+
+        // Mês 4 (abril): saldo zero e sem eventos → banco ausente (P-6)
+        resultado.Meses[3].SaldosPorBanco
+            .Should().NotContain(s => s.BancoId == bancoId,
+                because: "banco com saldo zero e sem eventos não deve aparecer (P-6)");
+
+        // Mês 5 (maio): captação de 50k → banco reaparece com saldo 50k (P-4)
+        SaldoBancoMes maio = resultado.Meses[4].SaldosPorBanco
+            .Should().ContainSingle(s => s.BancoId == bancoId,
+                because: "banco com captação deve reaparecer mesmo após ter zerado (P-4)")
+            .Subject;
+        maio.SaldoInicio.Valor.Should().Be(0m, because: "saldo carregado do mês anterior (abril) era zero");
+        maio.TotalCaptacaoNoMes.Valor.Should().Be(50_000m);
+        maio.SaldoFim.Valor.Should().Be(50_000m);
+
+        // Meses 6 a 12 (jun–dez): saldo estável em 50k (sem novos eventos)
+        for (int i = 5; i <= 11; i++)
+        {
+            resultado.Meses[i].SaldosPorBanco
+                .Should().ContainSingle(s => s.BancoId == bancoId);
+            resultado.Meses[i].SaldosPorBanco
+                .Single(s => s.BancoId == bancoId)
+                .SaldoFim.Valor.Should().Be(50_000m,
+                    because: $"saldo no mês {i + 1} deve permanecer 50k sem novos eventos");
+        }
+    }
+
     // ── Property 1: SaldoFimMes[N] == SaldoInicioMes[N+1] por banco (P-1) ────
 
     [Property(MaxTest = 200, Arbitrary = [typeof(ArbitraryProjecao)])]
