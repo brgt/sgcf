@@ -3,8 +3,12 @@ using System.Text.Json;
 
 using MediatR;
 
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+
 using ModelContextProtocol.Server;
 
+using Sgcf.Application.Authorization;
 using Sgcf.Application.Painel.Queries;
 using Sgcf.Application.Simulacao.Queries;
 using Sgcf.Domain.Simulacao;
@@ -17,10 +21,44 @@ namespace Sgcf.Mcp.Tools;
 ///
 /// AD-4.4: cada método delega ao handler MediatR correspondente — sem duplicação
 /// de lógica de domínio. Apenas a camada de tradução (string → Guid/Enum) fica aqui.
+///
+/// Security fix #1: cada tool chama EnsurePolicyAsync(Policies.Leitura) antes de
+/// invocar o mediator, impedindo que roles sem essa policy (ex: auditor isolado)
+/// exfiltrem projeções financeiras via MCP.
 /// </summary>
 [McpServerToolType]
-public sealed class SimulacaoTools(IMediator mediator)
+public sealed class SimulacaoTools(
+    IMediator mediator,
+    IHttpContextAccessor httpContextAccessor,
+    IAuthorizationService authorizationService)
 {
+    /// <summary>
+    /// Verifica que o usuário corrente satisfaz <paramref name="policy"/> antes de
+    /// prosseguir. Lança <see cref="UnauthorizedAccessException"/> se a verificação
+    /// falhar ou se não houver identidade no contexto HTTP atual.
+    /// </summary>
+    /// <remarks>
+    /// MCP tools não passam por middleware [Authorize] do ASP.NET Core, portanto a
+    /// checagem precisa ser manual. Utilizamos IAuthorizationService para respeitar
+    /// as mesmas policies registradas em Program.cs — sem duplicação de lógica.
+    /// </remarks>
+    private async Task EnsurePolicyAsync(string policy, CancellationToken ct)
+    {
+        _ = ct; // reservado para futura integração com resource-based authorization
+
+        System.Security.Claims.ClaimsPrincipal user = httpContextAccessor.HttpContext?.User
+            ?? throw new UnauthorizedAccessException(
+                "Sem identidade no contexto MCP. Requisição não autenticada.");
+
+        AuthorizationResult result = await authorizationService.AuthorizeAsync(user, null, policy);
+
+        if (!result.Succeeded)
+        {
+            throw new UnauthorizedAccessException(
+                $"Usuário sem permissão '{policy}' para invocar esta tool MCP.");
+        }
+    }
+
     /// <summary>
     /// Consulta o Quadro da Dívida (saldo mês a mês por banco) para um ano civil.
     /// Opcionalmente aplica um cenário de simulação para incorporar captações hipotéticas.
@@ -35,6 +73,8 @@ public sealed class SimulacaoTools(IMediator mediator)
         [Description("Id (UUID) do cenário de simulação (opcional).")] string? cenarioId,
         CancellationToken cancellationToken)
     {
+        await EnsurePolicyAsync(Policies.Leitura, cancellationToken);
+
         Guid? cenarioGuid = null;
 
         if (!string.IsNullOrEmpty(cenarioId))
@@ -81,6 +121,8 @@ public sealed class SimulacaoTools(IMediator mediator)
         [Description("Filtro de ano-base do cenário (opcional).")] int? anoBase,
         CancellationToken cancellationToken)
     {
+        await EnsurePolicyAsync(Policies.Leitura, cancellationToken);
+
         StatusCenarioSimulacao? statusEnum = null;
 
         if (!string.IsNullOrEmpty(status))
@@ -115,6 +157,8 @@ public sealed class SimulacaoTools(IMediator mediator)
         [Description("Id (UUID) do cenário de simulação.")] string id,
         CancellationToken cancellationToken)
     {
+        await EnsurePolicyAsync(Policies.Leitura, cancellationToken);
+
         if (!Guid.TryParse(id, out Guid cenarioGuid))
         {
             return JsonSerializer.Serialize(
