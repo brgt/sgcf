@@ -17,6 +17,7 @@ using Sgcf.Application.Painel;
 using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Sistema;
+using Sgcf.Application.Tenancy;
 using Sgcf.Infrastructure.Antecipacao;
 using Sgcf.Infrastructure.Cache.Simulacao;
 using Sgcf.Infrastructure.Auditoria;
@@ -26,6 +27,7 @@ using Sgcf.Infrastructure.Cambio;
 using Sgcf.Infrastructure.Persistence;
 using Sgcf.Infrastructure.Persistence.Repositories;
 using Sgcf.Infrastructure.Services;
+using Sgcf.Infrastructure.Tenancy;
 
 namespace Sgcf.Infrastructure;
 
@@ -37,6 +39,11 @@ public static class DependencyInjection
     {
         string connStr = configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("ConnectionString 'Postgres' não configurada.");
+
+        // TenantContext: scoped por request — resolvido pelo TenantResolverMiddleware.
+        // Registrado em dois formatos: concreto (para Resolve interno) e interface (para Application).
+        services.AddScoped<TenantContext>();
+        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
 
         services.AddScoped<AuditInterceptor>();
         services.AddScoped<ICurrentUserService, SystemCurrentUserService>();
