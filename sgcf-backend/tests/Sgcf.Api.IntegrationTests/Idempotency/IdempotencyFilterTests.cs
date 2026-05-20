@@ -4,6 +4,8 @@ using System.Text.Json;
 
 using FluentAssertions;
 
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +15,7 @@ using NodaTime;
 
 using NSubstitute;
 
+using Sgcf.Api.IntegrationTests.TestAuth;
 using Sgcf.Infrastructure.Persistence;
 
 using Testcontainers.PostgreSql;
@@ -61,6 +64,19 @@ public sealed class IdempotencyFilterFixture : IAsyncLifetime
 
                 services.RemoveAll<IClock>();
                 services.AddSingleton(clockFake);
+
+                // Replace the dev JwtBearer with TestAuthHandler so tests can inject
+                // arbitrary sub values via X-Test-User-Sub header. This allows true
+                // multi-user cache-isolation testing without modifying production code.
+                services.AddAuthentication(TestAuthHandler.SchemeName)
+                    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                        TestAuthHandler.SchemeName, _ => { });
+
+                services.PostConfigure<AuthenticationOptions>(opts =>
+                {
+                    opts.DefaultAuthenticateScheme = TestAuthHandler.SchemeName;
+                    opts.DefaultChallengeScheme    = TestAuthHandler.SchemeName;
+                });
             });
         });
 
@@ -75,11 +91,20 @@ public sealed class IdempotencyFilterFixture : IAsyncLifetime
         await _db.DisposeAsync();
     }
 
-    /// <summary>Cria HttpClient autenticado com token de desenvolvimento.</summary>
-    public HttpClient CreateAuthenticatedClient()
+    /// <summary>Cria HttpClient autenticado com sub padrão (<c>dev-user-id</c>).</summary>
+    public HttpClient CreateAuthenticatedClient() =>
+        CreateAuthenticatedClient("dev-user-id");
+
+    /// <summary>
+    /// Cria HttpClient autenticado injetando <paramref name="subOverride"/> como
+    /// <c>sub</c> do usuário via header <c>X-Test-User-Sub</c>.
+    /// Permite simular múltiplos usuários distintos no mesmo servidor de teste.
+    /// </summary>
+    public HttpClient CreateAuthenticatedClient(string subOverride)
     {
         HttpClient client = Factory.CreateClient();
-        client.DefaultRequestHeaders.Add("Authorization", "Bearer dev-test-token");
+        client.DefaultRequestHeaders.Add("Authorization", "Bearer test-token");
+        client.DefaultRequestHeaders.Add(TestAuthHandler.SubHeader, subOverride);
         return client;
     }
 }
@@ -158,92 +183,49 @@ public sealed class IdempotencyFilterTests(IdempotencyFilterFixture fixture)
     // ── Teste 2 (Prove-It): IDOR via key sem escopo de usuário ───────────────
 
     /// <summary>
-    /// Dois usuários com a mesma Idempotency-Key NÃO devem ver respostas cruzadas.
+    /// Dois usuários distintos com a mesma Idempotency-Key devem receber IDs diferentes.
     ///
-    /// Prove-It: com a implementação atual (cacheKey = "idempotency:{key}"), o usuário B
-    /// receberia a resposta do usuário A — isso é um IDOR.
-    /// Após o fix (cacheKey = "idempotency:{userSub}:{method}:{path}:{key}"),
-    /// os dois usuários têm cache entries diferentes → IDs diferentes.
+    /// Prove-It direto: sem o escopo de userSub na cache key, a resposta do usuário A
+    /// seria retornada para o usuário B (IDOR). Com o fix, cada userSub gera uma
+    /// cache entry separada, e o segundo POST cria um novo cenário com ID diferente.
+    ///
+    /// Usa <see cref="TestAuthHandler"/> para injetar sub distintos via
+    /// <c>X-Test-User-Sub</c> header — sem depender do dev-bypass de sub fixo.
     /// </summary>
     [Fact]
     public async Task Post_MesmaKey_UsuarioDiferente_NaoRetornaRespostaCruzada()
     {
-        // Arrange — dois clients simulando usuários diferentes via sub diferente
-        // O dev-bypass injeta sempre "dev-user-id" como sub, então precisamos de dois
-        // clients com tokens distintos. Como o dev-bypass usa um sub fixo, simularemos
-        // via MemoryCache separado — o teste verifica o comportamento ESPERADO após o fix.
-        //
-        // Estratégia: cada requisição usa uma key UUID aleatória única POR USUÁRIO.
-        // Se a cache key não incluir o usuário, o segundo usuario com a mesma key
-        // receberia a resposta do primeiro. Para provar o bug sem dois users reais,
-        // usamos keys idênticas em duas sessões WebApplicationFactory separadas
-        // que compartilham o mesmo IMemoryCache (in-process).
-        //
-        // Com o fix, userSub faz parte da key → cache miss para o segundo request
-        // mesmo com key igual (pois o sub é o mesmo neste test infra, mas o fix
-        // registra o path/method/key corretamente).
-        //
-        // Nota: como o dev-bypass injeta sempre o mesmo sub ("dev-user-id"),
-        // não conseguimos testar dois users REAIS diferentes em um único server.
-        // O teste valida que a CHAVE COMPOSTA está sendo usada inspecionando
-        // indiretamente: dois POSTs para ROTAS DIFERENTES com a mesma key
-        // NÃO devem retornar a mesma resposta.
-
-        HttpClient clientA = fixture.CreateAuthenticatedClient();
+        // Arrange — dois clients com subs REAIS diferentes na mesma rota + mesma key
         string sharedKey = Guid.NewGuid().ToString("D");
 
-        // Rota A: POST /api/v1/simulacoes/cenarios
+        HttpClient clientA = fixture.CreateAuthenticatedClient("user-alice");
         clientA.DefaultRequestHeaders.Add("Idempotency-Key", sharedKey);
+
+        HttpClient clientB = fixture.CreateAuthenticatedClient("user-bob");
+        clientB.DefaultRequestHeaders.Add("Idempotency-Key", sharedKey);
+
+        // Act — mesma rota, mesma key, mas usuários diferentes
         (HttpResponseMessage resA, JsonElement bodyA) =
             await PostCenarioAsync(clientA, BuildCriarCenarioPayload("Cenário Usuário A"));
 
-        // Rota B: usa endpoint diferente mas mesma key — deve ter cache miss
-        HttpClient clientB = fixture.CreateAuthenticatedClient();
-        clientB.DefaultRequestHeaders.Add("Idempotency-Key", sharedKey);
-        // POST para /api/v1/simulacoes/cenarios/{id}/simulacoes (rota diferente)
-        // Rota inexistente retorna 400/404 — mas o filtro deve rodar com cache miss
-        Guid cenarioIdA = bodyA.GetProperty("id").GetGuid();
-        HttpResponseMessage resB = await clientB.PostAsJsonAsync(
-            $"/api/v1/simulacoes/cenarios/{cenarioIdA}/simulacoes",
-            new
-            {
-                bancoId        = Guid.NewGuid(),
-                modalidade     = "Finimp",
-                moeda          = "Usd",
-                valorPrincipal = 1_000_000m,
-                dataContratacaoPrevista  = "2026-09-01",
-                dataPrimeiroVencimento   = "2027-09-01",
-                tipoTaxa                 = "Fixa",
-                taxaAa                   = 6m,
-                spreadAa                 = (decimal?)null,
-                baseCalculo              = "Dias360",
-                estruturaAmortizacao     = "Bullet",
-                periodicidade            = "Anual",
-                quantidadeParcelas       = 1,
-                anchorDiaMes             = "DiaContratacao"
-            });
+        (HttpResponseMessage resB, JsonElement bodyB) =
+            await PostCenarioAsync(clientB, BuildCriarCenarioPayload("Cenário Usuário B"));
 
-        // Assert — a resposta de B NÃO deve ser 200 OK com o body de A
-        // (um cache HIT indevido retornaria 200 OK com { "id": cenarioIdA })
+        // Assert
         resA.IsSuccessStatusCode.Should().BeTrue(
-            because: "primeiro POST deve ter sucesso");
+            because: "POST do usuário A deve ter sucesso");
 
-        // Se a cache key não incluir a rota, resB retornaria 200 OK com o body de resA
-        // (IDOR). Com o fix, resB terá cache miss e executará normalmente (201/200).
-        //
-        // Comparação por body inteiro (não apenas "id"): a rota "adicionar simulação a
-        // cenário" também retorna { id: cenarioId, ... } no payload de sucesso, o que
-        // coincidiria com bodyA por semântica de domínio (não por IDOR). Verificar
-        // bytes idênticos é o sinal seguro de cache HIT cruzado.
-        if (resB.IsSuccessStatusCode)
-        {
-            string rawA = await resA.Content.ReadAsStringAsync();
-            string rawB = await resB.Content.ReadAsStringAsync();
+        resB.IsSuccessStatusCode.Should().BeTrue(
+            because: "POST do usuário B deve ter sucesso (cache miss, não HIT cruzado)");
 
-            rawB.Should().NotBe(rawA,
-                because: "rota diferente com mesma key NÃO deve retornar body idêntico (cache HIT cruzado = IDOR)");
-        }
-        // Se resB não for sucesso (ex: validação falhou), o filtro não cacheou → OK
+        Guid idA = bodyA.GetProperty("id").GetGuid();
+        Guid idB = bodyB.GetProperty("id").GetGuid();
+
+        // Sem o escopo de userSub, idB == idA (IDOR: B recebe resposta de A).
+        // Com o fix, a cache key inclui o sub → cache miss para B → novo recurso criado.
+        idA.Should().NotBe(idB,
+            because: "usuários diferentes com a mesma Idempotency-Key devem criar " +
+                     "recursos independentes — cache scoped por userSub previne IDOR");
     }
 
     // ── Teste 3 (Prove-It): key sem escopo de rota ───────────────────────────
