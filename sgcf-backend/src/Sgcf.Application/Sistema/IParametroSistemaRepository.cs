@@ -15,6 +15,15 @@ public interface IParametroSistemaRepository
     /// </summary>
     public Task<ParametroSistema> GetOrCreateGlobalAsync(IClock clock, CancellationToken ct = default);
 
+    /// <summary>
+    /// Verifica se já existe um registro de parâmetros de sistema para o tenant informado.
+    /// Usado pelo provisionador para garantir idempotência no seed inicial.
+    /// </summary>
+    public Task<bool> ExisteParaTenantAsync(Guid tenantId, CancellationToken ct = default);
+
+    /// <summary>Adiciona uma nova instância de parâmetros de sistema ao contexto (sem salvar).</summary>
+    public void Add(ParametroSistema parametro);
+
     /// <summary>Persiste alterações pendentes no contexto.</summary>
     public Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

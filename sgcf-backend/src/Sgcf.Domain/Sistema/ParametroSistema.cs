@@ -62,6 +62,21 @@ public sealed class ParametroSistema : Entity, IAuditable, ITenantScoped
         };
 
     /// <summary>
+    /// Cria a instância de parâmetros de sistema para um tenant específico.
+    /// Usada pelo provisionamento de tenants (Task -1.6) — define TenantId explicitamente
+    /// porque o provisionador opera fora do contexto de request do tenant alvo.
+    /// Valores iniciais sem tetão configurado; refinados via Task -1.9.
+    /// </summary>
+    public static ParametroSistema CriarParaTenant(Guid tenantId, IClock clock) =>
+        new()
+        {
+            TenantId = tenantId,
+            Chave = ChaveGlobal,
+            TetaoMensalCapacidadeBrlDecimal = null,
+            UpdatedAt = clock.GetCurrentInstant()
+        };
+
+    /// <summary>
     /// Atualiza o tetão mensal de movimentação.
     /// </summary>
     /// <param name="valor">

@@ -51,6 +51,14 @@ internal sealed class ParametroSistemaRepository(SgcfDbContext context) : IParam
         }
     }
 
+    public Task<bool> ExisteParaTenantAsync(Guid tenantId, CancellationToken ct = default) =>
+        context.Set<ParametroSistema>()
+            .IgnoreQueryFilters()
+            .AnyAsync(p => p.TenantId == tenantId, ct);
+
+    public void Add(ParametroSistema parametro) =>
+        context.Set<ParametroSistema>().Add(parametro);
+
     public Task<int> SaveChangesAsync(CancellationToken ct = default) =>
         context.SaveChangesAsync(ct);
 }

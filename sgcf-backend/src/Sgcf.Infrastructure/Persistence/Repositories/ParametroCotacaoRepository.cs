@@ -23,6 +23,11 @@ internal sealed class ParametroCotacaoRepository(SgcfDbContext context) : IParam
         return list.AsReadOnly();
     }
 
+    public Task<bool> ExisteParaTenantAsync(Guid tenantId, CancellationToken cancellationToken) =>
+        context.Set<ParametroCotacao>()
+            .IgnoreQueryFilters()
+            .AnyAsync(p => p.TenantId == tenantId, cancellationToken);
+
     public void Add(ParametroCotacao parametro) => context.Set<ParametroCotacao>().Add(parametro);
 
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken) =>

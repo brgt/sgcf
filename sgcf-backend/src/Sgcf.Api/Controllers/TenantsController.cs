@@ -6,6 +6,7 @@ using Sgcf.Application.Common;
 using Sgcf.Application.Tenancy;
 using Sgcf.Application.Tenancy.Commands;
 using Sgcf.Application.Tenancy.Queries;
+using Sgcf.Application.Tenancy.Services;
 using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Api.Controllers;
@@ -126,6 +127,54 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
         catch (KeyNotFoundException)
         {
             return NotFound();
+        }
+    }
+
+    /// <summary>
+    /// Provisiona os dados mestres iniciais de um tenant (idempotente).
+    /// Retorna 200 com os contadores de registros criados/ignorados por categoria.
+    /// Pode ser chamado múltiplas vezes com segurança — segunda chamada retorna criados=0.
+    /// </summary>
+    [HttpPost("{idOrSlug}/provisionar")]
+    [ProducesResponseType<ResultadoProvisionamento>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Provisionar(string idOrSlug, CancellationToken ct)
+    {
+        TenantDto? tenantDto;
+        try
+        {
+            tenantDto = await mediator.Send(new GetTenantQuery(idOrSlug), ct);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+
+        try
+        {
+            ResultadoProvisionamento resultado =
+                await mediator.Send(new ProvisionarTenantCommand(tenantDto.Id), ct);
+            return Ok(resultado);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("suspenso", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Tenant suspenso",
+                Detail = ex.Message,
+                Status = StatusCodes.Status400BadRequest,
+            });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("arquivado", StringComparison.OrdinalIgnoreCase))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Tenant arquivado",
+                Detail = ex.Message,
+                Status = StatusCodes.Status409Conflict,
+            });
         }
     }
 }
