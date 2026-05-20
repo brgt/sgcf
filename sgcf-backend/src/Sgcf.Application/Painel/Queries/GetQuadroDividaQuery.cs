@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Common;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Simulacao;
@@ -371,11 +372,11 @@ public sealed class GetQuadroDividaQueryHandler(
                     BancoApelido: apelidos.TryGetValue(b.BancoId, out string? apelido)
                         ? apelido
                         : b.BancoId.ToString("N"),
-                    SaldoInicio: b.SaldoInicio.Valor,
-                    SaldoFim: b.SaldoFim.Valor,
-                    TotalAmortizacaoNoMes: b.TotalAmortizacaoNoMes.Valor,
-                    TotalCaptacaoNoMes: b.TotalCaptacaoNoMes.Valor,
-                    SharePercentual: b.SharePercentual))
+                    SaldoInicio: DecimalArredondamento.Mostrar(b.SaldoInicio.Valor),
+                    SaldoFim: DecimalArredondamento.Mostrar(b.SaldoFim.Valor),
+                    TotalAmortizacaoNoMes: DecimalArredondamento.Mostrar(b.TotalAmortizacaoNoMes.Valor),
+                    TotalCaptacaoNoMes: DecimalArredondamento.Mostrar(b.TotalCaptacaoNoMes.Valor),
+                    SharePercentual: DecimalArredondamento.Mostrar(b.SharePercentual)))
                 .ToList();
 
             decimal totalAmortizacaoMes = bancosDto.Sum(b => b.TotalAmortizacaoNoMes);
@@ -385,8 +386,8 @@ public sealed class GetQuadroDividaQueryHandler(
                 Ano: mes.AnoCalendar,
                 Mes: mes.Mes,
                 Bancos: bancosDto.AsReadOnly(),
-                SaldoTotalInicio: mes.SaldoTotalInicio.Valor,
-                SaldoTotalFim: mes.SaldoTotalFim.Valor,
+                SaldoTotalInicio: DecimalArredondamento.Mostrar(mes.SaldoTotalInicio.Valor),
+                SaldoTotalFim: DecimalArredondamento.Mostrar(mes.SaldoTotalFim.Valor),
                 TotalAmortizacaoMes: totalAmortizacaoMes,
                 TotalCaptacaoMes: totalCaptacaoMes));
         }
@@ -419,11 +420,11 @@ public sealed class GetQuadroDividaQueryHandler(
                 MidpointRounding.AwayFromZero);
 
         return new QuadroDividaSumarioDto(
-            SaldoTotalInicioAno: saldoInicioAno,
-            SaldoTotalFimAno: saldoFimAno,
-            TotalAmortizacaoNoAno: totalAmortizacao,
-            TotalCaptacaoNoAno: totalCaptacao,
-            VariacaoAnualPercentual: variacao);
+            SaldoTotalInicioAno: DecimalArredondamento.Mostrar(saldoInicioAno),
+            SaldoTotalFimAno: DecimalArredondamento.Mostrar(saldoFimAno),
+            TotalAmortizacaoNoAno: DecimalArredondamento.Mostrar(totalAmortizacao),
+            TotalCaptacaoNoAno: DecimalArredondamento.Mostrar(totalCaptacao),
+            VariacaoAnualPercentual: DecimalArredondamento.Mostrar(variacao));
     }
 
     // ── Resolução de cotações (estratégia idêntica ao GetSaldoPorBancoAtualQueryHandler) ──
