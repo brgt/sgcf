@@ -18,6 +18,7 @@ using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Sistema;
 using Sgcf.Application.Tenancy;
+using Sgcf.Application.Tenancy.Services;
 using Sgcf.Infrastructure.Antecipacao;
 using Sgcf.Infrastructure.Cache.Simulacao;
 using Sgcf.Infrastructure.Auditoria;
@@ -60,6 +61,7 @@ public static class DependencyInjection
 
         services.AddScoped<AuditInterceptor>();
         services.AddScoped<TenantSaveInterceptor>();
+        services.AddScoped<TenantConnectionInterceptor>();
         services.AddScoped<ICurrentUserService, SystemCurrentUserService>();
         services.AddScoped<IRequestContextService, SystemRequestContextService>();
 
@@ -68,7 +70,8 @@ public static class DependencyInjection
                 .UseNpgsql(connStr, npgsql => npgsql.UseNodaTime())
                 .AddInterceptors(
                     sp.GetRequiredService<AuditInterceptor>(),
-                    sp.GetRequiredService<TenantSaveInterceptor>()));
+                    sp.GetRequiredService<TenantSaveInterceptor>(),
+                    sp.GetRequiredService<TenantConnectionInterceptor>()));
 
         string? redisConn = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrEmpty(redisConn))
@@ -126,6 +129,7 @@ public static class DependencyInjection
         services.AddScoped<ICenarioSimulacaoRepository, CenarioSimulacaoRepository>();
         services.AddScoped<IParametroSistemaRepository, ParametroSistemaRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
+        services.AddScoped<ITenantProvisioner, TenantProvisioner>();
 
         return services;
     }
