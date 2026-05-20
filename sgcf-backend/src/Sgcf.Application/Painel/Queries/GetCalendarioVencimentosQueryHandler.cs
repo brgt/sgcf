@@ -1,5 +1,6 @@
 using MediatR;
 using NodaTime;
+using NodaTime.TimeZones;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cambio;
@@ -33,7 +34,9 @@ public sealed class GetCalendarioVencimentosQueryHandler(
         GetCalendarioVencimentosQuery query,
         CancellationToken cancellationToken)
     {
-        LocalDate hoje = clock.GetCurrentInstant().InUtc().Date;
+        // Datas de calendário brasileiro derivam do fuso BRT, não UTC.
+        LocalDate hoje = clock.GetCurrentInstant()
+            .InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
         // Carrega contratos apenas para aplicar os filtros de banco/modalidade/moeda
         IReadOnlyList<Contrato> contratos = await contratoRepo.ListAsync(cancellationToken);

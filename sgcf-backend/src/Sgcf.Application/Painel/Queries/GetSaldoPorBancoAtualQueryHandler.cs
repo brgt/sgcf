@@ -1,5 +1,6 @@
 using MediatR;
 using NodaTime;
+using NodaTime.TimeZones;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Cambio;
 using Sgcf.Application.Contratos;
@@ -30,7 +31,9 @@ public sealed class GetSaldoPorBancoAtualQueryHandler(
         GetSaldoPorBancoAtualQuery query,
         CancellationToken cancellationToken)
     {
-        LocalDate hoje = clock.GetCurrentInstant().InUtc().Date;
+        // Datas de calendário brasileiro derivam do fuso BRT, não UTC.
+        LocalDate hoje = clock.GetCurrentInstant()
+            .InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
         // 1. Carrega todos os contratos não-deletados (query filter EF aplica soft-delete)
         IReadOnlyList<Contrato> todos = await contratoRepo.ListAsync(cancellationToken);

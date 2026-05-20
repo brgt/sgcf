@@ -1,5 +1,6 @@
 using MediatR;
 using NodaTime;
+using NodaTime.TimeZones;
 using Sgcf.Application.Cambio;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Hedge;
@@ -33,7 +34,8 @@ public sealed class GetMtmQueryHandler(
         string posicao = payoff > 0m ? "RECEBER" : payoff < 0m ? "PAGAR" : "NEUTRO";
 
         Instant agora = clock.GetCurrentInstant();
-        LocalDate hoje = agora.InUtc().Date;
+        // Datas de calendário brasileiro derivam do fuso BRT, não UTC.
+        LocalDate hoje = agora.InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
         IReadOnlyList<string> alertas = AlertasExposicaoService.GerarAlertas(
             hedge,

@@ -1,5 +1,6 @@
 using MediatR;
 using NodaTime;
+using NodaTime.TimeZones;
 using Sgcf.Application.Cambio;
 using Sgcf.Domain.Calculo;
 using Sgcf.Domain.Common;
@@ -26,7 +27,9 @@ public sealed class GetTabelaCompletaQueryHandler(
 
         IReadOnlyList<EventoCronograma> eventos = await cronogramaRepo.GetByContratoIdAsync(query.Id, cancellationToken);
 
-        LocalDate dataRef = query.DataReferencia ?? clock.GetCurrentInstant().InUtc().Date;
+        // Datas de calendário brasileiro derivam do fuso BRT, não UTC.
+        LocalDate dataRef = query.DataReferencia
+            ?? clock.GetCurrentInstant().InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
         // ── Cotação aplicada para conversão BRL ───────────────────────────────
         decimal? taxaCambioEfetiva = query.TaxaCambio;

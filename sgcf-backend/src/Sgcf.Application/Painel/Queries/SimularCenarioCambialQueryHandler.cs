@@ -1,5 +1,6 @@
 using MediatR;
 using NodaTime;
+using NodaTime.TimeZones;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cambio;
 using Sgcf.Application.Hedge;
@@ -29,7 +30,9 @@ public sealed class SimularCenarioCambialQueryHandler(
         SimularCenarioCambialQuery query,
         CancellationToken cancellationToken)
     {
-        LocalDate hoje = clock.GetCurrentInstant().InUtc().Date;
+        // Datas de calendário brasileiro derivam do fuso BRT, não UTC.
+        LocalDate hoje = clock.GetCurrentInstant()
+            .InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
         IReadOnlyList<Contrato> contratos = await contratoRepo.ListAsync(cancellationToken);
         IReadOnlyList<InstrumentoHedge> hedgesAtivos = await hedgeRepo.ListAtivosAsync(cancellationToken);

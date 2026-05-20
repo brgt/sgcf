@@ -1,6 +1,7 @@
 using System.Text.Json;
 using MediatR;
 using NodaTime;
+using NodaTime.TimeZones;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
 using Sgcf.Domain.Antecipacao;
@@ -33,7 +34,9 @@ public sealed class SimularAntecipacaoCommandHandler(
 
         EntradaSimulacaoAntecipacao entrada = MontarEntrada(cmd, contrato);
 
-        LocalDate hoje = clock.GetCurrentInstant().InUtc().Date;
+        // Datas de calendário brasileiro derivam do fuso BRT, não UTC.
+        LocalDate hoje = clock.GetCurrentInstant()
+            .InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
         (bool restricoesPermitem, IReadOnlyList<string> alertasRestricao) =
             AntecipacaoValidador.Validar(banco, entrada, cmd.DataEfetiva, hoje);
