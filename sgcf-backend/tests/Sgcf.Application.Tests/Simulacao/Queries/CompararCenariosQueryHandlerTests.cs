@@ -10,6 +10,7 @@ using NSubstitute.ExceptionExtensions;
 using Sgcf.Application.Painel.Queries;
 using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Queries;
+using Sgcf.Application.Tests.Simulacao.Helpers;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Simulacao;
 
@@ -44,7 +45,7 @@ public sealed class CompararCenariosQueryHandlerTests
         decimal totalAmortizacaoMensal,
         Guid? cenarioId = null)
     {
-        List<MesProjecaoDto> meses = Enumerable.Range(1, 12)
+        List<MesProjecaoDto> meses = Enumerable.Range(1, SimulacaoTestConstants.MesesNoAno)
             .Select(mes => new MesProjecaoDto(
                 Ano: ano,
                 Mes: mes,
@@ -58,8 +59,8 @@ public sealed class CompararCenariosQueryHandlerTests
         QuadroDividaSumarioDto sumario = new(
             SaldoTotalInicioAno: saldoFimMensal,
             SaldoTotalFimAno: saldoFimMensal,
-            TotalAmortizacaoNoAno: totalAmortizacaoMensal * 12,
-            TotalCaptacaoNoAno: totalCaptacaoMensal * 12,
+            TotalAmortizacaoNoAno: totalAmortizacaoMensal * SimulacaoTestConstants.MesesNoAno,
+            TotalCaptacaoNoAno: totalCaptacaoMensal * SimulacaoTestConstants.MesesNoAno,
             VariacaoAnualPercentual: 0m);
 
         SaldoPorBancoAtualDto snapshot = new(
@@ -92,7 +93,7 @@ public sealed class CompararCenariosQueryHandlerTests
     public async Task Handle_doisCenarios_retornaBaselineComDeltasNulos_eOutroComDeltasReais()
     {
         // Arrange
-        int ano = 2026;
+        int ano = SimulacaoTestConstants.AnoBaseDefault;
         Guid cenarioIdBaseline = Guid.NewGuid();
         Guid cenarioIdB = Guid.NewGuid();
 
@@ -155,7 +156,7 @@ public sealed class CompararCenariosQueryHandlerTests
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
         CompararCenariosQueryHandler handler = new(mediator, repo);
 
-        CompararCenariosQuery query = new(2026, new List<Guid>().AsReadOnly());
+        CompararCenariosQuery query = new(SimulacaoTestConstants.AnoBaseDefault, new List<Guid>().AsReadOnly());
 
         // Act & Assert
         Func<Task> act = () => handler.Handle(query, default);
@@ -180,7 +181,7 @@ public sealed class CompararCenariosQueryHandlerTests
         CompararCenariosQueryHandler handler = new(mediator, repo);
 
         List<Guid> seisIds = Enumerable.Range(0, 6).Select(_ => Guid.NewGuid()).ToList();
-        CompararCenariosQuery query = new(2026, seisIds.AsReadOnly());
+        CompararCenariosQuery query = new(SimulacaoTestConstants.AnoBaseDefault, seisIds.AsReadOnly());
 
         // Act & Assert
         Func<Task> act = () => handler.Handle(query, default);
@@ -208,7 +209,7 @@ public sealed class CompararCenariosQueryHandlerTests
             .Returns(new List<CenarioSimulacao>().AsReadOnly());
 
         CompararCenariosQueryHandler handler = new(mediator, repo);
-        CompararCenariosQuery query = new(2026, new List<Guid> { idInexistente }.AsReadOnly());
+        CompararCenariosQuery query = new(SimulacaoTestConstants.AnoBaseDefault, new List<Guid> { idInexistente }.AsReadOnly());
 
         // Act & Assert
         Func<Task> act = () => handler.Handle(query, default);
@@ -232,7 +233,7 @@ public sealed class CompararCenariosQueryHandlerTests
         IMediator mediator = Substitute.For<IMediator>();
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
 
-        CenarioSimulacao cenarioA = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "A", anoBase: 2026);
+        CenarioSimulacao cenarioA = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "A", anoBase: SimulacaoTestConstants.AnoBaseDefault);
         CenarioSimulacao cenarioB = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "B", anoBase: 2025);
 
         repo.GetByIdAsync(idA, Arg.Any<CancellationToken>()).Returns(cenarioA);
@@ -241,7 +242,7 @@ public sealed class CompararCenariosQueryHandlerTests
             .Returns(new List<CenarioSimulacao> { cenarioA, cenarioB }.AsReadOnly());
 
         CompararCenariosQueryHandler handler = new(mediator, repo);
-        CompararCenariosQuery query = new(2026, new List<Guid> { idA, idB }.AsReadOnly());
+        CompararCenariosQuery query = new(SimulacaoTestConstants.AnoBaseDefault, new List<Guid> { idA, idB }.AsReadOnly());
 
         // Act & Assert
         Func<Task> act = () => handler.Handle(query, default);
@@ -265,7 +266,7 @@ public sealed class CompararCenariosQueryHandlerTests
     public async Task Handle_BaselineSaldoZero_NaoLancaDivideByZero_RetornaPercentualZero()
     {
         // Arrange — baseline sem saldo (empresa sem dívida), cenário B com captação
-        int ano = 2026;
+        int ano = SimulacaoTestConstants.AnoBaseDefault;
         Guid cenarioIdBaseline = Guid.NewGuid();
         Guid cenarioIdB = Guid.NewGuid();
 
@@ -326,7 +327,7 @@ public sealed class CompararCenariosQueryHandlerTests
     public async Task Handle_calcula_deltaMensal_e_deltaAnual_corretamente()
     {
         // Arrange
-        int ano = 2026;
+        int ano = SimulacaoTestConstants.AnoBaseDefault;
         Guid cenarioIdBaseline = Guid.NewGuid();
         Guid cenarioIdB = Guid.NewGuid();
 
@@ -374,7 +375,7 @@ public sealed class CompararCenariosQueryHandlerTests
         DeltaAnualDto deltaAnual = resultado.Cenarios[1].DeltaAnual!;
         deltaAnual.SaldoFimAnoDelta.Should().Be(500_000m);
         deltaAnual.SaldoFimAnoDeltaPercentual.Should().Be(50m);
-        deltaAnual.TotalCaptacaoAnoDelta.Should().Be(500_000m * 12);
+        deltaAnual.TotalCaptacaoAnoDelta.Should().Be(500_000m * SimulacaoTestConstants.MesesNoAno);
     }
 
 }

@@ -6,6 +6,7 @@ using Sgcf.Application.Common;
 using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Commands;
 using Sgcf.Application.Simulacao.Dtos;
+using Sgcf.Application.Tests.Simulacao.Helpers;
 using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Simulacao;
 using Xunit;
@@ -26,7 +27,7 @@ public sealed class CriarCenarioSimulacaoCommandHandlerTests
         currentUser.ActorSub.Returns("user-123");
 
         CriarCenarioSimulacaoCommandHandler handler = new(repo, _clock, currentUser);
-        CriarCenarioSimulacaoCommand cmd = new("Realista 2026", 2026, "Cenário base para o ano");
+        CriarCenarioSimulacaoCommand cmd = new("Realista 2026", SimulacaoTestConstants.AnoBaseDefault, "Cenário base para o ano");
 
         // Act
         CenarioSimulacaoDto resultado = await handler.Handle(cmd, default);
@@ -34,7 +35,7 @@ public sealed class CriarCenarioSimulacaoCommandHandlerTests
         // Assert
         resultado.Nome.Should().Be("Realista 2026");
         resultado.Status.Should().Be("Rascunho");
-        resultado.AnoBase.Should().Be(2026);
+        resultado.AnoBase.Should().Be(SimulacaoTestConstants.AnoBaseDefault);
         resultado.CriadoPor.Should().Be("user-123");
         resultado.Descricao.Should().Be("Cenário base para o ano");
         resultado.Simulacoes.Should().BeEmpty();
@@ -62,7 +63,7 @@ public sealed class CriarCenarioSimulacaoCommandHandlerTests
     {
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
         CriarCenarioSimulacaoCommandHandler handler = new(repo, _clock);
-        CriarCenarioSimulacaoCommand cmd = new("Pessimista 2026", 2026);
+        CriarCenarioSimulacaoCommand cmd = new("Pessimista 2026", SimulacaoTestConstants.AnoBaseDefault);
 
         CenarioSimulacaoDto resultado = await handler.Handle(cmd, default);
 
