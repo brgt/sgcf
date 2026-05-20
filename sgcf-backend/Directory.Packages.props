@@ -3,12 +3,10 @@
     <!-- Enable Central Package Management -->
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
-
   <ItemGroup Label="Domain">
     <!-- NodaTime: replacement for DateTime/DateTimeOffset in domain layer -->
     <PackageVersion Include="NodaTime" Version="3.2.0" />
   </ItemGroup>
-
   <ItemGroup Label="Application">
     <!-- MediatR: in-process messaging (Commands, Queries, Events) -->
     <PackageVersion Include="MediatR" Version="12.4.1" />
@@ -16,8 +14,9 @@
     <!-- FluentValidation: validation pipeline -->
     <PackageVersion Include="FluentValidation" Version="11.11.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
+    <!-- Logging abstractions: ILogger<T> in command handlers (no concrete sink dependency) -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.5" />
   </ItemGroup>
-
   <ItemGroup Label="Infrastructure EF Core">
     <!--
       NOTE: Microsoft.EntityFrameworkCore 11.x is not yet published on NuGet (as of 2026-05-10).
@@ -31,12 +30,10 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="9.0.4" />
   </ItemGroup>
-
   <ItemGroup Label="Infrastructure Caching">
     <PackageVersion Include="StackExchange.Redis" Version="2.8.22" />
     <PackageVersion Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="9.0.5" />
   </ItemGroup>
-
   <ItemGroup Label="Logging Serilog">
     <!-- Serilog 4.x core -->
     <PackageVersion Include="Serilog" Version="4.2.0" />
@@ -52,7 +49,6 @@
     <!-- GCP sink (Cloud Logging). Latest available on nuget.org: 5.0.0 -->
     <PackageVersion Include="Serilog.Sinks.GoogleCloudLogging" Version="5.0.0" />
   </ItemGroup>
-
   <ItemGroup Label="Observability OpenTelemetry">
     <!--
       OpenTelemetry 1.15.x stable (as of 2026-05-10).
@@ -74,38 +70,31 @@
       GCP integration approach is decided.
     -->
   </ItemGroup>
-
   <ItemGroup Label="HTTP">
     <PackageVersion Include="Microsoft.Extensions.Http" Version="9.0.5" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="9.1.0" />
   </ItemGroup>
-
   <ItemGroup Label="Hosting">
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
   </ItemGroup>
-
   <ItemGroup Label="API">
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="7.3.1" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.5" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
   </ItemGroup>
-
   <ItemGroup Label="MCP">
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.3.0" />
   </ItemGroup>
-
   <ItemGroup Label="Export">
     <PackageVersion Include="QuestPDF" Version="2024.3.5" />
     <PackageVersion Include="ClosedXML" Version="0.104.2" />
   </ItemGroup>
-
   <ItemGroup Label="Testing Core">
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
-
   <ItemGroup Label="Testing Assertions and Fakes">
     <PackageVersion Include="FluentAssertions" Version="8.2.0" />
     <!-- FsCheck: property-based testing -->
@@ -116,7 +105,6 @@
     <!-- NSubstitute: mocking -->
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
   </ItemGroup>
-
   <ItemGroup Label="Testing Integration">
     <!-- Testcontainers for spinning up real Docker containers in tests -->
     <PackageVersion Include="Testcontainers" Version="4.3.0" />
