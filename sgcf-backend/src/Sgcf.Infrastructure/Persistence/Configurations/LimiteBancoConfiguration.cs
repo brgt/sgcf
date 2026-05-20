@@ -18,6 +18,7 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
         builder.ToTable("limite_banco");
 
         builder.HasKey(l => l.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(l => l.Id)
             .HasColumnName("id")
             .HasColumnType("uuid")

@@ -12,6 +12,7 @@ internal sealed class PlanoContasGerencialConfiguration : IEntityTypeConfigurati
         builder.ToTable("plano_contas_gerencial", "sgcf");
 
         builder.HasKey(p => p.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(p => p.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(p => p.CodigoGerencial)

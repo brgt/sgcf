@@ -52,6 +52,7 @@ internal sealed class EventoCronogramaConfiguration : IEntityTypeConfiguration<E
         builder.ToTable("cronograma_pagamento", t => t.HasCheckConstraint("ck_cronograma_valor_nao_negativo", "valor_moeda_original >= 0"));
 
         builder.HasKey(e => e.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(e => e.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(e => e.ContratoId)

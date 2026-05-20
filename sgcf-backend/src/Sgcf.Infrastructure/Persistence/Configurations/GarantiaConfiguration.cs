@@ -11,6 +11,7 @@ internal sealed class GarantiaConfiguration : IEntityTypeConfiguration<Garantia>
         builder.ToTable("garantia");
 
         builder.HasKey(g => g.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(g => g.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(g => g.ContratoId)

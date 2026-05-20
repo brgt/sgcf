@@ -1,5 +1,8 @@
+using System.Linq.Expressions;
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Tenancy;
 using Sgcf.Domain.Alertas;
 using Sgcf.Domain.Antecipacao;
 using Sgcf.Domain.Auditoria;
@@ -18,8 +21,15 @@ using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Infrastructure.Persistence;
 
-public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(options)
+public class SgcfDbContext(
+    DbContextOptions<SgcfDbContext> options,
+    ITenantContext tenantContext) : DbContext(options)
 {
+    // Cached MethodInfo for AplicarFiltroDeTenant<T> — called once per entity type at model build time.
+    private static readonly MethodInfo AplicarFiltroMethod =
+        typeof(SgcfDbContext).GetMethod(
+            nameof(AplicarFiltroDeTenant),
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<Banco> Bancos => Set<Banco>();
     public DbSet<Contrato> Contratos => Set<Contrato>();
@@ -66,6 +76,32 @@ public class SgcfDbContext(DbContextOptions<SgcfDbContext> options) : DbContext(
     {
         modelBuilder.HasDefaultSchema("sgcf");
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(SgcfDbContext).Assembly);
+
+        // Aplica global query filter em todas as entidades que implementam ITenantScoped.
+        // Usa reflection para chamar o método genérico tipado por entidade — necessário
+        // porque ModelBuilder.Entity<T>().HasQueryFilter() exige o tipo concreto em compile time.
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(ITenantScoped).IsAssignableFrom(entityType.ClrType))
+            {
+                AplicarFiltroMethod
+                    .MakeGenericMethod(entityType.ClrType)
+                    .Invoke(this, [modelBuilder]);
+            }
+        }
+
         base.OnModelCreating(modelBuilder);
+    }
+
+    /// <summary>
+    /// Aplica o filtro de tenant na entidade <typeparamref name="T"/>.
+    /// Quando o contexto não está resolvido (jobs, migrations), a expressão retorna <c>true</c>
+    /// para não bloquear operações de sistema sem tenant.
+    /// </summary>
+    private void AplicarFiltroDeTenant<T>(ModelBuilder modelBuilder)
+        where T : class, ITenantScoped
+    {
+        modelBuilder.Entity<T>()
+            .HasQueryFilter(e => !tenantContext.IsResolved || e.TenantId == tenantContext.TenantId);
     }
 }

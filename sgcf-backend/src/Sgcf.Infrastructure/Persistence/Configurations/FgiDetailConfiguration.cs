@@ -11,6 +11,7 @@ internal sealed class FgiDetailConfiguration : IEntityTypeConfiguration<FgiDetai
         builder.ToTable("fgi_detail");
 
         builder.HasKey(f => f.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(f => f.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(f => f.ContratoId).HasColumnName("contrato_id").HasColumnType("uuid").IsRequired();

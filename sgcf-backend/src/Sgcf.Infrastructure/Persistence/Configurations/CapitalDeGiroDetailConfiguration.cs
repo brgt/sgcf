@@ -21,6 +21,7 @@ internal sealed class CapitalDeGiroDetailConfiguration : IEntityTypeConfiguratio
         builder.ToTable("balcao_caixa_detail");
 
         builder.HasKey(b => b.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(b => b.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(b => b.ContratoId).HasColumnName("contrato_id").HasColumnType("uuid").IsRequired();

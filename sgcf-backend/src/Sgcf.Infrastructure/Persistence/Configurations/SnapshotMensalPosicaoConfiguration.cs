@@ -11,6 +11,7 @@ internal sealed class SnapshotMensalPosicaoConfiguration : IEntityTypeConfigurat
         builder.ToTable("snapshot_mensal_posicao");
 
         builder.HasKey(s => s.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(s => s.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(s => s.Ano)

@@ -11,6 +11,7 @@ internal sealed class NceDetailConfiguration : IEntityTypeConfiguration<NceDetai
         builder.ToTable("nce_detail");
 
         builder.HasKey(n => n.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(n => n.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(n => n.ContratoId).HasColumnName("contrato_id").HasColumnType("uuid").IsRequired();

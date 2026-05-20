@@ -11,6 +11,7 @@ internal sealed class Lei4131DetailConfiguration : IEntityTypeConfiguration<Lei4
         builder.ToTable("lei4131_detail");
 
         builder.HasKey(l => l.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(l => l.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(l => l.ContratoId).HasColumnName("contrato_id").HasColumnType("uuid").IsRequired();

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
+using Sgcf.Application.Tenancy;
 using Sgcf.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 using Xunit;
@@ -30,6 +31,7 @@ public sealed class CotacoesDbFixture : IAsyncLifetime
         await _container.StartAsync();
 
         ServiceCollection services = new();
+        services.AddSingleton(CreateUnresolvedTenantContext());
         services.AddDbContext<SgcfDbContext>(opts =>
             opts.UseNpgsql(
                 _container.GetConnectionString(),
@@ -52,7 +54,19 @@ public sealed class CotacoesDbFixture : IAsyncLifetime
         DbContextOptions<SgcfDbContext> opts = new DbContextOptionsBuilder<SgcfDbContext>()
             .UseNpgsql(_container.GetConnectionString(), npgsql => npgsql.UseNodaTime())
             .Options;
-        return new SgcfDbContext(opts);
+        return new SgcfDbContext(opts, CreateUnresolvedTenantContext());
+    }
+
+    /// <summary>
+    /// Cria ITenantContext não resolvido para uso nos testes de integração.
+    /// Contexto não resolvido desativa o global query filter — os testes controlam
+    /// TenantId diretamente nas entidades, sem filtro automático.
+    /// </summary>
+    private static ITenantContext CreateUnresolvedTenantContext()
+    {
+        ITenantContext ctx = Substitute.For<ITenantContext>();
+        ctx.IsResolved.Returns(false);
+        return ctx;
     }
 
     private static IClock CreateFixedClock()

@@ -20,6 +20,7 @@ internal sealed class PropostaConfiguration : IEntityTypeConfiguration<Proposta>
         builder.ToTable("proposta");
 
         builder.HasKey(p => p.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(p => p.Id)
             .HasColumnName("id")
             .HasColumnType("uuid")

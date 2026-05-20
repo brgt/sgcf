@@ -1,12 +1,14 @@
 using NodaTime;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Auditoria;
 
-public sealed class AuditLog
+public sealed class AuditLog : ITenantScoped
 {
     private AuditLog() { }
 
     public long Id { get; private set; }
+    public Guid TenantId { get; private set; }
     public Instant OccurredAt { get; private set; }
     public string ActorSub { get; private set; } = string.Empty;
     public string ActorRole { get; private set; } = string.Empty;

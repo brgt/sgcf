@@ -11,6 +11,7 @@ internal sealed class AlertaExposicaoBancoConfiguration : IEntityTypeConfigurati
         builder.ToTable("alerta_exposicao_banco");
 
         builder.HasKey(a => a.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(a => a.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(a => a.BancoId)

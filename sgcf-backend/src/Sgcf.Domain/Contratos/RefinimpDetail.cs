@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
@@ -12,8 +13,10 @@ namespace Sgcf.Domain.Contratos;
 /// <c>IContratoRepository.GetAncestraNaoRefinimpAsync</c>.
 /// </para>
 /// </summary>
-public sealed class RefinimpDetail : Entity
+public sealed class RefinimpDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
+
     /// <summary>Id do contrato REFINIMP ao qual este detalhe pertence.</summary>
     public Guid ContratoId { get; private set; }
 

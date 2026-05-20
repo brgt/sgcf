@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
+using Sgcf.Application.Tenancy;
 using Sgcf.Domain.Sistema;
 using Sgcf.Infrastructure.Persistence;
 using Sgcf.Infrastructure.Persistence.Repositories;
@@ -37,7 +38,7 @@ public sealed class ParametroSistemaRepositoryRaceTests : IAsyncLifetime
 
         // Aplica migrations para criar o schema e o índice único
         DbContextOptions<SgcfDbContext> opts = BuildOptions(_connectionString);
-        await using SgcfDbContext ctx = new(opts);
+        await using SgcfDbContext ctx = new(opts, CreateUnresolvedTenantContext());
         await ctx.Database.MigrateAsync();
     }
 
@@ -69,7 +70,7 @@ public sealed class ParametroSistemaRepositoryRaceTests : IAsyncLifetime
             r.Should().NotBeNull(because: "GetOrCreateGlobalAsync nunca retorna null"));
 
         // Verifica no banco que há exatamente 1 linha
-        await using SgcfDbContext ctxVerificacao = new(BuildOptions(_connectionString));
+        await using SgcfDbContext ctxVerificacao = new(BuildOptions(_connectionString), CreateUnresolvedTenantContext());
         int totalLinhas = await ctxVerificacao.Set<ParametroSistema>().CountAsync();
         totalLinhas.Should().Be(1,
             because: "o índice único em chave=GLOBAL garante que apenas 1 linha existe, independente de race");
@@ -87,7 +88,7 @@ public sealed class ParametroSistemaRepositoryRaceTests : IAsyncLifetime
     {
         // Cada task usa seu próprio DbContext — simula requests HTTP independentes
         DbContextOptions<SgcfDbContext> opts = BuildOptions(_connectionString);
-        await using SgcfDbContext ctx = new(opts);
+        await using SgcfDbContext ctx = new(opts, CreateUnresolvedTenantContext());
         ParametroSistemaRepository repo = new(ctx);
         return await repo.GetOrCreateGlobalAsync(clock);
     }
@@ -96,4 +97,15 @@ public sealed class ParametroSistemaRepositoryRaceTests : IAsyncLifetime
         new DbContextOptionsBuilder<SgcfDbContext>()
             .UseNpgsql(connectionString, npgsql => npgsql.UseNodaTime())
             .Options;
+
+    /// <summary>
+    /// Cria ITenantContext não resolvido — desativa o global query filter nos testes,
+    /// permitindo que o repositório veja todas as linhas independente de TenantId.
+    /// </summary>
+    private static ITenantContext CreateUnresolvedTenantContext()
+    {
+        ITenantContext ctx = Substitute.For<ITenantContext>();
+        ctx.IsResolved.Returns(false);
+        return ctx;
+    }
 }

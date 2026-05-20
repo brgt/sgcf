@@ -2,6 +2,7 @@ using NodaTime;
 using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Cotacoes;
 
@@ -10,8 +11,10 @@ namespace Sgcf.Domain.Cotacoes;
 /// Representa um pedido interno de captação enviado a um ou mais bancos.
 /// SPEC §3.1, §3.2, §4.
 /// </summary>
-public sealed class Cotacao : Entity, IAuditable
+public sealed class Cotacao : Entity, IAuditable, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
+
     /// <summary>Código legível por humanos (ex: COT-2026-00001).</summary>
     public string CodigoInterno { get; private set; } = default!;
 

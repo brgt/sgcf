@@ -30,6 +30,7 @@ internal sealed class SimulacaoContratacaoConfiguration : IEntityTypeConfigurati
         builder.ToTable("simulacao_contratacao");
 
         builder.HasKey(s => s.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(s => s.Id)
             .HasColumnName("id")
             .HasColumnType("uuid")

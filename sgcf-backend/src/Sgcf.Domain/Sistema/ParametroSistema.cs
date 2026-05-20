@@ -1,6 +1,7 @@
 using NodaTime;
 using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Sistema;
 
@@ -15,8 +16,10 @@ namespace Sgcf.Domain.Sistema;
 /// Design singleton: a chave <see cref="Chave"/> é sempre <c>"GLOBAL"</c>.
 /// Não existe multi-tenant neste MVP — uma única instância serve todo o sistema.
 /// </summary>
-public sealed class ParametroSistema : Entity, IAuditable
+public sealed class ParametroSistema : Entity, IAuditable, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
+
     /// <summary>Chave fixa que garante o singleton — sempre "GLOBAL".</summary>
     public const string ChaveGlobal = "GLOBAL";
 

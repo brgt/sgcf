@@ -23,6 +23,7 @@ internal sealed class CotacaoConfiguration : IEntityTypeConfiguration<Cotacao>
         builder.ToTable("cotacao");
 
         builder.HasKey(c => c.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(c => c.Id)
             .HasColumnName("id")
             .HasColumnType("uuid")

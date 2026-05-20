@@ -12,6 +12,7 @@ internal sealed class GarantiaAlienacaoFiduciariaDetailConfiguration
         builder.ToTable("garantia_alienacao_fiduciaria_detail");
 
         builder.HasKey(e => e.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(e => e.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(e => e.GarantiaId).HasColumnName("garantia_id").HasColumnType("uuid").IsRequired();

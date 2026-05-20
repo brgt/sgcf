@@ -59,13 +59,16 @@ public static class DependencyInjection
         services.AddSingleton<ITenantCache>(sp => sp.GetRequiredService<TenantCache>());
 
         services.AddScoped<AuditInterceptor>();
+        services.AddScoped<TenantSaveInterceptor>();
         services.AddScoped<ICurrentUserService, SystemCurrentUserService>();
         services.AddScoped<IRequestContextService, SystemRequestContextService>();
 
         services.AddDbContext<SgcfDbContext>((sp, options) =>
             options
                 .UseNpgsql(connStr, npgsql => npgsql.UseNodaTime())
-                .AddInterceptors(sp.GetRequiredService<AuditInterceptor>()));
+                .AddInterceptors(
+                    sp.GetRequiredService<AuditInterceptor>(),
+                    sp.GetRequiredService<TenantSaveInterceptor>()));
 
         string? redisConn = configuration.GetConnectionString("Redis");
         if (!string.IsNullOrEmpty(redisConn))

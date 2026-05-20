@@ -11,6 +11,7 @@ internal sealed class RefinimpDetailConfiguration : IEntityTypeConfiguration<Ref
         builder.ToTable("refinimp_detail");
 
         builder.HasKey(r => r.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(r => r.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(r => r.ContratoId).HasColumnName("contrato_id").HasColumnType("uuid").IsRequired();

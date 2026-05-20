@@ -20,6 +20,7 @@ internal sealed class EconomiaNegociacaoConfiguration : IEntityTypeConfiguration
         builder.ToTable("economia_negociacao");
 
         builder.HasKey(e => e.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(e => e.Id)
             .HasColumnName("id")
             .HasColumnType("uuid")

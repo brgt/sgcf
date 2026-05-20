@@ -12,6 +12,7 @@ internal sealed class SimulacaoAntecipacaoConfiguration : IEntityTypeConfigurati
         builder.ToTable("simulacao_antecipacao");
 
         builder.HasKey(s => s.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(s => s.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(s => s.ContratoId)

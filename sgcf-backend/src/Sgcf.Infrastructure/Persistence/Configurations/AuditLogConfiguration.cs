@@ -11,6 +11,7 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
         builder.ToTable("audit_log");
 
         builder.HasKey(a => a.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(a => a.Id)
             .HasColumnName("id")
             .HasColumnType("bigint")

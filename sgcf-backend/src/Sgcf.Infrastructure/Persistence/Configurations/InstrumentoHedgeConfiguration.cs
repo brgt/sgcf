@@ -11,6 +11,7 @@ internal sealed class InstrumentoHedgeConfiguration : IEntityTypeConfiguration<I
         builder.ToTable("instrumento_hedge");
 
         builder.HasKey(h => h.Id);
+        builder.Property(e => e.TenantId).HasColumnName("tenant_id").HasColumnType("uuid").IsRequired();
         builder.Property(h => h.Id).HasColumnName("id").HasColumnType("uuid").ValueGeneratedNever();
 
         builder.Property(h => h.ContratoId)
