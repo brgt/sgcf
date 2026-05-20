@@ -328,6 +328,54 @@ public sealed class CenarioSimulacaoTests
             });
     }
 
+    // ── Fix 4 — RED: AnoBase só pode ser alterado em Rascunho ────────────────
+
+    [Fact]
+    public void Atualizar_AnoBaseChange_StatusAtivo_LancaInvalidOperationException()
+    {
+        // Arrange — cenário ativo, tentativa de mudar AnoBase
+        CenarioSimulacao cenario = CenarioSimulacao.Criar("nome", 2026, "user", ClockPadrao());
+        cenario.Ativar(ClockPadrao());
+
+        // Act
+        Action ato = () => cenario.Atualizar(nome: null, descricao: null, anoBase: 2027, ClockPadrao());
+
+        // Assert — deve rejeitar a alteração de AnoBase em cenário Ativo
+        ato.Should().Throw<InvalidOperationException>()
+            .WithMessage("*AnoBase*Rascunho*",
+                because: "AnoBase muda o significado de todas as simulações filhas e não pode ser alterado após publicação");
+    }
+
+    [Fact]
+    public void Atualizar_AnoBaseChange_StatusRascunho_FuncionaNormalmente()
+    {
+        // Arrange — cenário em Rascunho pode ter AnoBase alterado
+        CenarioSimulacao cenario = CenarioSimulacao.Criar("nome", 2026, "user", ClockPadrao());
+
+        // Act
+        Action ato = () => cenario.Atualizar(nome: null, descricao: null, anoBase: 2027, ClockPadrao());
+
+        // Assert
+        ato.Should().NotThrow();
+        cenario.AnoBase.Should().Be(2027);
+    }
+
+    [Fact]
+    public void Atualizar_ApenasNome_StatusAtivo_FuncionaNormalmente()
+    {
+        // Arrange — mudar apenas o nome em cenário Ativo é permitido
+        CenarioSimulacao cenario = CenarioSimulacao.Criar("nome original", 2026, "user", ClockPadrao());
+        cenario.Ativar(ClockPadrao());
+
+        // Act — mantém AnoBase idêntico (2026), só muda nome
+        Action ato = () => cenario.Atualizar(nome: "novo nome", descricao: null, anoBase: 2026, ClockPadrao());
+
+        // Assert
+        ato.Should().NotThrow(because: "mudar apenas o nome em cenário Ativo é uma operação permitida");
+        cenario.Nome.Should().Be("novo nome");
+        cenario.AnoBase.Should().Be(2026);
+    }
+
     // ── Helper estático para property test ───────────────────────────────────
 
     private static bool ThrowsInvalidOp(Action ato)
