@@ -230,20 +230,18 @@ public sealed class IdempotencyFilterTests(IdempotencyFilterFixture fixture)
 
         // Se a cache key não incluir a rota, resB retornaria 200 OK com o body de resA
         // (IDOR). Com o fix, resB terá cache miss e executará normalmente (201/200).
+        //
+        // Comparação por body inteiro (não apenas "id"): a rota "adicionar simulação a
+        // cenário" também retorna { id: cenarioId, ... } no payload de sucesso, o que
+        // coincidiria com bodyA por semântica de domínio (não por IDOR). Verificar
+        // bytes idênticos é o sinal seguro de cache HIT cruzado.
         if (resB.IsSuccessStatusCode)
         {
-            // Rota B executou normalmente — verificar que NÃO retornou o body de A
+            string rawA = await resA.Content.ReadAsStringAsync();
             string rawB = await resB.Content.ReadAsStringAsync();
-            JsonElement bodyB = JsonSerializer.Deserialize<JsonElement>(rawB, JsonOpts);
 
-            // Se bodyB tiver "id" e for igual ao id de A → bug IDOR reproduzido
-            if (bodyB.TryGetProperty("id", out JsonElement idBElem))
-            {
-                Guid idA = bodyA.GetProperty("id").GetGuid();
-                Guid idB = idBElem.GetGuid();
-                idB.Should().NotBe(idA,
-                    because: "rota diferente com mesma key NÃO deve retornar a resposta da rota A (IDOR)");
-            }
+            rawB.Should().NotBe(rawA,
+                because: "rota diferente com mesma key NÃO deve retornar body idêntico (cache HIT cruzado = IDOR)");
         }
         // Se resB não for sucesso (ex: validação falhou), o filtro não cacheou → OK
     }
