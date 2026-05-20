@@ -23,28 +23,41 @@ public sealed class SimulacaoToolsTests
 {
     // ── Helpers ────────────────────────────────────────────────────────────
 
-    private static SimulacaoTools CriarTools(IMediator mediator) => new(mediator);
+    /// <summary>
+    /// Cria SimulacaoTools usando stubs para IHttpContextAccessor e IAuthorizationService,
+    /// configurados para aprovar qualquer policy (cenário "usuário autorizado").
+    /// Os testes de autorização isolados ficam em SimulacaoToolsAuthTests.
+    /// </summary>
+    private static SimulacaoTools CriarTools(IMediator mediator)
+    {
+        Microsoft.AspNetCore.Http.IHttpContextAccessor httpContextAccessor =
+            NSubstitute.Substitute.For<Microsoft.AspNetCore.Http.IHttpContextAccessor>();
+        Microsoft.AspNetCore.Authorization.IAuthorizationService authorizationService =
+            NSubstitute.Substitute.For<Microsoft.AspNetCore.Authorization.IAuthorizationService>();
+
+        System.Security.Claims.ClaimsPrincipal principal =
+            new(new System.Security.Claims.ClaimsIdentity(
+                [new System.Security.Claims.Claim(
+                    System.Security.Claims.ClaimTypes.NameIdentifier, "dev-user")],
+                "TestAuth"));
+
+        Microsoft.AspNetCore.Http.HttpContext httpContext =
+            NSubstitute.Substitute.For<Microsoft.AspNetCore.Http.HttpContext>();
+        httpContext.User.Returns(principal);
+        httpContextAccessor.HttpContext.Returns(httpContext);
+
+        authorizationService
+            .AuthorizeAsync(
+                NSubstitute.Arg.Any<System.Security.Claims.ClaimsPrincipal>(),
+                NSubstitute.Arg.Any<object?>(),
+                NSubstitute.Arg.Any<string>())
+            .Returns(Microsoft.AspNetCore.Authorization.AuthorizationResult.Success());
+
+        return new SimulacaoTools(mediator, httpContextAccessor, authorizationService);
+    }
 
     private static QuadroDividaDto CriarQuadroDividaDto(Guid? cenarioId = null) =>
-        new(
-            Ano: 2026,
-            DataReferencia: new DateOnly(2026, 5, 19),
-            SnapshotInicial: new SaldoPorBancoAtualDto(
-                Bancos: new List<SaldoBancoAtualDto>().AsReadOnly(),
-                SaldoTotalBrl: 0m,
-                DataReferencia: NodaTime.LocalDate.FromDateTime(DateTime.UtcNow)),
-            Projecao: new QuadroDividaProjecaoDto(
-                Meses: new List<MesProjecaoDto>().AsReadOnly()),
-            Sumario: new QuadroDividaSumarioDto(
-                SaldoTotalInicioAno: 10_000_000m,
-                SaldoTotalFimAno: 8_000_000m,
-                TotalAmortizacaoNoAno: 2_000_000m,
-                TotalCaptacaoNoAno: 0m,
-                VariacaoAnualPercentual: -20m),
-            Alertas: new List<string>().AsReadOnly(),
-            CenarioAplicado: cenarioId.HasValue
-                ? new CenarioAplicadoDto(cenarioId.Value, "Realista 2026", "Ativo", 2026, 3)
-                : null);
+        SimulacaoToolsTestHelpers.CriarQuadroDividaDto(cenarioId);
 
     private static CenarioSimulacaoResumoDto CriarResumoDto(
         Guid? id = null,
@@ -60,16 +73,7 @@ public sealed class SimulacaoToolsTests
             UpdatedAt: DateTimeOffset.UtcNow);
 
     private static CenarioSimulacaoDto CriarCenarioDto(Guid? id = null) =>
-        new(
-            Id: id ?? Guid.NewGuid(),
-            Nome: "Cenário Completo",
-            Descricao: "Cenário de teste",
-            AnoBase: 2026,
-            Status: "Ativo",
-            CriadoPor: "usuario@teste.com",
-            CreatedAt: DateTimeOffset.UtcNow,
-            UpdatedAt: DateTimeOffset.UtcNow,
-            Simulacoes: new List<SimulacaoContratacaoDto>().AsReadOnly());
+        SimulacaoToolsTestHelpers.CriarCenarioDto(id);
 
     // ── GetQuadroDivida ────────────────────────────────────────────────────
 
