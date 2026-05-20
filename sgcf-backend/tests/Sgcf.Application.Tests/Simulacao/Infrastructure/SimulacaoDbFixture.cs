@@ -22,7 +22,10 @@ public sealed class SimulacaoDbFixture : IAsyncLifetime
         .WithPassword("sgcf_test")
         .Build();
 
-    public SgcfDbContext Context { get; private set; } = default!;
+    // Context é privado para forçar testes a usar CreateFreshContext().
+    // Um contexto compartilhado e mutável entre testes polui o ChangeTracker:
+    // entidades rastreadas por um teste afetam consultas do próximo.
+    private SgcfDbContext Context { get; set; } = default!;
 
     /// <summary>Clock fixo em 2026-06-01 09:00 UTC para datas futuras nos testes.</summary>
     public IClock Clock { get; } = CreateFixedClock();

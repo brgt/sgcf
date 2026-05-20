@@ -17,8 +17,16 @@ public sealed class CenarioSimulacaoRepositoryTests(SimulacaoDbFixture fixture)
 {
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private CenarioSimulacaoRepository CreateRepo() =>
-        new(fixture.Context);
+    /// <summary>
+    /// Cria um contexto fresco e seu repositório correspondente.
+    /// Cada teste usa um SgcfDbContext próprio para evitar que o ChangeTracker
+    /// compartilhado entre testes polua queries subsequentes.
+    /// </summary>
+    private (SgcfDbContext Ctx, CenarioSimulacaoRepository Repo) CreateContextAndRepo()
+    {
+        SgcfDbContext ctx = fixture.CreateFreshContext();
+        return (ctx, new CenarioSimulacaoRepository(ctx));
+    }
 
     /// <summary>
     /// Constrói um CenarioSimulacao em Rascunho com dados mínimos válidos.
@@ -67,9 +75,12 @@ public sealed class CenarioSimulacaoRepositoryTests(SimulacaoDbFixture fixture)
         cenario.AdicionarSimulacao(CriarSimulacao(cenario.Id), fixture.Clock);
 
         // Act
-        CenarioSimulacaoRepository repo = CreateRepo();
-        repo.Add(cenario);
-        await repo.SaveChangesAsync();
+        await using (SgcfDbContext ctx1 = fixture.CreateFreshContext())
+        {
+            CenarioSimulacaoRepository repo = new(ctx1);
+            repo.Add(cenario);
+            await repo.SaveChangesAsync();
+        }
 
         await using SgcfDbContext ctx2 = fixture.CreateFreshContext();
         CenarioSimulacaoRepository repo2 = new(ctx2);
@@ -96,9 +107,12 @@ public sealed class CenarioSimulacaoRepositoryTests(SimulacaoDbFixture fixture)
         cenario.AdicionarSimulacao(sim, fixture.Clock);
 
         // Act
-        CenarioSimulacaoRepository repo = CreateRepo();
-        repo.Add(cenario);
-        await repo.SaveChangesAsync();
+        await using (SgcfDbContext ctx1 = fixture.CreateFreshContext())
+        {
+            CenarioSimulacaoRepository repo = new(ctx1);
+            repo.Add(cenario);
+            await repo.SaveChangesAsync();
+        }
 
         await using SgcfDbContext ctx2 = fixture.CreateFreshContext();
         CenarioSimulacaoRepository repo2 = new(ctx2);
@@ -118,11 +132,14 @@ public sealed class CenarioSimulacaoRepositoryTests(SimulacaoDbFixture fixture)
     [Fact]
     public async Task Update_AtualizaCampos_inclusiveSimulacoesAdicionadas()
     {
-        // Arrange — persiste cenário inicial
+        // Arrange — persiste cenário inicial em contexto isolado
         CenarioSimulacao cenario = CriarCenario("Update Inicial");
-        CenarioSimulacaoRepository repo = CreateRepo();
-        repo.Add(cenario);
-        await repo.SaveChangesAsync();
+        await using (SgcfDbContext ctx1 = fixture.CreateFreshContext())
+        {
+            CenarioSimulacaoRepository repo = new(ctx1);
+            repo.Add(cenario);
+            await repo.SaveChangesAsync();
+        }
 
         // Arrange — carrega em contexto fresco, modifica e persiste
         await using SgcfDbContext ctx2 = fixture.CreateFreshContext();
@@ -150,16 +167,19 @@ public sealed class CenarioSimulacaoRepositoryTests(SimulacaoDbFixture fixture)
     [Fact]
     public async Task Remove_SoftDelete_NaoApareceNoList()
     {
-        // Arrange
+        // Arrange e Act — Add + Deletar no mesmo contexto isolado
         CenarioSimulacao cenario = CriarCenario("SoftDelete Test");
-        CenarioSimulacaoRepository repo = CreateRepo();
-        repo.Add(cenario);
-        await repo.SaveChangesAsync();
+        await using (SgcfDbContext ctx1 = fixture.CreateFreshContext())
+        {
+            CenarioSimulacaoRepository repo = new(ctx1);
+            repo.Add(cenario);
+            await repo.SaveChangesAsync();
 
-        // Act — soft delete via método de domínio + Update
-        cenario.Deletar(fixture.Clock);
-        repo.Update(cenario);
-        await repo.SaveChangesAsync();
+            // Soft delete no mesmo contexto (entidade já rastreada)
+            cenario.Deletar(fixture.Clock);
+            repo.Update(cenario);
+            await repo.SaveChangesAsync();
+        }
 
         // Assert — List filtra deletados; GetById também deve retornar null
         await using SgcfDbContext ctx2 = fixture.CreateFreshContext();
@@ -201,11 +221,14 @@ public sealed class CenarioSimulacaoRepositoryTests(SimulacaoDbFixture fixture)
             clock: fixture.Clock);
         cenarioOutroUsuario.Ativar(fixture.Clock);
 
-        CenarioSimulacaoRepository repo = CreateRepo();
-        repo.Add(cenarioAtivo);
-        repo.Add(cenarioRascunho);
-        repo.Add(cenarioOutroUsuario);
-        await repo.SaveChangesAsync();
+        await using (SgcfDbContext ctx1 = fixture.CreateFreshContext())
+        {
+            CenarioSimulacaoRepository repo = new(ctx1);
+            repo.Add(cenarioAtivo);
+            repo.Add(cenarioRascunho);
+            repo.Add(cenarioOutroUsuario);
+            await repo.SaveChangesAsync();
+        }
 
         await using SgcfDbContext ctx2 = fixture.CreateFreshContext();
         CenarioSimulacaoRepository repo2 = new(ctx2);
@@ -237,9 +260,12 @@ public sealed class CenarioSimulacaoRepositoryTests(SimulacaoDbFixture fixture)
         original.AdicionarSimulacao(CriarSimulacao(original.Id), fixture.Clock);
         original.Ativar(fixture.Clock);
 
-        CenarioSimulacaoRepository repo = CreateRepo();
-        repo.Add(original);
-        await repo.SaveChangesAsync();
+        await using (SgcfDbContext ctx1 = fixture.CreateFreshContext())
+        {
+            CenarioSimulacaoRepository repo = new(ctx1);
+            repo.Add(original);
+            await repo.SaveChangesAsync();
+        }
 
         // Act — duplica em contexto fresco e persiste a cópia
         await using SgcfDbContext ctx2 = fixture.CreateFreshContext();
