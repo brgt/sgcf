@@ -3,6 +3,7 @@ using System.Collections.Frozen;
 using NodaTime;
 using NodaTime.TimeZones;
 
+using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 
@@ -28,7 +29,7 @@ namespace Sgcf.Domain.Simulacao;
 ///
 /// AD-3: Version incrementado em cada mutação para invalidar cache Redis.
 /// </summary>
-public sealed class SimulacaoContratacao : Entity
+public sealed class SimulacaoContratacao : Entity, IAuditable
 {
     // ── Fuso horário brasileiro (Brasília) ────────────────────────────────────
     // Datas de calendário (vencimento, contratação prevista) representam dias
