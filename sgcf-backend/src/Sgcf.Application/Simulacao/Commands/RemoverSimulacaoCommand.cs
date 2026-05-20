@@ -1,6 +1,7 @@
 using MediatR;
 using NodaTime;
 
+using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Simulacao.Dtos;
 using Sgcf.Domain.Simulacao;
 
@@ -20,7 +21,8 @@ public sealed record RemoverSimulacaoCommand(
 
 public sealed class RemoverSimulacaoCommandHandler(
     ICenarioSimulacaoRepository repo,
-    IClock clock) : IRequestHandler<RemoverSimulacaoCommand, CenarioSimulacaoDto>
+    IClock clock,
+    ICronogramaSimulacaoCache cache) : IRequestHandler<RemoverSimulacaoCommand, CenarioSimulacaoDto>
 {
     /// <inheritdoc/>
     public async Task<CenarioSimulacaoDto> Handle(
@@ -35,6 +37,10 @@ public sealed class RemoverSimulacaoCommandHandler(
 
         repo.Update(cenario);
         await repo.SaveChangesAsync(cancellationToken);
+
+        // Remove todas as versões em cache desta simulação deletada. Sem esta chamada,
+        // leituras com chave v=N antiga retornariam cronograma de uma simulação que já não existe.
+        await cache.InvalidarPorSimulacaoAsync(cmd.CenarioId, cmd.SimulacaoId, cancellationToken);
 
         return CenarioSimulacaoDto.From(cenario);
     }

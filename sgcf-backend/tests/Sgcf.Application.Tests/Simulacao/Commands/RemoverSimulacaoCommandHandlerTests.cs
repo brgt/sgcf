@@ -16,21 +16,28 @@ public sealed class RemoverSimulacaoCommandHandlerTests
     private readonly IClock _clock = CenarioSimulacaoTestFactory.CriarClock();
 
     [Fact]
-    public async Task Handle_SimulacaoExistente_RemoveERetornaCenarioAtualizado()
+    public async Task Handle_SimulacaoExistente_RemoveERetornaCenarioAtualizadoEInvalidaCache()
     {
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
+        Sgcf.Application.Simulacao.Cache.ICronogramaSimulacaoCache cache =
+            NSubstitute.Substitute.For<Sgcf.Application.Simulacao.Cache.ICronogramaSimulacaoCache>();
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock);
         SimulacaoContratacao sim = CenarioSimulacaoTestFactory.CriarSimulacao(cenario.Id, _clock);
         cenario.AdicionarSimulacao(sim, _clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        RemoverSimulacaoCommandHandler handler = new(repo, _clock);
+        RemoverSimulacaoCommandHandler handler = new(repo, _clock, cache);
         CenarioSimulacaoDto resultado = await handler.Handle(
             new RemoverSimulacaoCommand(cenario.Id, sim.Id), default);
 
         resultado.Simulacoes.Should().BeEmpty();
         repo.Received(1).Update(cenario);
         await repo.Received(1).SaveChangesAsync(default);
+        // Fix 3: cache deve ser invalidado após remoção bem-sucedida
+        await cache.Received(1).InvalidarPorSimulacaoAsync(
+            cenario.Id,
+            sim.Id,
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -39,7 +46,7 @@ public sealed class RemoverSimulacaoCommandHandlerTests
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
         repo.GetByIdAsync(Arg.Any<Guid>(), default).Returns((CenarioSimulacao?)null);
 
-        RemoverSimulacaoCommandHandler handler = new(repo, _clock);
+        RemoverSimulacaoCommandHandler handler = new(repo, _clock, NSubstitute.Substitute.For<Sgcf.Application.Simulacao.Cache.ICronogramaSimulacaoCache>());
 
         Func<Task> act = () => handler.Handle(
             new RemoverSimulacaoCommand(Guid.NewGuid(), Guid.NewGuid()), default);
@@ -54,7 +61,7 @@ public sealed class RemoverSimulacaoCommandHandlerTests
         CenarioSimulacao cenario = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        RemoverSimulacaoCommandHandler handler = new(repo, _clock);
+        RemoverSimulacaoCommandHandler handler = new(repo, _clock, NSubstitute.Substitute.For<Sgcf.Application.Simulacao.Cache.ICronogramaSimulacaoCache>());
 
         Func<Task> act = () => handler.Handle(
             new RemoverSimulacaoCommand(cenario.Id, Guid.NewGuid()), default);

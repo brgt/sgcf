@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using NodaTime;
 
+using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Simulacao.Dtos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -76,7 +77,8 @@ public sealed class AdicionarSimulacaoCommandValidator : AbstractValidator<Adici
 
 public sealed class AdicionarSimulacaoCommandHandler(
     ICenarioSimulacaoRepository repo,
-    IClock clock) : IRequestHandler<AdicionarSimulacaoCommand, CenarioSimulacaoDto>
+    IClock clock,
+    ICronogramaSimulacaoCache cache) : IRequestHandler<AdicionarSimulacaoCommand, CenarioSimulacaoDto>
 {
     /// <inheritdoc/>
     public async Task<CenarioSimulacaoDto> Handle(
@@ -128,6 +130,10 @@ public sealed class AdicionarSimulacaoCommandHandler(
 
         repo.Update(cenario);
         await repo.SaveChangesAsync(cancellationToken);
+
+        // Invalida o cache da simulação recém-adicionada para que leituras
+        // subsequentes não encontrem entradas obsoletas de versões anteriores.
+        await cache.InvalidarPorSimulacaoAsync(cenario.Id, simulacao.Id, cancellationToken);
 
         return CenarioSimulacaoDto.From(cenario);
     }

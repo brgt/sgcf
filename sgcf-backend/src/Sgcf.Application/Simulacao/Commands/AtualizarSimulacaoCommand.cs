@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using NodaTime;
 
+using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Simulacao.Dtos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -66,7 +67,8 @@ public sealed class AtualizarSimulacaoCommandValidator : AbstractValidator<Atual
 
 public sealed class AtualizarSimulacaoCommandHandler(
     ICenarioSimulacaoRepository repo,
-    IClock clock) : IRequestHandler<AtualizarSimulacaoCommand, CenarioSimulacaoDto>
+    IClock clock,
+    ICronogramaSimulacaoCache cache) : IRequestHandler<AtualizarSimulacaoCommand, CenarioSimulacaoDto>
 {
     /// <inheritdoc/>
     public async Task<CenarioSimulacaoDto> Handle(
@@ -114,6 +116,11 @@ public sealed class AtualizarSimulacaoCommandHandler(
 
         repo.Update(cenario);
         await repo.SaveChangesAsync(cancellationToken);
+
+        // Invalida todas as versões em cache desta simulação. O Version foi incrementado
+        // pelo domínio (AD-3), mas clientes com v=N-1 ainda acertariam entradas velhas
+        // sem esta invalidação explícita.
+        await cache.InvalidarPorSimulacaoAsync(cmd.CenarioId, cmd.SimulacaoId, cancellationToken);
 
         return CenarioSimulacaoDto.From(cenario);
     }
