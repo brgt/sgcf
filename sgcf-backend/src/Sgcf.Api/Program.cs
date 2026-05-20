@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
@@ -13,6 +14,42 @@ using Sgcf.Infrastructure;
 QuestPDF.Settings.License = LicenseType.Community;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+// ── Security guard: dev-bypass NÃO pode escapar para fora de localhost ────────
+//
+// O bloco JwtBearer abaixo (linhas ~61-97) aceita qualquer Bearer token em
+// Development e injeta um principal com todos os roles (admin+tesouraria+...).
+// Se ASPNETCORE_ENVIRONMENT=Development vazar para produção/staging, qualquer
+// token concede acesso total — comprometimento completo.
+//
+// Este guard falha na inicialização quando:
+//   1. O ambiente é Development, E
+//   2. Auth:Authority não está configurado (indica ausência de IdP real), E
+//   3. O hostname não parece localhost/dev-container.
+//
+// Em produção, Auth:Authority deve sempre estar configurado, então a condição
+// (2) nunca se satisfaz e o guard não interfere.
+if (builder.Environment.IsDevelopment())
+{
+    string hostname = Environment.GetEnvironmentVariable("HOSTNAME") ?? Environment.MachineName;
+    string? authority = builder.Configuration["Auth:Authority"];
+
+    bool ehAmbienteLocal =
+        hostname is "localhost" or "127.0.0.1" ||
+        hostname.StartsWith("dev-",    StringComparison.OrdinalIgnoreCase) ||
+        hostname.Contains("docker",    StringComparison.OrdinalIgnoreCase) ||
+        hostname.Contains("container", StringComparison.OrdinalIgnoreCase) ||
+        // Prefixo padrão de nomes de containers Docker em Compose (ex: sgcf-api-1)
+        hostname.Contains("sgcf",      StringComparison.OrdinalIgnoreCase);
+
+    if (!ehAmbienteLocal && string.IsNullOrEmpty(authority))
+    {
+        throw new InvalidOperationException(
+            "SECURITY: ASPNETCORE_ENVIRONMENT=Development sem Auth:Authority configurado " +
+            $"em host '{hostname}'. Recusa inicialização para evitar exposição do dev-bypass JWT. " +
+            "Defina Auth:Authority em produção/staging ou execute em localhost/dev-container.");
+    }
+}
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
@@ -129,6 +166,10 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // Aviso explícito no boot para que nenhum dev suba um container com
+    // dev-bypass ativo sem perceber no log. Usa LoggerMessage (CA1848).
+    SecurityLogs.DevBypassAtivo(app.Logger);
 }
 
 app.UseExceptionHandler();
@@ -143,3 +184,19 @@ await app.RunAsync();
 
 // Expõe Program para WebApplicationFactory nos testes de integração
 public partial class Program { }
+
+/// <summary>
+/// Mensagens de log de segurança em formato LoggerMessage (CA1848 — delegates pré-compilados
+/// evitam boxing de parâmetros no hot path de log).
+/// </summary>
+internal static partial class SecurityLogs
+{
+    [LoggerMessage(
+        EventId = 9001,
+        Level   = LogLevel.Warning,
+        Message = "SECURITY WARNING: dev-bypass JWT está ativo. " +
+                  "Qualquer Bearer token concede todos os roles " +
+                  "(admin, tesouraria, gerente, diretor, contabilidade, auditor). " +
+                  "NUNCA executar em produção ou staging — somente localhost/dev-container.")]
+    public static partial void DevBypassAtivo(ILogger logger);
+}
