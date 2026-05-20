@@ -12,10 +12,10 @@ namespace Sgcf.Application.Tenancy.Services;
 /// Implementação de <see cref="ITenantProvisioner"/> que semeia os dados mestres
 /// mínimos necessários para que um tenant possa operar no sistema.
 ///
-/// Categorias provisionadas:
-/// - <c>parametros_sistema</c>: singleton de parâmetros operacionais (ParametroSistema).
-/// - <c>parametros_cotacao</c>: regra padrão de cotação PTAX D-1 (ParametroCotacao).
-/// - <c>plano_contas</c>: postergado para Task -1.10 (PlanoContasModelo não existe ainda).
+/// Categorias provisionadas (chaves camelCase no ResultadoProvisionamento):
+/// - <c>parametrosSistema</c>: singleton de parâmetros operacionais (ParametroSistema).
+/// - <c>parametrosCotacao</c>: regra padrão de cotação PTAX D-1 (ParametroCotacao).
+/// - <c>planoContas</c>: postergado para Task -1.10 (PlanoContasModelo não existe ainda).
 ///
 /// Idempotência: cada categoria verifica se já existe antes de inserir.
 /// O TenantId é definido explicitamente nas entidades porque o provisionador opera
@@ -54,7 +54,7 @@ public sealed partial class TenantProvisioner(
 
         await parametroSistemaRepo.SaveChangesAsync(ct);
 
-        LogProvisionamentoConcluido(logger, tenant.Slug, criados["parametros_sistema"], criados["parametros_cotacao"]);
+        LogProvisionamentoConcluido(logger, tenant.Slug, criados["parametrosSistema"], criados["parametrosCotacao"]);
 
         return new ResultadoProvisionamento(
             tenant.Id,
@@ -74,15 +74,15 @@ public sealed partial class TenantProvisioner(
 
         if (existe)
         {
-            criados["parametros_sistema"] = 0;
-            ignorados["parametros_sistema"] = 1;
+            criados["parametrosSistema"] = 0;
+            ignorados["parametrosSistema"] = 1;
         }
         else
         {
             ParametroSistema parametro = ParametroSistema.CriarParaTenant(tenant.Id, clock);
             parametroSistemaRepo.Add(parametro);
-            criados["parametros_sistema"] = 1;
-            ignorados["parametros_sistema"] = 0;
+            criados["parametrosSistema"] = 1;
+            ignorados["parametrosSistema"] = 0;
         }
     }
 
@@ -96,23 +96,23 @@ public sealed partial class TenantProvisioner(
 
         if (existe)
         {
-            criados["parametros_cotacao"] = 0;
-            ignorados["parametros_cotacao"] = 1;
+            criados["parametrosCotacao"] = 0;
+            ignorados["parametrosCotacao"] = 1;
         }
         else
         {
             ParametroCotacao parametro = ParametroCotacao.CriarDefault(tenant.Id, clock);
             parametroCotacaoRepo.Add(parametro);
-            criados["parametros_cotacao"] = 1;
-            ignorados["parametros_cotacao"] = 0;
+            criados["parametrosCotacao"] = 1;
+            ignorados["parametrosCotacao"] = 0;
         }
     }
 
     // Seed de PlanoContas postergado para Task -1.10 — PlanoContasModelo não existe ainda.
     private void SeedPlanoContas(Dictionary<string, int> criados, Dictionary<string, int> ignorados)
     {
-        criados["plano_contas"] = 0;
-        ignorados["plano_contas"] = 0;
+        criados["planoContas"] = 0;
+        ignorados["planoContas"] = 0;
         LogSeedPlanoContasPendente(logger);
     }
 

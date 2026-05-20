@@ -5,7 +5,9 @@ using System.Text.Json;
 using FluentAssertions;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Sgcf.Api.IntegrationTests.TestAuth;
 using Sgcf.Application.Painel.Queries;
+using Sgcf.Application.Tenancy;
 using Xunit;
 
 namespace Sgcf.Api.IntegrationTests.Painel;
@@ -82,8 +84,11 @@ public sealed class SaldoPorBancoAtualApiTests(PainelVencimentosApiFixture fixtu
         await CriarContratoBrlAsync(client, banco2Id, 2_000_000m);
         await CriarContratoBrlAsync(client, banco2Id, 750_000m);
 
-        // Act A — chama a query via IMediator (sem endpoint REST próprio)
+        // Act A — chama a query via IMediator (sem endpoint REST próprio).
+        // Resolve o TenantContext manualmente porque não há pipeline HTTP neste escopo.
         using IServiceScope scope = fixture.Factory.Services.CreateScope();
+        ITenantContext tenantCtx = scope.ServiceProvider.GetRequiredService<ITenantContext>();
+        tenantCtx.Resolve(ProxysDevTenant.Id, ProxysDevTenant.Slug, false, false);
         IMediator mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
 
         SaldoPorBancoAtualDto saldoPorBanco = await mediator.Send(

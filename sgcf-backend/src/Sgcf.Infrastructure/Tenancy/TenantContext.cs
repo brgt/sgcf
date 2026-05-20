@@ -30,6 +30,9 @@ internal sealed class TenantContext : ITenantContext
     /// <inheritdoc />
     public bool IsResolved => _dados is not null;
 
+    /// <inheritdoc />
+    public Guid TenantIdOrDefault => _dados?.Id ?? Guid.Empty;
+
     /// <summary>
     /// Resolve o contexto de tenant para este escopo. Deve ser chamado exatamente uma vez
     /// por escopo pelo middleware. Chamadas subsequentes lançam <see cref="InvalidOperationException"/>.

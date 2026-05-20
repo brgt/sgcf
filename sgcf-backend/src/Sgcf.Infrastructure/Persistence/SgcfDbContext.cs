@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Tenancy;
 using Sgcf.Domain.Alertas;
@@ -95,13 +96,42 @@ public class SgcfDbContext(
 
     /// <summary>
     /// Aplica o filtro de tenant na entidade <typeparamref name="T"/>.
-    /// Quando o contexto não está resolvido (jobs, migrations), a expressão retorna <c>true</c>
-    /// para não bloquear operações de sistema sem tenant.
+    ///
+    /// Combina (AND) com qualquer filtro já registrado (ex.: soft-delete) para que ambos
+    /// coexistam. <see cref="ITenantContext.TenantIdOrDefault"/> é usado em vez de
+    /// <see cref="ITenantContext.TenantId"/> para evitar <c>MissingTenantContextException</c>
+    /// quando o EF Core avalia os parâmetros de closure antes de aplicar curto-circuito.
+    /// Quando não resolvido, o filtro retorna <c>true</c> — sem restrição de tenant.
     /// </summary>
     private void AplicarFiltroDeTenant<T>(ModelBuilder modelBuilder)
         where T : class, ITenantScoped
     {
-        modelBuilder.Entity<T>()
-            .HasQueryFilter(e => !tenantContext.IsResolved || e.TenantId == tenantContext.TenantId);
+        Expression<Func<T, bool>> tenantFilter =
+            e => !tenantContext.IsResolved || e.TenantId == tenantContext.TenantIdOrDefault;
+
+        LambdaExpression? existingFilter =
+            modelBuilder.Entity<T>().Metadata.GetQueryFilter();
+
+        if (existingFilter is null)
+        {
+            modelBuilder.Entity<T>().HasQueryFilter(tenantFilter);
+            return;
+        }
+
+        // Combine existingFilter AND tenantFilter, unifying their parameters.
+        ParameterExpression param = tenantFilter.Parameters[0];
+        Expression existingBody = new ParameterReplacer(existingFilter.Parameters[0], param)
+            .Visit(existingFilter.Body);
+
+        modelBuilder.Entity<T>().HasQueryFilter(
+            Expression.Lambda<Func<T, bool>>(
+                Expression.AndAlso(existingBody, tenantFilter.Body), param));
+    }
+
+    private sealed class ParameterReplacer(ParameterExpression from, ParameterExpression to)
+        : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node)
+            => node == from ? to : base.VisitParameter(node);
     }
 }

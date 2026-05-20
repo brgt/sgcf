@@ -22,6 +22,13 @@ public interface ITenantContext
     public bool IsResolved { get; }
 
     /// <summary>
+    /// ID do tenant resolvido, ou <see cref="Guid.Empty"/> quando não resolvido.
+    /// Seguro para uso em query filters do EF Core — não lança exceção.
+    /// Use <see cref="TenantId"/> quando desejar fail-fast em código de aplicação.
+    /// </summary>
+    public Guid TenantIdOrDefault { get; }
+
+    /// <summary>
     /// Resolve o contexto para este escopo. Deve ser chamado exatamente uma vez pelo middleware.
     /// Lança <see cref="InvalidOperationException"/> se chamado mais de uma vez.
     /// </summary>

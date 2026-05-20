@@ -26,13 +26,14 @@ internal sealed class ParametroSistemaConfiguration : IEntityTypeConfiguration<P
             .HasColumnType("uuid")
             .ValueGeneratedNever();
 
-        // Discriminador singleton — valor sempre "GLOBAL", índice único garante a invariante
+        // Discriminador singleton — valor sempre "GLOBAL".
+        // Índice único composto (tenant_id, chave) garante um GLOBAL por tenant.
         builder.Property(p => p.Chave)
             .HasColumnName("chave")
             .HasColumnType("varchar(32)")
             .HasMaxLength(32)
             .IsRequired();
-        builder.HasIndex(p => p.Chave).IsUnique();
+        builder.HasIndex(p => new { p.TenantId, p.Chave }).IsUnique();
 
         // Tetão: mapeado via propriedade interna (backing field)
         // A propriedade pública TetaoMensalCapacidadeBrl (Money?) é calculada — não persiste.
