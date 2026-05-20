@@ -21,6 +21,8 @@
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
+    <!-- NodaTime: temporal types used directly in application-layer handlers (IClock, LocalDate, Instant) -->
+    <PackageReference Include="NodaTime" />
   </ItemGroup>
 
 </Project>

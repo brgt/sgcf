@@ -58,7 +58,6 @@ public static class DependencyInjection
                 _ => StackExchange.Redis.ConnectionMultiplexer.Connect(redisConn));
 
             // Cache Redis para cronograma hipotético de simulação (AD-3)
-            // Registrado apenas quando Redis está disponível para evitar falha no startup.
             services.Configure<CronogramaSimulacaoCacheOptions>(
                 configuration.GetSection("CronogramaSimulacaoCache"));
             services.AddSingleton<ICronogramaSimulacaoCache, RedisCronogramaSimulacaoCache>();
@@ -66,6 +65,11 @@ public static class DependencyInjection
         else
         {
             services.AddDistributedMemoryCache();
+
+            // Fallback explícito quando Redis não está disponível: cache no-op.
+            // Necessário porque os handlers de Simulação/Painel injetam ICronogramaSimulacaoCache
+            // diretamente (sem Service Locator). Sem essa linha o DI falha no startup.
+            services.AddSingleton<ICronogramaSimulacaoCache, NullCronogramaSimulacaoCache>();
         }
 
         services.AddSingleton<IClock>(SystemClock.Instance);

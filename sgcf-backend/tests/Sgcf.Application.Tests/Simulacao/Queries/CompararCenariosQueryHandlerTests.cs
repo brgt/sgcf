@@ -112,6 +112,8 @@ public sealed class CompararCenariosQueryHandlerTests
         CenarioSimulacao cB = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "Cenário B", anoBase: ano);
         repo.GetByIdAsync(cenarioIdBaseline, Arg.Any<CancellationToken>()).Returns(cBaseline);
         repo.GetByIdAsync(cenarioIdB, Arg.Any<CancellationToken>()).Returns(cB);
+        repo.GetByIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CenarioSimulacao> { cBaseline, cB }.AsReadOnly());
 
         CompararCenariosQueryHandler handler = new(mediator, repo);
         CompararCenariosQuery query = new(ano, new List<Guid> { cenarioIdBaseline, cenarioIdB }.AsReadOnly());
@@ -202,6 +204,8 @@ public sealed class CompararCenariosQueryHandlerTests
         IMediator mediator = Substitute.For<IMediator>();
         ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
         repo.GetByIdAsync(idInexistente, Arg.Any<CancellationToken>()).Returns((CenarioSimulacao?)null);
+        repo.GetByIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CenarioSimulacao>().AsReadOnly());
 
         CompararCenariosQueryHandler handler = new(mediator, repo);
         CompararCenariosQuery query = new(2026, new List<Guid> { idInexistente }.AsReadOnly());
@@ -233,6 +237,8 @@ public sealed class CompararCenariosQueryHandlerTests
 
         repo.GetByIdAsync(idA, Arg.Any<CancellationToken>()).Returns(cenarioA);
         repo.GetByIdAsync(idB, Arg.Any<CancellationToken>()).Returns(cenarioB);
+        repo.GetByIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CenarioSimulacao> { cenarioA, cenarioB }.AsReadOnly());
 
         CompararCenariosQueryHandler handler = new(mediator, repo);
         CompararCenariosQuery query = new(2026, new List<Guid> { idA, idB }.AsReadOnly());
@@ -245,13 +251,76 @@ public sealed class CompararCenariosQueryHandlerTests
         await mediator.DidNotReceive().Send(Arg.Any<IRequest<QuadroDividaDto>>(), Arg.Any<CancellationToken>());
     }
 
-    // ── Teste 6: cálculo correto de delta mensal e anual ─────────────────────
+    // ── Teste 6 (gap): baseline com custo zero → percentual retorna 0 sem DivideByZero ──
+
+    /// <summary>
+    /// Cobertura do gap: quando o baseline tem <c>SaldoTotalFim == 0</c> em todos os meses
+    /// e <c>SaldoTotalFimAno == 0</c>, o cálculo de <c>SaldoFimDeltaPercentual</c> deve
+    /// retornar 0 — nunca lançar <see cref="DivideByZeroException"/> nem <c>Infinity</c>.
+    ///
+    /// O handler já trata o caso via <c>baseline == 0m ? 0m : ...</c>.
+    /// Este teste documenta e protege esse comportamento.
+    /// </summary>
+    [Fact]
+    public async Task Handle_BaselineSaldoZero_NaoLancaDivideByZero_RetornaPercentualZero()
+    {
+        // Arrange — baseline sem saldo (empresa sem dívida), cenário B com captação
+        int ano = 2026;
+        Guid cenarioIdBaseline = Guid.NewGuid();
+        Guid cenarioIdB = Guid.NewGuid();
+
+        IMediator mediator = Substitute.For<IMediator>();
+        ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
+
+        // Baseline: saldo zero em todos os meses, captação zero
+        QuadroDividaDto quadroBaseline = CriarQuadroSimples(ano,
+            saldoFimMensal: 0m,
+            totalCaptacaoMensal: 0m,
+            totalAmortizacaoMensal: 0m);
+
+        // Cenário B: captação de R$ 500k
+        QuadroDividaDto quadroB = CriarQuadroSimples(ano,
+            saldoFimMensal: 500_000m,
+            totalCaptacaoMensal: 500_000m,
+            totalAmortizacaoMensal: 0m);
+
+        mediator.Send(Arg.Is<GetQuadroDividaQuery>(q => q.CenarioId == cenarioIdBaseline), Arg.Any<CancellationToken>())
+            .Returns(quadroBaseline);
+        mediator.Send(Arg.Is<GetQuadroDividaQuery>(q => q.CenarioId == cenarioIdB), Arg.Any<CancellationToken>())
+            .Returns(quadroB);
+
+        CenarioSimulacao cBaseline = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "Baseline Vazio", anoBase: ano);
+        CenarioSimulacao cB = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "Cenário B", anoBase: ano);
+        repo.GetByIdAsync(cenarioIdBaseline, Arg.Any<CancellationToken>()).Returns(cBaseline);
+        repo.GetByIdAsync(cenarioIdB, Arg.Any<CancellationToken>()).Returns(cB);
+        repo.GetByIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CenarioSimulacao> { cBaseline, cB }.AsReadOnly());
+
+        CompararCenariosQueryHandler handler = new(mediator, repo);
+        CompararCenariosQuery query = new(ano, new List<Guid> { cenarioIdBaseline, cenarioIdB }.AsReadOnly());
+
+        // Act — não deve lançar DivideByZeroException nem overflow
+        ResultadoComparacaoCenariosDto resultado = await handler.Handle(query, default);
+
+        // Assert — percentuais devem ser 0 (baseline zero → divisão por zero protegida)
+        DeltaMensalDto deltaMes1 = resultado.Cenarios[1].DeltasMensais![0];
+        deltaMes1.SaldoFimDelta.Should().Be(500_000m,
+            "delta absoluto = cenário - baseline = 500k - 0k = 500k");
+        deltaMes1.SaldoFimDeltaPercentual.Should().Be(0m,
+            "percentual deve ser 0 quando baseline é zero (evita DivideByZeroException)");
+
+        DeltaAnualDto deltaAnual = resultado.Cenarios[1].DeltaAnual!;
+        deltaAnual.SaldoFimAnoDelta.Should().Be(500_000m);
+        deltaAnual.SaldoFimAnoDeltaPercentual.Should().Be(0m,
+            "percentual anual deve ser 0 quando SaldoTotalFimAno do baseline é zero");
+    }
+
+    // ── Teste 7: cálculo correto de delta mensal e anual ─────────────────────
 
     /// <summary>
     /// Verifica que o cálculo de <c>SaldoFimDeltaPercentual</c> é feito corretamente
     /// como <c>(delta / baseline) × 100</c>, e que <c>DeltaAnual</c> usa os valores
     /// do <c>Sumario</c> (não dos meses individuais).
-    /// Baseline zero no percentual deve retornar 0 sem lançar DivisionByZero.
     /// </summary>
     [Fact]
     public async Task Handle_calcula_deltaMensal_e_deltaAnual_corretamente()
@@ -285,6 +354,8 @@ public sealed class CompararCenariosQueryHandlerTests
         CenarioSimulacao cB = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "B", anoBase: ano);
         repo.GetByIdAsync(cenarioIdBaseline, Arg.Any<CancellationToken>()).Returns(cBaseline);
         repo.GetByIdAsync(cenarioIdB, Arg.Any<CancellationToken>()).Returns(cB);
+        repo.GetByIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<CenarioSimulacao> { cBaseline, cB }.AsReadOnly());
 
         CompararCenariosQueryHandler handler = new(mediator, repo);
         CompararCenariosQuery query = new(ano, new List<Guid> { cenarioIdBaseline, cenarioIdB }.AsReadOnly());
@@ -306,64 +377,4 @@ public sealed class CompararCenariosQueryHandlerTests
         deltaAnual.TotalCaptacaoAnoDelta.Should().Be(500_000m * 12);
     }
 
-    // ── Teste 7: baseline com saldo zero → percentual zero, sem DivideByZeroException ──
-
-    /// <summary>
-    /// Quando o baseline tem <c>SaldoTotalFim == 0</c> (empresa sem dívida no cenário base),
-    /// o handler não deve lançar <see cref="DivideByZeroException"/> — a guarda
-    /// <c>baselineValor == 0m ? 0m : ...</c> deve produzir <c>SaldoFimDeltaPercentual == 0m</c>
-    /// e <c>SaldoFimAnoDeltaPercentual == 0m</c>.
-    /// </summary>
-    [Fact]
-    public async Task Handle_BaselineSaldoZero_NaoLancaDivideByZero_RetornaPercentualZero()
-    {
-        // Arrange
-        int ano = 2026;
-        Guid cenarioIdBaseline = Guid.NewGuid();
-        Guid cenarioIdB = Guid.NewGuid();
-
-        IMediator mediator = Substitute.For<IMediator>();
-        ICenarioSimulacaoRepository repo = Substitute.For<ICenarioSimulacaoRepository>();
-
-        // Baseline: saldo zero em todos os meses (empresa sem dívida)
-        QuadroDividaDto quadroBaseline = CriarQuadroSimples(ano,
-            saldoFimMensal: 0m,
-            totalCaptacaoMensal: 0m,
-            totalAmortizacaoMensal: 0m);
-
-        // Cenário B: captação de 500k no primeiro mês, saldo fim = 500k
-        QuadroDividaDto quadroB = CriarQuadroSimples(ano,
-            saldoFimMensal: 500_000m,
-            totalCaptacaoMensal: 500_000m,
-            totalAmortizacaoMensal: 0m);
-
-        mediator.Send(Arg.Is<GetQuadroDividaQuery>(q => q.CenarioId == cenarioIdBaseline), Arg.Any<CancellationToken>())
-            .Returns(quadroBaseline);
-        mediator.Send(Arg.Is<GetQuadroDividaQuery>(q => q.CenarioId == cenarioIdB), Arg.Any<CancellationToken>())
-            .Returns(quadroB);
-
-        CenarioSimulacao cBaseline = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "Sem Dívida", anoBase: ano);
-        CenarioSimulacao cB = CenarioSimulacaoTestFactory.CriarCenarioRascunho(_clock, "Com Captação", anoBase: ano);
-        repo.GetByIdAsync(cenarioIdBaseline, Arg.Any<CancellationToken>()).Returns(cBaseline);
-        repo.GetByIdAsync(cenarioIdB, Arg.Any<CancellationToken>()).Returns(cB);
-
-        CompararCenariosQueryHandler handler = new(mediator, repo);
-        CompararCenariosQuery query = new(ano, new List<Guid> { cenarioIdBaseline, cenarioIdB }.AsReadOnly());
-
-        // Act — não deve lançar DivideByZeroException
-        ResultadoComparacaoCenariosDto resultado = await handler.Handle(query, default);
-
-        // Assert — deltas absolutos corretos
-        CenarioComparadoDto cenarioB = resultado.Cenarios[1];
-        cenarioB.DeltasMensais.Should().HaveCount(12);
-        cenarioB.DeltasMensais![0].SaldoFimDelta.Should().Be(500_000m);
-
-        // Percentual deve ser 0 quando baseline é zero — a guarda evita DivideByZero
-        cenarioB.DeltasMensais[0].SaldoFimDeltaPercentual.Should().Be(0m,
-            because: "divisão por zero deve retornar 0m quando baseline.SaldoTotalFim == 0");
-
-        cenarioB.DeltaAnual!.SaldoFimAnoDelta.Should().Be(500_000m);
-        cenarioB.DeltaAnual.SaldoFimAnoDeltaPercentual.Should().Be(0m,
-            because: "divisão por zero deve retornar 0m quando baseline.SaldoTotalFimAno == 0");
-    }
 }

@@ -95,6 +95,7 @@ public sealed class UpdateBancoConfigCommandHandler(IBancoRepository repo, ICloc
             clock);
 
         await repo.SaveChangesAsync(cancellationToken);
+        repo.InvalidarCache(cmd.Id);
         return BancoDto.From(banco);
     }
 }

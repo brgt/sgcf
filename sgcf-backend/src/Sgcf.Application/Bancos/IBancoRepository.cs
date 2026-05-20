@@ -18,6 +18,13 @@ public interface IBancoRepository
     public Task<int> SaveChangesAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// Invalida a entrada de cache para o banco informado.
+    /// Deve ser chamado após mutações persistidas para garantir consistência de leitura.
+    /// Em implementações sem cache, esta operação é no-op.
+    /// </summary>
+    public void InvalidarCache(Guid id);
+
+    /// <summary>
     /// Retorna todos os bancos que têm LimiteCreditoBrl configurado (não nulo).
     /// Usado pelo job de alerta de exposição de banco.
     /// </summary>

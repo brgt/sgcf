@@ -1,6 +1,5 @@
 using FluentAssertions;
 using MediatR;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 using Sgcf.Application.Bancos;
@@ -17,6 +16,7 @@ using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cronograma;
 using Sgcf.Domain.Simulacao;
+using Sgcf.Infrastructure.Cache.Simulacao;
 using Xunit;
 
 namespace Sgcf.Application.Tests.Painel;
@@ -48,37 +48,19 @@ public sealed class GetQuadroDividaQueryHandlerTests
         ICdiSnapshotRepository? cdiRepo = null,
         IParametroSistemaRepository? parametroSistemaRepo = null)
     {
-        mediator ??= CriarMediatorComSaldo(CriarSaldoVazio());
-        contratoRepo ??= CriarContratoRepoVazio();
-        cronogramaRepo ??= CriarCronogramaRepoVazio();
-        bancoRepo ??= CriarBancoRepoVazio();
-        spotCache ??= Substitute.For<ICotacaoSpotCache>();
-        cotacaoFxRepo ??= Substitute.For<ICotacaoFxRepository>();
-        clock ??= CriarClock();
-        cenarioRepo ??= Substitute.For<ICenarioSimulacaoRepository>();
-        cdiRepo ??= Substitute.For<ICdiSnapshotRepository>();
-        parametroSistemaRepo ??= CriarParametroSistemaRepoVazio();
-
-        // Monta um ServiceProvider mínimo para resolver ICronogramaSimulacaoCache opcionalmente.
-        ServiceCollection services = new();
-        if (cronogramaCache is not null)
-        {
-            services.AddSingleton(cronogramaCache);
-        }
-        IServiceProvider sp = services.BuildServiceProvider();
-
+        // NullCronogramaSimulacaoCache é o fallback explícito — espelha o registro no DI de produção.
         return new GetQuadroDividaQueryHandler(
-            mediator,
-            contratoRepo,
-            cronogramaRepo,
-            bancoRepo,
-            spotCache,
-            cotacaoFxRepo,
-            clock,
-            cenarioRepo,
-            sp,
-            cdiRepo,
-            parametroSistemaRepo);
+            mediator ?? CriarMediatorComSaldo(CriarSaldoVazio()),
+            contratoRepo ?? CriarContratoRepoVazio(),
+            cronogramaRepo ?? CriarCronogramaRepoVazio(),
+            bancoRepo ?? CriarBancoRepoVazio(),
+            spotCache ?? Substitute.For<ICotacaoSpotCache>(),
+            cotacaoFxRepo ?? Substitute.For<ICotacaoFxRepository>(),
+            clock ?? CriarClock(),
+            cenarioRepo ?? Substitute.For<ICenarioSimulacaoRepository>(),
+            cronogramaCache ?? new NullCronogramaSimulacaoCache(),
+            cdiRepo ?? Substitute.For<ICdiSnapshotRepository>(),
+            parametroSistemaRepo ?? CriarParametroSistemaRepoVazio());
     }
 
     private static IParametroSistemaRepository CriarParametroSistemaRepoVazio()

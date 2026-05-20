@@ -17,5 +17,11 @@
     <!-- Consistent assembly naming -->
     <RootNamespace>$(MSBuildProjectName.Replace('-', '_'))</RootNamespace>
     <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+    <!--
+      Force production of reference assemblies for all projects.
+      Required because the repo lives in Google Drive, which deletes empty
+      directories before the parallel build can populate them.
+    -->
+    <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
   </PropertyGroup>
 </Project>

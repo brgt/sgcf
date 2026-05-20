@@ -26,6 +26,11 @@ internal sealed class BancoRepository(SgcfDbContext context) : IBancoRepository
 
     public Task<int> SaveChangesAsync(CancellationToken ct) => context.SaveChangesAsync(ct);
 
+    public void InvalidarCache(Guid id)
+    {
+        // No-op no repositório base; o CachedBancoRepository sobrescreve.
+    }
+
     public async Task<IReadOnlyList<Banco>> ListComLimiteCreditoSetadoAsync(CancellationToken ct)
     {
         List<Banco> list = await context.Bancos

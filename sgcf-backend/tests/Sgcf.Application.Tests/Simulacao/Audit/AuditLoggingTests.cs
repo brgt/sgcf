@@ -137,7 +137,7 @@ public sealed class AuditLoggingTests
         cenario.AdicionarSimulacao(simulacao, _clock);
         repo.GetByIdAsync(cenario.Id, default).Returns(cenario);
 
-        RemoverSimulacaoCommandHandler handler = new(repo, _clock);
+        RemoverSimulacaoCommandHandler handler = new(repo, _clock, NSubstitute.Substitute.For<Sgcf.Application.Simulacao.Cache.ICronogramaSimulacaoCache>());
         await handler.Handle(new RemoverSimulacaoCommand(cenario.Id, simulacao.Id), default);
 
         repo.Received(1).Update(Arg.Is<CenarioSimulacao>(c => c is IAuditable));

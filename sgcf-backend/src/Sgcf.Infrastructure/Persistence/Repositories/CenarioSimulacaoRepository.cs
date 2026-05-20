@@ -39,6 +39,34 @@ internal sealed class CenarioSimulacaoRepository(SgcfDbContext context) : ICenar
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyList<CenarioSimulacao>> GetByIdsAsync(
+        IReadOnlyList<Guid> ids,
+        CancellationToken ct = default)
+    {
+        if (ids.Count == 0)
+        {
+            return Array.Empty<CenarioSimulacao>();
+        }
+
+        List<CenarioSimulacao> carregados = await context.CenariosSimulacao
+            .Include(c => c.Simulacoes)
+            .Where(c => ids.Contains(c.Id))
+            .ToListAsync(ct);
+
+        // Preservar a ordem da entrada (o primeiro id é a baseline na comparação)
+        Dictionary<Guid, CenarioSimulacao> porId = carregados.ToDictionary(c => c.Id);
+        var ordenados = new List<CenarioSimulacao>(ids.Count);
+        foreach (Guid id in ids)
+        {
+            if (porId.TryGetValue(id, out CenarioSimulacao? c))
+            {
+                ordenados.Add(c);
+            }
+        }
+        return ordenados.AsReadOnly();
+    }
+
+    /// <inheritdoc/>
     public async Task<IReadOnlyList<CenarioSimulacao>> ListAsync(
         StatusCenarioSimulacao? status,
         int? anoBase,

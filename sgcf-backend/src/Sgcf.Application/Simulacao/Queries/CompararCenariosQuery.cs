@@ -125,25 +125,26 @@ public sealed class CompararCenariosQueryHandler(
     // ── Carregamento ──────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Carrega os metadados de cada cenário do repositório, preservando a ordem da entrada.
-    /// Lança <see cref="KeyNotFoundException"/> se qualquer cenário não for encontrado.
+    /// Carrega os metadados de todos os cenários em uma única query batch, preservando a ordem
+    /// de <paramref name="cenarioIds"/>. Lança <see cref="KeyNotFoundException"/> se qualquer
+    /// cenário não for encontrado — o caller não distingue qual ID falhou, 404 é o comportamento esperado.
     /// </summary>
     private async Task<List<CenarioSimulacao>> CarregarCenariosAsync(
         IReadOnlyList<Guid> cenarioIds,
         CancellationToken ct)
     {
-        List<CenarioSimulacao> cenarios = new(cenarioIds.Count);
+        // Batch único: elimina o N+1 query anterior (um GetByIdAsync por ID).
+        IReadOnlyList<CenarioSimulacao> encontrados = await cenarioRepo.GetByIdsAsync(cenarioIds, ct);
 
-        foreach (Guid cenarioId in cenarioIds)
+        // Verifica se todos os IDs solicitados foram encontrados.
+        if (encontrados.Count != cenarioIds.Count)
         {
-            CenarioSimulacao cenario = await cenarioRepo.GetByIdAsync(cenarioId, ct)
-                ?? throw new KeyNotFoundException(
-                    $"Cenário de simulação '{cenarioId}' não encontrado.");
-
-            cenarios.Add(cenario);
+            HashSet<Guid> encontradosIds = encontrados.Select(c => c.Id).ToHashSet();
+            Guid idFaltando = cenarioIds.First(id => !encontradosIds.Contains(id));
+            throw new KeyNotFoundException($"Cenário de simulação '{idFaltando}' não encontrado.");
         }
 
-        return cenarios;
+        return [.. encontrados];
     }
 
     /// <summary>
