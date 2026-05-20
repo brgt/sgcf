@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Sgcf.Jobs.Tests — Unit tests for background job timezone correctness.
+    Jobs are internal sealed; Sgcf.Jobs uses InternalsVisibleTo to expose them here.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Sgcf.Jobs.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Sgcf.Jobs\Sgcf.Jobs.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Label="Test Framework">
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="coverlet.collector">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup Label="Assertions &amp; Fakes">
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NSubstitute" />
+  </ItemGroup>
+
+</Project>

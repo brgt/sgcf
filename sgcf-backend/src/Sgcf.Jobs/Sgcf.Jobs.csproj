@@ -16,6 +16,13 @@
     <ProjectReference Include="..\Sgcf.Infrastructure\Sgcf.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup Label="Test Visibility">
+    <!-- Allow Sgcf.Jobs.Tests to access internal types (jobs are internal sealed) -->
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Sgcf.Jobs.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
   <ItemGroup Label="Hosting">
     <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
