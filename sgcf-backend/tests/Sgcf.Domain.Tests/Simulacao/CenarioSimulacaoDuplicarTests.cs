@@ -172,6 +172,41 @@ public sealed class CenarioSimulacaoDuplicarTests
             because: "AnoBase do original é preservado na cópia");
     }
 
+    // ── Fix 1 — RED: DuplicarComoRascunho deve rejeitar cenário deletado ──────
+
+    [Fact]
+    public void DuplicarComoRascunho_CenarioDeletado_LancaInvalidOperationException()
+    {
+        // Arrange — cenário em Rascunho deletado (soft delete)
+        CenarioSimulacao deletado = CriarCenarioRascunho();
+        deletado.Deletar(ClockT0());
+        deletado.DeletedAt.Should().NotBeNull(because: "soft delete deve preencher DeletedAt");
+
+        // Act
+        Action ato = () => CenarioSimulacao.DuplicarComoRascunho(deletado, "duplicador@test.com", ClockT1());
+
+        // Assert — deve rejeitar antes mesmo de criar a cópia
+        ato.Should().Throw<InvalidOperationException>()
+            .WithMessage("*deletado*",
+                because: "cenário deletado não pode ser duplicado — restaure-o primeiro");
+    }
+
+    [Fact]
+    public void DuplicarComoRascunho_CenarioAtivoDeletado_LancaInvalidOperationException()
+    {
+        // Arrange — cenário ativado depois deletado
+        CenarioSimulacao deletado = CriarCenarioRascunho();
+        deletado.Ativar(ClockT0());
+        deletado.Deletar(ClockT0());
+
+        // Act
+        Action ato = () => CenarioSimulacao.DuplicarComoRascunho(deletado, "outro@test.com", ClockT1());
+
+        // Assert
+        ato.Should().Throw<InvalidOperationException>()
+            .WithMessage("*deletado*");
+    }
+
     // ── 33. DuplicarComoRascunho_atribuiCriadoPorEUpdatedAt ──────────────────
 
     [Fact]
