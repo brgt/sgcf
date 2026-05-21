@@ -7,7 +7,8 @@ namespace Sgcf.Infrastructure.Persistence.Repositories;
 internal sealed class ExportacaoJobRepository(SgcfDbContext context) : IExportacaoJobRepository
 {
     public async Task<ExportacaoJob?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        => await context.Set<ExportacaoJob>().FindAsync([id], cancellationToken);
+        => await context.Set<ExportacaoJob>()
+            .FirstOrDefaultAsync(j => j.Id == id, cancellationToken);
 
     public async Task<IReadOnlyList<ExportacaoJob>> ListPendentesAsync(CancellationToken cancellationToken)
     {
@@ -18,6 +19,14 @@ internal sealed class ExportacaoJobRepository(SgcfDbContext context) : IExportac
 
         return list.AsReadOnly();
     }
+
+    public async Task<IReadOnlyList<ExportacaoJob>> ListPendentesTodosTenantsAsync(
+        CancellationToken cancellationToken)
+        => await context.Set<ExportacaoJob>()
+            .IgnoreQueryFilters()
+            .Where(j => j.Status == StatusExportacao.Pendente)
+            .OrderBy(j => j.CriadoEm)
+            .ToListAsync(cancellationToken);
 
     public async Task AddAsync(ExportacaoJob job, CancellationToken cancellationToken)
         => await context.Set<ExportacaoJob>().AddAsync(job, cancellationToken);

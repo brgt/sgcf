@@ -18,6 +18,11 @@ public sealed class DeleteRegistroRegulatorioCommandHandler(
         RegistroRegulatorio registro = await repository.GetByIdAsync(command.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"RegistroRegulatorio {command.Id} não encontrado.");
 
+        if (registro.ContratoId != command.ContratoId)
+        {
+            throw new KeyNotFoundException($"RegistroRegulatorio {command.Id} não encontrado no contrato {command.ContratoId}.");
+        }
+
         await repository.DeleteAsync(registro, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
     }

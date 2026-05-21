@@ -27,6 +27,11 @@ public sealed class UpdateDocumentoContratualCommandHandler(
         DocumentoContratual documento = await repository.GetByIdAsync(command.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"DocumentoContratual {command.Id} não encontrado.");
 
+        if (documento.ContratoId != command.ContratoId)
+        {
+            throw new KeyNotFoundException($"DocumentoContratual {command.Id} não encontrado no contrato {command.ContratoId}.");
+        }
+
         Instant agora = clock.GetCurrentInstant();
 
         documento.Atualizar(

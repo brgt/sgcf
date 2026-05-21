@@ -101,23 +101,26 @@ public sealed class DocumentoContratual : Entity, ITenantScoped
 
     /// <summary>
     /// Avança o status do documento segundo as regras da máquina de estados.
-    /// Transições proibidas: de Aprovado, Rejeitado ou Expirado para Pendente ou EmRevisao.
-    /// Qualquer estado ativo pode transitar para Expirado.
+    /// Transições permitidas:
+    ///   Pendente → EmRevisao
+    ///   EmRevisao → Aprovado | Rejeitado
+    ///   Qualquer estado ativo (não Expirado) → Expirado
     /// </summary>
     public void AtualizarStatus(StatusDocumento novoStatus, string? observacao, Instant agora)
     {
-        bool estadoFinal = Status is StatusDocumento.Aprovado
-            or StatusDocumento.Rejeitado
-            or StatusDocumento.Expirado;
+        bool transicaoValida = (Status, novoStatus) switch
+        {
+            (StatusDocumento.Pendente, StatusDocumento.EmRevisao) => true,
+            (StatusDocumento.EmRevisao, StatusDocumento.Aprovado) => true,
+            (StatusDocumento.EmRevisao, StatusDocumento.Rejeitado) => true,
+            ({ } atual, StatusDocumento.Expirado) when atual != StatusDocumento.Expirado => true,
+            _ => false
+        };
 
-        bool tentandoReabrirFluxo = novoStatus is StatusDocumento.Pendente
-            or StatusDocumento.EmRevisao;
-
-        if (estadoFinal && tentandoReabrirFluxo)
+        if (!transicaoValida)
         {
             throw new InvalidOperationException(
-                $"Transição inválida: documento no estado '{Status}' não pode retornar para '{novoStatus}'. " +
-                $"Documentos aprovados, rejeitados ou expirados são imutáveis.");
+                $"Transição de status inválida: {Status} → {novoStatus}.");
         }
 
         Status = novoStatus;

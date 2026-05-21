@@ -19,7 +19,8 @@ internal sealed class DocumentoContratualRepository(SgcfDbContext context) : IDo
     }
 
     public async Task<DocumentoContratual?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        => await context.Set<DocumentoContratual>().FindAsync([id], cancellationToken);
+        => await context.Set<DocumentoContratual>()
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken);
 
     public async Task AddAsync(DocumentoContratual documento, CancellationToken cancellationToken)
         => await context.Set<DocumentoContratual>().AddAsync(documento, cancellationToken);

@@ -11,9 +11,9 @@ namespace Sgcf.Infrastructure.Jobs;
 /// Serviço de background que varre os <see cref="ExportacaoJob"/> com status
 /// <see cref="StatusExportacao.Pendente"/> a cada 10 segundos e os processa.
 ///
-/// Cada tenant tem o filtro global de tenant aplicado pelo <c>SgcfDbContext</c>,
-/// por isso <see cref="IExportacaoJobRepository.ListPendentesAsync"/> retorna apenas
-/// os jobs do tenant cujo contexto está ativo no scope corrente.
+/// Como background services não têm TenantContext resolvido no scope do DI,
+/// usa <see cref="IExportacaoJobRepository.ListPendentesTodosTenantsAsync"/> com
+/// <c>IgnoreQueryFilters()</c> para recuperar jobs de todos os tenants.
 ///
 /// MVP: o resultado é um JSON simples com metadados do job.
 /// Em versões futuras, cada <see cref="TipoExportacao"/> deve rotear para um exporter dedicado.
@@ -43,7 +43,7 @@ internal sealed partial class ExportacaoProcessorService(
             .GetRequiredService<IExportacaoJobRepository>();
 
         IReadOnlyList<ExportacaoJob> pendentes =
-            await repo.ListPendentesAsync(cancellationToken);
+            await repo.ListPendentesTodosTenantsAsync(cancellationToken);
 
         foreach (ExportacaoJob job in pendentes)
         {

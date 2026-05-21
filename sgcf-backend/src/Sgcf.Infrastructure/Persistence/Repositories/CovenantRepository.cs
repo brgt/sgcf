@@ -22,11 +22,8 @@ internal sealed class CovenantRepository(SgcfDbContext context) : ICovenantRepos
 
     public async Task<IReadOnlyList<Covenant>> ListVioladosAsync(CancellationToken ct)
     {
-        int violado = (int)StatusCovenant.Violado;
-        int emCura = (int)StatusCovenant.EmCura;
-
         List<Covenant> list = await context.Covenants
-            .Where(c => (int)c.Status == violado || (int)c.Status == emCura)
+            .Where(c => c.Status == StatusCovenant.Violado || c.Status == StatusCovenant.EmCura)
             .OrderBy(c => c.ContratoId)
             .ToListAsync(ct);
 

@@ -26,6 +26,16 @@ public sealed class GetProdutividadeEquipeQueryHandler(
         GetProdutividadeEquipeQuery query,
         CancellationToken cancellationToken)
     {
+        if (query.DeMes is < 1 or > 12 || query.AteMes is < 1 or > 12)
+        {
+            throw new ArgumentException("Mês deve estar entre 1 e 12.");
+        }
+
+        if (query.DeAno > query.AteAno || (query.DeAno == query.AteAno && query.DeMes > query.AteMes))
+        {
+            throw new ArgumentException("Período inválido: data inicial deve ser anterior à data final.");
+        }
+
         Instant agora = clock.GetCurrentInstant();
 
         // de = primeiro instante do mês DeAno/DeMes no fuso de Brasília.

@@ -118,15 +118,30 @@ public sealed class DocumentoContratualTests
     {
         DocumentoContratual doc = CriarDocumentoPadrao();
         Instant t1 = AgoraFixo.Plus(Duration.FromHours(1));
+        Instant t2 = AgoraFixo.Plus(Duration.FromHours(2));
 
-        // Avança para o estado de origem (exceto Pendente que já é o inicial)
-        if (statusOrigem != StatusDocumento.Pendente)
+        // Avança para o estado de origem percorrendo o caminho válido da máquina de estados.
+        // Pendente é o estado inicial — nenhuma transição necessária.
+        // EmRevisao: Pendente → EmRevisao (uma etapa).
+        // Aprovado: Pendente → EmRevisao → Aprovado (duas etapas).
+        // Rejeitado: Pendente → EmRevisao → Rejeitado (duas etapas).
+        switch (statusOrigem)
         {
-            doc.AtualizarStatus(statusOrigem, null, t1);
+            case StatusDocumento.EmRevisao:
+                doc.AtualizarStatus(StatusDocumento.EmRevisao, null, t1);
+                break;
+            case StatusDocumento.Aprovado:
+                doc.AtualizarStatus(StatusDocumento.EmRevisao, null, t1);
+                doc.AtualizarStatus(StatusDocumento.Aprovado, null, t2);
+                break;
+            case StatusDocumento.Rejeitado:
+                doc.AtualizarStatus(StatusDocumento.EmRevisao, null, t1);
+                doc.AtualizarStatus(StatusDocumento.Rejeitado, null, t2);
+                break;
         }
 
-        Instant t2 = AgoraFixo.Plus(Duration.FromHours(2));
-        doc.AtualizarStatus(StatusDocumento.Expirado, "Documento vencido", t2);
+        Instant t3 = AgoraFixo.Plus(Duration.FromHours(3));
+        doc.AtualizarStatus(StatusDocumento.Expirado, "Documento vencido", t3);
 
         doc.Status.Should().Be(StatusDocumento.Expirado);
     }

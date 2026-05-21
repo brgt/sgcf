@@ -18,6 +18,11 @@ public sealed class DeleteDocumentoContratualCommandHandler(
         DocumentoContratual documento = await repository.GetByIdAsync(command.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"DocumentoContratual {command.Id} não encontrado.");
 
+        if (documento.ContratoId != command.ContratoId)
+        {
+            throw new KeyNotFoundException($"DocumentoContratual {command.Id} não encontrado no contrato {command.ContratoId}.");
+        }
+
         await repository.DeleteAsync(documento, cancellationToken);
         await repository.SaveChangesAsync(cancellationToken);
 

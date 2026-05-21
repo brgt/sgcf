@@ -33,7 +33,8 @@ internal sealed class RegistroRegulatorioRepository(SgcfDbContext context) : IRe
     }
 
     public async Task<RegistroRegulatorio?> GetByIdAsync(Guid id, CancellationToken cancellationToken)
-        => await context.Set<RegistroRegulatorio>().FindAsync([id], cancellationToken);
+        => await context.Set<RegistroRegulatorio>()
+            .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
 
     public async Task AddAsync(RegistroRegulatorio registro, CancellationToken cancellationToken)
         => await context.Set<RegistroRegulatorio>().AddAsync(registro, cancellationToken);

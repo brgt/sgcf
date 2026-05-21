@@ -23,6 +23,11 @@ public sealed class AtualizarStatusRegistroCommandHandler(
         RegistroRegulatorio registro = await repository.GetByIdAsync(command.Id, cancellationToken)
             ?? throw new KeyNotFoundException($"RegistroRegulatorio {command.Id} não encontrado.");
 
+        if (registro.ContratoId != command.ContratoId)
+        {
+            throw new KeyNotFoundException($"RegistroRegulatorio {command.Id} não encontrado no contrato {command.ContratoId}.");
+        }
+
         Instant agora = clock.GetCurrentInstant();
         registro.AtualizarStatus(command.NovoStatus, command.Observacao, agora);
 
