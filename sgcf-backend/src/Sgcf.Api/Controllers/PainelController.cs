@@ -6,6 +6,7 @@ using NodaTime.TimeZones;
 using Sgcf.Api.Filters;
 using Sgcf.Application.Authorization;
 using Sgcf.Application.Common;
+using Sgcf.Application.Contabilidade.Commands;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Painel.Commands;
 using Sgcf.Application.Painel.Queries;
@@ -16,6 +17,15 @@ namespace Sgcf.Api.Controllers;
 /// Requisição para cadastrar ou atualizar o EBITDA mensal.
 /// </summary>
 public sealed record UpsertEbitdaRequest(int Ano, int Mes, decimal ValorBrl);
+
+/// <summary>
+/// Requisição para cadastrar ou atualizar os dados contábeis mensais.
+/// </summary>
+public sealed record UpsertDadosContabeisRequest(
+    int Ano,
+    int Mes,
+    decimal PatrimonioLiquidoBrl,
+    decimal DespesaFinanceiraBrl);
 
 /// <summary>
 /// Endpoints do painel executivo: dívida consolidada, garantias, calendário de vencimentos e KPIs.

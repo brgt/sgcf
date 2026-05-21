@@ -43,4 +43,16 @@ public interface IEventoCronogramaRepository
     public Task<IReadOnlyList<EventoCronograma>> ListPrincipaisOrdenadosByContratoIdsAsync(
         IReadOnlyCollection<Guid> contratoIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retorna todos os eventos não liquidados (Previsto ou Atrasado) cujo <c>ContratoId</c>
+    /// esteja em <paramref name="contratoIds"/> e cuja <c>DataPrevista</c> esteja no intervalo
+    /// [<paramref name="dataInicio"/>, <paramref name="dataFim"/>] (inclusive em ambas as pontas).
+    /// Usado pela curva de vencimentos para horizontes multi-ano.
+    /// </summary>
+    public Task<IReadOnlyList<EventoCronograma>> ListAbertosNoPeriodoAsync(
+        LocalDate dataInicio,
+        LocalDate dataFim,
+        IReadOnlyCollection<Guid> contratoIds,
+        CancellationToken cancellationToken = default);
 }
