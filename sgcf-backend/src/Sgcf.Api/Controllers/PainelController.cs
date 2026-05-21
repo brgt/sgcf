@@ -5,6 +5,8 @@ using NodaTime;
 using NodaTime.TimeZones;
 using Sgcf.Api.Filters;
 using Sgcf.Application.Authorization;
+using Sgcf.Application.Auditoria;
+using Sgcf.Application.Auditoria.Queries;
 using Sgcf.Application.Common;
 using Sgcf.Application.Contabilidade.Commands;
 using Sgcf.Application.Painel;
@@ -293,6 +295,34 @@ public sealed class PainelController(IMediator mediator, IClock clock) : Control
     public async Task<IActionResult> GetTarifasIof(CancellationToken ct)
     {
         EnvelopeResponse<TarifasIofDto> resultado = await mediator.Send(new GetTarifasIofQuery(), ct);
+        return Ok(resultado);
+    }
+
+    /// <summary>
+    /// Retorna a produtividade da equipe de analistas no intervalo de meses informado,
+    /// calculada a partir do AuditLog. Inclui total de operações por analista e SLA médio
+    /// de atendimento (minutos entre primeira e última operação sobre a mesma entidade).
+    /// </summary>
+    /// <param name="deAno">Ano de início do período (ex: 2026).</param>
+    /// <param name="deMes">Mês de início do período, 1–12 (ex: 1).</param>
+    /// <param name="ateAno">Ano de fim do período (ex: 2026).</param>
+    /// <param name="ateMes">Mês de fim do período, 1–12 (ex: 5).</param>
+    [HttpGet("produtividade")]
+    [ProducesEnvelope]
+    [Authorize(Policy = Policies.Auditoria)]
+    [ProducesResponseType<EnvelopeResponse<IReadOnlyList<ProdutividadeAnalistaDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetProdutividadeEquipe(
+        [FromQuery] int deAno,
+        [FromQuery] int deMes,
+        [FromQuery] int ateAno,
+        [FromQuery] int ateMes,
+        CancellationToken cancellationToken)
+    {
+        EnvelopeResponse<IReadOnlyList<ProdutividadeAnalistaDto>> resultado = await mediator.Send(
+            new GetProdutividadeEquipeQuery(deAno, deMes, ateAno, ateMes),
+            cancellationToken);
+
         return Ok(resultado);
     }
 }

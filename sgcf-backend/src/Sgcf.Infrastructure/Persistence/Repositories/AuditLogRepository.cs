@@ -30,6 +30,60 @@ internal sealed class AuditLogRepository(SgcfDbContext context) : IAuditLogRepos
         return await BuildPagedResultAsync(q, filter, ct);
     }
 
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<ProdutividadeAnalistaDto>> GetProdutividadeAsync(
+        Instant de, Instant ate, CancellationToken cancellationToken)
+    {
+        // EF global query filter applies tenant_id automatically — no manual filter needed.
+        List<AuditLog> logs = await context.AuditLogs
+            .AsNoTracking()
+            .Where(a => a.OccurredAt >= de && a.OccurredAt <= ate)
+            .ToListAsync(cancellationToken);
+
+        List<ProdutividadeAnalistaDto> byActor = logs
+            .GroupBy(a => new { a.ActorSub, a.ActorRole })
+            .Select(g =>
+            {
+                List<AuditLog> items = g.ToList();
+
+                // Count operations per entity type.
+                List<ProdutividadePorEntidadeDto> porEntidade = items
+                    .GroupBy(a => a.Entity)
+                    .Select(eg => new ProdutividadePorEntidadeDto(eg.Key, eg.Count()))
+                    .ToList();
+
+                // SLA: for EntityIds with 2+ events, compute duration between first and last.
+                double? slaMediaMinutos = null;
+
+                List<double> duracoes = items
+                    .Where(a => a.EntityId.HasValue)
+                    .GroupBy(a => a.EntityId!)
+                    .Where(eg => eg.Count() >= 2)
+                    .Select(eg =>
+                    {
+                        List<AuditLog> ordered = eg.OrderBy(x => x.OccurredAt).ToList();
+                        return (ordered.Last().OccurredAt - ordered.First().OccurredAt).TotalMinutes;
+                    })
+                    .ToList();
+
+                if (duracoes.Count > 0)
+                {
+                    slaMediaMinutos = Math.Round(duracoes.Average(), 1);
+                }
+
+                return new ProdutividadeAnalistaDto(
+                    ActorSub: g.Key.ActorSub,
+                    ActorRole: g.Key.ActorRole,
+                    TotalOperacoes: items.Count,
+                    SlaMediaMinutos: slaMediaMinutos,
+                    PorEntidade: porEntidade.AsReadOnly());
+            })
+            .OrderByDescending(a => a.TotalOperacoes)
+            .ToList();
+
+        return byActor.AsReadOnly();
+    }
+
     private static async Task<PagedResult<AuditLogDto>> BuildPagedResultAsync(
         IQueryable<AuditLog> q,
         AuditFilter filter,
