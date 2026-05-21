@@ -42,7 +42,7 @@
 
 - [x] **3.1** Domínio `ContaBancaria` + CRUD `GET/POST/PUT/DELETE /contas-bancarias`.
 - [x] **3.2** GAP-CKP-08 — `SaldoCaixa` com edição por data + `POST /tesouraria/saldos` (upsert idempotente) + `GET /tesouraria/saldos` (série histórica) + `GET /tesouraria/posicao-caixa?dataReferencia=`.
-- [ ] **3.3** GAP-CKP-09 — `GET /tesouraria/fluxo-caixa?granularidade=dia` + `POST /tesouraria/eventos-fluxo`.
+- [x] **3.3** GAP-CKP-09 — `GET /tesouraria/fluxo-caixa?granularidade=dia` + `POST /tesouraria/eventos-fluxo`.
 - [x] **3.4** GAP-CKP-10 — `GET /tesouraria/hedge-efetividade`.
 
 ### Checkpoint C
