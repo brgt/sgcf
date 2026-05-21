@@ -21,9 +21,9 @@
 
 ## Fase 1 — Cockpit CFO (Sprints 2 a 3)
 
-- [ ] **1.1** GAP-CKP-01 — `GET /painel/divida/breakdown-modalidade`.
-- [ ] **1.2** GAP-CKP-03 — `GET /painel/vencimentos/horizonte?meses=&granularidade=`.
-- [ ] **1.3** GAP-CKP-04 — `DadosContabeisMensal` + `POST /painel/dados-contabeis` + `GET /painel/estrutura-capital`.
+- [x] **1.1** GAP-CKP-01 — `GET /painel/divida/breakdown-modalidade`.
+- [x] **1.2** GAP-CKP-03 — `GET /painel/vencimentos/horizonte?meses=&granularidade=`.
+- [x] **1.3** GAP-CKP-04 — `DadosContabeisMensal` + `POST /painel/dados-contabeis` + `GET /painel/estrutura-capital`.
 
 ### Checkpoint B
 - [ ] Demo CFO + PO com cockpit FE consumindo os três endpoints.
