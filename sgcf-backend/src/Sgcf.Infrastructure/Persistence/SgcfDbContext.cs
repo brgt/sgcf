@@ -22,6 +22,7 @@ using Sgcf.Domain.Simulacao;
 using Sgcf.Domain.Sistema;
 using Sgcf.Domain.Tenancy;
 using Sgcf.Domain.Covenants;
+using Sgcf.Domain.Conformidade;
 using Sgcf.Domain.Documentos;
 using Sgcf.Domain.OrcamentosEncargo;
 using Sgcf.Domain.Tesouraria;
@@ -91,6 +92,7 @@ public class SgcfDbContext(
     public DbSet<OrcamentoEncargo> OrcamentosEncargo => Set<OrcamentoEncargo>();
     public DbSet<Covenant> Covenants => Set<Covenant>();
     public DbSet<DocumentoContratual> DocumentosContratuais => Set<DocumentoContratual>();
+    public DbSet<RegistroRegulatorio> RegistrosRegulatorios => Set<RegistroRegulatorio>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

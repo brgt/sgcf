@@ -21,6 +21,7 @@ using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Sistema;
 using Sgcf.Application.Tenancy;
 using Sgcf.Application.Covenants;
+using Sgcf.Application.Conformidade;
 using Sgcf.Application.Documentos;
 using Sgcf.Application.OrcamentosEncargo;
 using Sgcf.Application.Tesouraria;
@@ -154,6 +155,7 @@ public static class DependencyInjection
         services.AddScoped<IOrcamentoEncargoRepository, OrcamentoEncargoRepository>();
         services.AddScoped<ICovenantRepository, CovenantRepository>();
         services.AddScoped<IDocumentoContratualRepository, DocumentoContratualRepository>();
+        services.AddScoped<IRegistroRegulatorioRepository, RegistroRegulatorioRepository>();
 
         return services;
     }
