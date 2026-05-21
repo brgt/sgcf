@@ -1,4 +1,5 @@
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
@@ -6,8 +7,9 @@ namespace Sgcf.Domain.Contratos;
 /// Detalhe de garantia do tipo FGI (Fundo Garantidor de Investimentos) — extensão 1:1 com <see cref="Garantia"/>.
 /// Não confundir com <see cref="FgiDetail"/> que é detalhe de <em>contrato</em> modalidade FGI.
 /// </summary>
-public sealed class GarantiaFgiDetail : Entity
+public sealed class GarantiaFgiDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid GarantiaId { get; private set; }
 
     /// <summary>Subtipo do FGI (ex: FGI_PEAC, FGI_NOVO_EMPREENDEDOR).</summary>

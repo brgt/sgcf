@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Cotacoes;
 
@@ -8,8 +9,9 @@ namespace Sgcf.Domain.Cotacoes;
 /// Registra a economia (ou perda) obtida na negociação, equalizada por CDI quando prazos diferem.
 /// SPEC §3.1 — "Nunca alterar EconomiaNegociacao após criação (snapshot imutável)."
 /// </summary>
-public sealed class EconomiaNegociacao : Entity
+public sealed class EconomiaNegociacao : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid CotacaoId { get; private set; }
     public Guid ContratoId { get; private set; }
 

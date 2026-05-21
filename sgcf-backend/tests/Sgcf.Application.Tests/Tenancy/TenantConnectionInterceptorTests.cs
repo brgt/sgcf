@@ -35,7 +35,7 @@ public sealed class TenantConnectionInterceptorTests
 
         // Assert — set_config foi chamado com o tenant_id correto
         fakeConn.UltimoComandoExecutado.Should().Contain("set_config");
-        fakeConn.UltimoParametroValor.Should().Be(TenantIdFixo.ToString());
+        fakeConn.UltimoComandoExecutado.Should().Contain(TenantIdFixo.ToString());
     }
 
     [Fact]
@@ -52,7 +52,7 @@ public sealed class TenantConnectionInterceptorTests
 
         // Assert
         fakeConn.UltimoComandoExecutado.Should().Contain("set_config");
-        fakeConn.UltimoParametroValor.Should().Be(TenantIdFixo.ToString());
+        fakeConn.UltimoComandoExecutado.Should().Contain(TenantIdFixo.ToString());
     }
 
     // ── Cenário 2: IsResolved = false → NÃO deve emitir set_config ───────────

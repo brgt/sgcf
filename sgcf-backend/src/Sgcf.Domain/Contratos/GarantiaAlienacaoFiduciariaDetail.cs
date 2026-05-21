@@ -1,12 +1,14 @@
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
 /// <summary>
 /// Detalhe de garantia do tipo Alienação Fiduciária — extensão 1:1 com <see cref="Garantia"/>.
 /// </summary>
-public sealed class GarantiaAlienacaoFiduciariaDetail : Entity
+public sealed class GarantiaAlienacaoFiduciariaDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid GarantiaId { get; private set; }
 
     /// <summary>Tipo do bem alienado: IMOVEL, EQUIPAMENTO, VEICULO ou OUTRO.</summary>

@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contabilidade;
 
@@ -7,8 +8,9 @@ namespace Sgcf.Domain.Contabilidade;
 /// Lançamento contábil diário — representa o acúmulo de juros pro rata de um contrato ativo.
 /// Idempotência garantida por UNIQUE constraint em (contrato_id, data, origem).
 /// </summary>
-public sealed class LancamentoContabil : Entity
+public sealed class LancamentoContabil : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
     public LocalDate Data { get; private set; }
 

@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Sgcf.Application.Tenancy;
 using Sgcf.Infrastructure.Persistence;
@@ -64,7 +65,7 @@ public sealed class TenantSaveInterceptorTests
     public void Interceptor_PodeSerInstanciado_SemErros()
     {
         ITenantContext tenantCtx = CriarContextoResolvido(TenantIdFixo);
-        TenantSaveInterceptor interceptor = new(tenantCtx);
+        TenantSaveInterceptor interceptor = new(tenantCtx, NullLogger<TenantSaveInterceptor>.Instance);
         interceptor.Should().NotBeNull();
     }
 

@@ -1,10 +1,12 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Hedge;
 
-public sealed class InstrumentoHedge : Entity
+public sealed class InstrumentoHedge : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
     public TipoHedge Tipo { get; private set; }
     public Guid ContraparteId { get; private set; }

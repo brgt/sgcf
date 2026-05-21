@@ -1,10 +1,12 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Hedge;
 
-public sealed class PosicaoSnapshot : Entity
+public sealed class PosicaoSnapshot : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid HedgeId { get; private set; }
     public Guid ContratoId { get; private set; }
     internal decimal MtmBrlDecimal { get; private set; }

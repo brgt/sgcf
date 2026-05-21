@@ -158,7 +158,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
                 await mediator.Send(new ProvisionarTenantCommand(tenantDto.Id), ct);
             return Ok(resultado);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("suspenso", StringComparison.OrdinalIgnoreCase))
+        catch (TenantSuspendoException ex)
         {
             return BadRequest(new ProblemDetails
             {
@@ -167,7 +167,7 @@ public sealed class TenantsController(IMediator mediator) : ControllerBase
                 Status = StatusCodes.Status400BadRequest,
             });
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("arquivado", StringComparison.OrdinalIgnoreCase))
+        catch (TenantArquivadoException ex)
         {
             return Conflict(new ProblemDetails
             {

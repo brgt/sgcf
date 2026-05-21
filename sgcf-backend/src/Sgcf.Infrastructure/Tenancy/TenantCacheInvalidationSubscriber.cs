@@ -15,6 +15,8 @@ internal sealed partial class TenantCacheInvalidationSubscriber(
     ILogger<TenantCacheInvalidationSubscriber> logger)
     : IHostedService
 {
+    private ISubscriber? _subscriber;
+
     [LoggerMessage(
         Level = LogLevel.Debug,
         Message = "Invalidação de cache de tenant recebida via Redis para ID {TenantId}.")]
@@ -27,13 +29,20 @@ internal sealed partial class TenantCacheInvalidationSubscriber(
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        ISubscriber sub = redis.GetSubscriber();
-        await sub.SubscribeAsync(
+        _subscriber = redis.GetSubscriber();
+        await _subscriber.SubscribeAsync(
             RedisChannel.Literal(TenantCache.InvalidationChannel),
             OnMessageReceived);
     }
 
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        if (_subscriber is not null)
+        {
+            await _subscriber.UnsubscribeAsync(
+                RedisChannel.Literal(TenantCache.InvalidationChannel));
+        }
+    }
 
     private void OnMessageReceived(RedisChannel channel, RedisValue message)
     {

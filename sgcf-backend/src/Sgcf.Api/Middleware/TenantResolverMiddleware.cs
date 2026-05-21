@@ -20,9 +20,11 @@ internal sealed partial class TenantResolverMiddleware(
     ILogger<TenantResolverMiddleware> logger)
 {
     // Prefixos de path que não exigem contexto de tenant.
+    // Atenção: usar trailing slash em prefixos de segmento para evitar bypass acidental
+    // de paths como /api/v1/administrator que compartilham prefixo sem ser admin.
     private static readonly string[] BypassPrefixes =
     [
-        "/api/v1/admin",
+        "/api/v1/admin/",
         "/health",
         "/swagger",
     ];
@@ -60,6 +62,14 @@ internal sealed partial class TenantResolverMiddleware(
         {
             LogBypass(logger, path);
             await next(ctx);
+            return;
+        }
+
+        // Garante que UseAuthentication() rodou antes deste middleware.
+        // Sem esse guard, um pipeline fora de ordem processaria claims em usuário não autenticado.
+        if (ctx.User.Identity?.IsAuthenticated != true)
+        {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
             return;
         }
 

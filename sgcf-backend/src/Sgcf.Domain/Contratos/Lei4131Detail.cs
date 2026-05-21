@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
@@ -7,8 +8,9 @@ namespace Sgcf.Domain.Contratos;
 /// Detalhe de contrato Lei 4.131/62 — empréstimo direto do exterior.
 /// Tabela de extensão 1:1 com <see cref="Contrato"/> (mesma convenção de FinimpDetail).
 /// </summary>
-public sealed class Lei4131Detail : Entity
+public sealed class Lei4131Detail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
 
     /// <summary>Número do SBLC (Stand-By Letter of Credit), quando houver garantia bancária.</summary>

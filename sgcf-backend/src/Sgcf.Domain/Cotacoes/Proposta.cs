@@ -1,6 +1,7 @@
 using NodaTime;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Cotacoes;
 
@@ -9,8 +10,9 @@ namespace Sgcf.Domain.Cotacoes;
 /// Construtor internal impede criação direta fora do agregado raiz.
 /// SPEC §3.1, §3.3.
 /// </summary>
-public sealed class Proposta : Entity
+public sealed class Proposta : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid CotacaoId { get; private set; }
     public Guid BancoId { get; private set; }
     public Moeda MoedaOriginal { get; private set; }

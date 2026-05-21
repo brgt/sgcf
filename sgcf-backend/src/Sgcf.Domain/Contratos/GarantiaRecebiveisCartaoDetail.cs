@@ -1,12 +1,14 @@
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
 /// <summary>
 /// Detalhe de garantia do tipo Recebíveis de Cartão — extensão 1:1 com <see cref="Garantia"/>.
 /// </summary>
-public sealed class GarantiaRecebiveisCartaoDetail : Entity
+public sealed class GarantiaRecebiveisCartaoDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid GarantiaId { get; private set; }
 
     /// <summary>Operadora do cartão (ex: Cielo, Stone, Rede).</summary>

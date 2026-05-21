@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Alertas;
 
@@ -8,8 +9,9 @@ namespace Sgcf.Domain.Alertas;
 /// Gerado automaticamente pelo job diário para os horizontes D-7, D-3 e D-0.
 /// Idempotência garantida por (contrato_id, tipo_alerta, data_vencimento).
 /// </summary>
-public sealed class AlertaVencimento : Entity
+public sealed class AlertaVencimento : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
 
     /// <summary>"D_MENOS_7", "D_MENOS_3" ou "D_MENOS_0".</summary>

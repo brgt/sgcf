@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
@@ -8,8 +9,9 @@ namespace Sgcf.Domain.Contratos;
 /// O valor é sempre em BRL para permitir agregação; cada tipo de garantia
 /// possui uma entidade de detalhe separada (tabela de extensão 1:1).
 /// </summary>
-public sealed class Garantia : Entity
+public sealed class Garantia : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
     public TipoGarantia Tipo { get; private set; }
 

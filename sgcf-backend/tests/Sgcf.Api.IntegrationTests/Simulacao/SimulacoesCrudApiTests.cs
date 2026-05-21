@@ -13,6 +13,7 @@ using NodaTime;
 
 using NSubstitute;
 
+using Sgcf.Api.IntegrationTests.TestAuth;
 using Sgcf.Infrastructure.Persistence;
 
 using Testcontainers.PostgreSql;
@@ -69,6 +70,7 @@ public sealed class SimulacoesCrudApiFixture : IAsyncLifetime
         using IServiceScope scope = Factory.Services.CreateScope();
         SgcfDbContext ctx = scope.ServiceProvider.GetRequiredService<SgcfDbContext>();
         await ctx.Database.MigrateAsync();
+        await TenantTestSeeder.SeedProxysAsync(Factory.Services);
     }
 
     public async Task DisposeAsync()

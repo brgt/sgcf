@@ -1,10 +1,12 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Cronograma;
 
-public sealed class EventoCronograma : Entity
+public sealed class EventoCronograma : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
     public short NumeroEvento { get; private set; }
     public TipoEventoCronograma Tipo { get; private set; }

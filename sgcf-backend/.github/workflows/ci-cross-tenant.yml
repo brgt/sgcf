@@ -1,0 +1,93 @@
+name: Cross-Tenant Isolation Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sgcf-backend/**'
+  push:
+    branches: [main]
+
+jobs:
+  cross-tenant-isolation:
+    name: Cross-Tenant Isolation Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sgcf
+          POSTGRES_PASSWORD: sgcf_test
+          POSTGRES_DB: sgcf_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '11.0.x'
+
+      - name: Restore
+        working-directory: sgcf-backend
+        run: dotnet restore
+
+      - name: Build
+        working-directory: sgcf-backend
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Apply migrations
+        working-directory: sgcf-backend
+        env:
+          ConnectionStrings__Default: "Host=localhost;Database=sgcf_test;Username=sgcf;Password=sgcf_test"
+        run: |
+          dotnet tool install --global dotnet-ef
+          dotnet ef database update \
+            --project src/Sgcf.Infrastructure \
+            --startup-project src/Sgcf.Api
+
+      - name: Run cross-tenant isolation suite
+        working-directory: sgcf-backend
+        env:
+          ConnectionStrings__Default: "Host=localhost;Database=sgcf_test;Username=sgcf;Password=sgcf_test"
+          Redis__ConnectionString: "localhost:6379"
+        run: |
+          dotnet test \
+            --filter "Category=CrossTenantIsolation" \
+            --no-build \
+            --configuration Release \
+            --logger "trx;LogFileName=cross-tenant-results.trx" \
+            --logger "console;verbosity=normal" \
+            --results-directory ./TestResults
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-tenant-test-results
+          path: sgcf-backend/TestResults/
+
+      - name: Block merge on failure
+        if: failure()
+        run: |
+          echo "::error::Cross-tenant isolation tests failed. Merge blocked — vazamento entre tenants é risco LGPD."
+          exit 1

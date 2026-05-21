@@ -45,13 +45,9 @@ internal sealed class TenantConnectionInterceptor(ITenantContext tenantContext)
         if (tenantContext.IsResolved)
         {
             // Caminho síncrono: ExecuteNonQuery direto.
-            // Aceitável porque set_config é uma operação trivial de sessão Postgres.
+            // tenantId é sempre um UUID gerado internamente — sem risco de injeção.
             using DbCommand cmd = connection.CreateCommand();
-            cmd.CommandText = "SELECT set_config('app.tenant_id', $1, false)";
-            DbParameter p = cmd.CreateParameter();
-            p.ParameterName = "$1";
-            p.Value = tenantContext.TenantId.ToString();
-            cmd.Parameters.Add(p);
+            cmd.CommandText = $"SELECT set_config('app.tenant_id', '{tenantContext.TenantId}', false)";
             cmd.ExecuteNonQuery();
         }
 
@@ -65,12 +61,9 @@ internal sealed class TenantConnectionInterceptor(ITenantContext tenantContext)
     {
         // false no 3º argumento de set_config = configuração de sessão (não transacional).
         // A configuração persiste durante toda a conexão, não apenas na transação atual.
+        // tenantId é sempre um UUID gerado internamente — sem risco de injeção.
         await using DbCommand cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT set_config('app.tenant_id', $1, false)";
-        DbParameter p = cmd.CreateParameter();
-        p.ParameterName = "$1";
-        p.Value = tenantId;
-        cmd.Parameters.Add(p);
+        cmd.CommandText = $"SELECT set_config('app.tenant_id', '{tenantId}', false)";
         await cmd.ExecuteNonQueryAsync(ct);
     }
 }

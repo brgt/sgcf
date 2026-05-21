@@ -2,6 +2,7 @@ using NodaTime;
 
 using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Simulacao;
 
@@ -20,8 +21,9 @@ namespace Sgcf.Domain.Simulacao;
 ///
 /// D-6 (Q1): domínio não impõe ownership exclusivo. CriadoPor é para auditoria.
 /// </summary>
-public sealed class CenarioSimulacao : Entity, IAuditable
+public sealed class CenarioSimulacao : Entity, IAuditable, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     private const int AnoBaseMinimo = 2020;
     private const int AnoBaseMaximo = 2050;
     private const int NomeMaxChars = 100;

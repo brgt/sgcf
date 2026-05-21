@@ -1,13 +1,15 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
 /// <summary>
 /// Detalhe de garantia do tipo Aval — extensão 1:1 com <see cref="Garantia"/>.
 /// </summary>
-public sealed class GarantiaAvalDetail : Entity
+public sealed class GarantiaAvalDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid GarantiaId { get; private set; }
 
     /// <summary>"PF" para pessoa física ou "PJ" para pessoa jurídica.</summary>

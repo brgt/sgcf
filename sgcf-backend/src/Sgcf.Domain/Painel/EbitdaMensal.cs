@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Painel;
 
@@ -7,8 +8,9 @@ namespace Sgcf.Domain.Painel;
 /// Registra o EBITDA mensal da empresa para cálculo do índice Dívida/EBITDA no dashboard executivo.
 /// Há no máximo um registro por (ano, mes) — a constraint de unicidade é imposta na camada de banco.
 /// </summary>
-public sealed class EbitdaMensal : Entity
+public sealed class EbitdaMensal : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public int Ano { get; private set; }
     public int Mes { get; private set; }
 

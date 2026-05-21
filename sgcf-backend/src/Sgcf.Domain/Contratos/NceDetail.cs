@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
@@ -11,8 +12,9 @@ namespace Sgcf.Domain.Contratos;
 /// A moeda do contrato NCE deve ser sempre BRL.
 /// </para>
 /// </summary>
-public sealed class NceDetail : Entity
+public sealed class NceDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
 
     /// <summary>Número do documento NCE emitido pelo banco.</summary>

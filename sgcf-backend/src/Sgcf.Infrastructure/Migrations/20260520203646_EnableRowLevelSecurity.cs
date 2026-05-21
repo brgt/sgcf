@@ -30,12 +30,12 @@ namespace Sgcf.Infrastructure.Migrations
         ];
 
         /// <inheritdoc />
-        protected override void Up(MigrationBuilder mb)
+        protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Criar roles de forma idempotente.
             // sgcf_app: role da aplicação — sujeita ao RLS (isolação por tenant).
             // sgcf_super: role administrativa — BYPASSRLS para operações cross-tenant.
-            mb.Sql(@"
+            migrationBuilder.Sql(@"
                 DO $$
                 BEGIN
                     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'sgcf_app') THEN
@@ -49,16 +49,16 @@ namespace Sgcf.Infrastructure.Migrations
 
             foreach (string tabela in TabelasTenantScoped)
             {
-                mb.Sql($"ALTER TABLE sgcf.{tabela} ENABLE ROW LEVEL SECURITY;");
+                migrationBuilder.Sql($"ALTER TABLE sgcf.{tabela} ENABLE ROW LEVEL SECURITY;");
 
                 // FORCE RLS garante que mesmo o owner da tabela (role sgcf) seja filtrado.
                 // Essencial para impedir vazamentos de dados quando a conn usa o role sgcf.
-                mb.Sql($"ALTER TABLE sgcf.{tabela} FORCE ROW LEVEL SECURITY;");
+                migrationBuilder.Sql($"ALTER TABLE sgcf.{tabela} FORCE ROW LEVEL SECURITY;");
 
                 // NULLIF(..., '') trata o caso onde app.tenant_id não foi setado:
                 // set_config retorna '' quando a variável não existe → NULLIF → NULL →
                 // comparação NULL = UUID é false → retorna 0 linhas (fail-safe seguro).
-                mb.Sql($@"
+                migrationBuilder.Sql($@"
                     DO $$
                     BEGIN
                         IF NOT EXISTS (
@@ -77,23 +77,23 @@ namespace Sgcf.Infrastructure.Migrations
             }
 
             // Grants para sgcf_app (aplicação — com RLS aplicado).
-            mb.Sql("GRANT USAGE ON SCHEMA sgcf TO sgcf_app;");
-            mb.Sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA sgcf TO sgcf_app;");
-            mb.Sql("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sgcf TO sgcf_app;");
+            migrationBuilder.Sql("GRANT USAGE ON SCHEMA sgcf TO sgcf_app;");
+            migrationBuilder.Sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA sgcf TO sgcf_app;");
+            migrationBuilder.Sql("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sgcf TO sgcf_app;");
 
             // Grants para sgcf_super (admin — BYPASSRLS, acesso cross-tenant).
-            mb.Sql("GRANT USAGE ON SCHEMA sgcf TO sgcf_super;");
-            mb.Sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA sgcf TO sgcf_super;");
-            mb.Sql("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sgcf TO sgcf_super;");
+            migrationBuilder.Sql("GRANT USAGE ON SCHEMA sgcf TO sgcf_super;");
+            migrationBuilder.Sql("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA sgcf TO sgcf_super;");
+            migrationBuilder.Sql("GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA sgcf TO sgcf_super;");
         }
 
         /// <inheritdoc />
-        protected override void Down(MigrationBuilder mb)
+        protected override void Down(MigrationBuilder migrationBuilder)
         {
             foreach (string tabela in TabelasTenantScoped)
             {
-                mb.Sql($"DROP POLICY IF EXISTS tenant_isolation ON sgcf.{tabela};");
-                mb.Sql($"ALTER TABLE sgcf.{tabela} DISABLE ROW LEVEL SECURITY;");
+                migrationBuilder.Sql($"DROP POLICY IF EXISTS tenant_isolation ON sgcf.{tabela};");
+                migrationBuilder.Sql($"ALTER TABLE sgcf.{tabela} DISABLE ROW LEVEL SECURITY;");
             }
         }
     }

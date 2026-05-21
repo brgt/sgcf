@@ -1,10 +1,12 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
-public sealed class Parcela : Entity
+public sealed class Parcela : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
     public short Numero { get; private set; }
     public LocalDate DataVencimento { get; private set; }

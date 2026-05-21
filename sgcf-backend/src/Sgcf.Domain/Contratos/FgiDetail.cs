@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
@@ -11,8 +12,9 @@ namespace Sgcf.Domain.Contratos;
 /// do tipo <c>TarifaFgi</c> no cronograma junto à amortização bullet.
 /// </para>
 /// </summary>
-public sealed class FgiDetail : Entity
+public sealed class FgiDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
 
     /// <summary>Número da operação no sistema FGI.</summary>

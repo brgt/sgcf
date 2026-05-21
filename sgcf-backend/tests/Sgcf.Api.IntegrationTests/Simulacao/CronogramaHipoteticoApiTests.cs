@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NodaTime;
 using NSubstitute;
+using Sgcf.Api.IntegrationTests.TestAuth;
 using Sgcf.Infrastructure.Persistence;
 using Testcontainers.PostgreSql;
 using Xunit;
@@ -62,6 +63,7 @@ public sealed class CronogramaHipoteticoApiFixture : IAsyncLifetime
         using IServiceScope scope = Factory.Services.CreateScope();
         SgcfDbContext ctx = scope.ServiceProvider.GetRequiredService<SgcfDbContext>();
         await ctx.Database.MigrateAsync();
+        await TenantTestSeeder.SeedProxysAsync(Factory.Services);
     }
 
     public async Task DisposeAsync()

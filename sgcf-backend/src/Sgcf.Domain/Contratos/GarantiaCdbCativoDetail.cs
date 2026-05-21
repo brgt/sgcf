@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
@@ -7,8 +8,9 @@ namespace Sgcf.Domain.Contratos;
 /// Detalhe de garantia do tipo CDB Cativo — extensão 1:1 com <see cref="Garantia"/>.
 /// Armazena informações específicas do CDB bloqueado como colateral.
 /// </summary>
-public sealed class GarantiaCdbCativoDetail : Entity
+public sealed class GarantiaCdbCativoDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid GarantiaId { get; private set; }
     public string BancoCustodia { get; private set; } = default!;
     public string NumeroCdb { get; private set; } = default!;

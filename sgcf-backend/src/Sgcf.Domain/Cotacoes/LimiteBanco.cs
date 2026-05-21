@@ -2,6 +2,7 @@ using NodaTime;
 using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Cotacoes;
 
@@ -10,8 +11,9 @@ namespace Sgcf.Domain.Cotacoes;
 /// Aggregate independente de Cotacao. Controla o teto de exposição permitido.
 /// SPEC §3.1.
 /// </summary>
-public sealed class LimiteBanco : Entity, IAuditable
+public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid BancoId { get; private set; }
     public ModalidadeContrato Modalidade { get; private set; }
 

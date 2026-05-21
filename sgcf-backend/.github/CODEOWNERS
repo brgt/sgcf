@@ -1,0 +1,36 @@
+# CODEOWNERS — SGCF Backend
+# Define revisores obrigatórios em caminhos críticos.
+# Substituir @org/security-team pelo handle real do time interno.
+
+# === Multi-tenancy: paths críticos exigem revisão de segurança ===
+
+/sgcf-backend/src/Sgcf.Domain/Tenancy/                              @org/security-team
+/sgcf-backend/src/Sgcf.Application/Tenancy/                         @org/security-team
+/sgcf-backend/src/Sgcf.Infrastructure/Tenancy/                      @org/security-team
+/sgcf-backend/src/Sgcf.Infrastructure/Persistence/SgcfDbContext.cs  @org/security-team
+/sgcf-backend/src/Sgcf.Infrastructure/Persistence/TenantSaveInterceptor.cs        @org/security-team
+/sgcf-backend/src/Sgcf.Infrastructure/Persistence/TenantConnectionInterceptor.cs  @org/security-team
+/sgcf-backend/src/Sgcf.Api/Middleware/TenantResolverMiddleware.cs                 @org/security-team
+/sgcf-backend/src/Sgcf.Api/Controllers/TenantsController.cs                       @org/security-team
+/sgcf-backend/src/Sgcf.Application/Authorization/Policies.cs                      @org/security-team
+
+# Migrations envolvendo RLS ou tenant_id
+/sgcf-backend/src/Sgcf.Infrastructure/Migrations/*RowLevelSecurity*  @org/security-team
+/sgcf-backend/src/Sgcf.Infrastructure/Migrations/*TenantId*          @org/security-team
+/sgcf-backend/src/Sgcf.Infrastructure/Migrations/*Tenant*            @org/security-team
+
+# Suite de testes cross-tenant
+/sgcf-backend/tests/Sgcf.Api.IntegrationTests/CrossTenantIsolation/  @org/security-team
+
+# Workflow CI da suite cross-tenant
+/sgcf-backend/.github/workflows/ci-cross-tenant.yml                  @org/security-team
+
+# Runbook operacional de tenancy
+/sgcf-backend/docs/operacao/multi-tenancy.md                         @org/security-team
+/sgcf-backend/docs/operacao/ci-branch-protection.md                  @org/security-team
+
+# ADR-020 (Estratégia de Multi-Tenancy)
+/sgcf-backend/docs/adr/ADR-020-*                                     @org/security-team
+
+# SPECs de tenancy
+/sgcf-backend/docs/specs/tenancy/                                    @org/security-team

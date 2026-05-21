@@ -55,6 +55,11 @@ if (builder.Environment.IsDevelopment())
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
+
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddHostedService<Sgcf.Api.HostedServices.DevTenantSeederService>();
+}
 builder.Services.AddScoped<ICurrentUserService, HttpCurrentUserService>();
 builder.Services.AddScoped<IRequestContextService, HttpRequestContextService>();
 builder.Services.AddControllers();
@@ -188,15 +193,6 @@ if (app.Environment.IsDevelopment())
     SecurityLogs.DevBypassAtivo(app.Logger);
 }
 
-// Registrar DevTenantSeederService apenas em Development.
-// Deve ser feito APÓS builder.Build() para que o IServiceProvider esteja disponível.
-if (app.Environment.IsDevelopment())
-{
-    // Inicia o seed do tenant "proxys" via hosted service scope-based.
-    using IServiceScope seedScope = app.Services.CreateScope();
-    Sgcf.Api.HostedServices.DevTenantSeederService seeder = new(app.Services);
-    await seeder.StartAsync(default);
-}
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();

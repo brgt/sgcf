@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Painel;
 
@@ -8,8 +9,9 @@ namespace Sgcf.Domain.Painel;
 /// Gerado no último dia do mês pelo job diário.
 /// Idempotência garantida por UNIQUE constraint em (ano, mes).
 /// </summary>
-public sealed class SnapshotMensalPosicao : Entity
+public sealed class SnapshotMensalPosicao : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public int Ano { get; private set; }
     public int Mes { get; private set; }
     public int TotalContratosAtivos { get; private set; }

@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NodaTime;
 using NSubstitute;
+using Sgcf.Api.IntegrationTests.TestAuth;
 using Sgcf.Application.Cambio;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Common;
@@ -63,6 +64,7 @@ public sealed class CotacoesApiFixture : IAsyncLifetime
         using IServiceScope scope = Factory.Services.CreateScope();
         SgcfDbContext ctx = scope.ServiceProvider.GetRequiredService<SgcfDbContext>();
         await ctx.Database.MigrateAsync();
+        await TenantTestSeeder.SeedProxysAsync(Factory.Services);
 
         // Seed CotacaoFx PTAX D-1 para dataAbertura 2026-05-16.
         // CriarCotacaoCommand busca PTAX com dataMaxima = dataAbertura - 1 dia útil.

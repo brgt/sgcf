@@ -1,10 +1,12 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
-public sealed class FinimpDetail : Entity
+public sealed class FinimpDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
     public string? RofNumero { get; private set; }
     public LocalDate? RofDataEmissao { get; private set; }

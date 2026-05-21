@@ -1,13 +1,15 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
 /// <summary>
 /// Detalhe de garantia do tipo Boleto Bancário — extensão 1:1 com <see cref="Garantia"/>.
 /// </summary>
-public sealed class GarantiaBoletoBancarioDetail : Entity
+public sealed class GarantiaBoletoBancarioDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid GarantiaId { get; private set; }
     public string BancoEmissor { get; private set; } = default!;
     public int QuantidadeBoletos { get; private set; }

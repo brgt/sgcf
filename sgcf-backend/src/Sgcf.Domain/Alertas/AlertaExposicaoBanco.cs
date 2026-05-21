@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Alertas;
 
@@ -8,8 +9,9 @@ namespace Sgcf.Domain.Alertas;
 /// Gerado quando a soma dos saldos principais ativos atinge >= 80% do limite de crédito BRL do banco.
 /// Idempotência garantida por (banco_id, data_alerta).
 /// </summary>
-public sealed class AlertaExposicaoBanco : Entity
+public sealed class AlertaExposicaoBanco : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid BancoId { get; private set; }
     public LocalDate DataAlerta { get; private set; }
 

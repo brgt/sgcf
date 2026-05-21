@@ -3,11 +3,13 @@ using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Cronograma;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
-public sealed class Contrato : Entity, IAuditable
+public sealed class Contrato : Entity, IAuditable, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public string NumeroExterno { get; private set; } = default!;
     public string? CodigoInterno { get; private set; }
     public Guid BancoId { get; private set; }

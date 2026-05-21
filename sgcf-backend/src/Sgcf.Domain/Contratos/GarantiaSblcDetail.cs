@@ -1,12 +1,14 @@
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
 /// <summary>
 /// Detalhe de garantia do tipo SBLC (Standby Letter of Credit) — extensão 1:1 com <see cref="Garantia"/>.
 /// </summary>
-public sealed class GarantiaSblcDetail : Entity
+public sealed class GarantiaSblcDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid GarantiaId { get; private set; }
     public string BancoEmissor { get; private set; } = default!;
     public string PaisEmissor { get; private set; } = default!;

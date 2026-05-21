@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
@@ -13,8 +14,9 @@ namespace Sgcf.Domain.Contratos;
 ///   ou via modalidade própria <c>ModalidadeContrato.Fgi</c> quando o produto é BNDES-FGI direto.
 /// </para>
 /// </summary>
-public sealed class CapitalDeGiroDetail : Entity
+public sealed class CapitalDeGiroDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
 
     /// <summary>Número da operação no sistema interno do banco (opcional).</summary>

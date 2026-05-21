@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Sgcf.Application.Tenancy;
@@ -16,12 +17,19 @@ namespace Sgcf.Application.Tests.Cotacoes.Infrastructure;
 /// </summary>
 public sealed class CotacoesDbFixture : IAsyncLifetime
 {
+    // Tenant fixo de teste — todas as entidades criadas neste fixture pertencem a ele.
+    public static readonly Guid TestTenantId = Guid.Parse("00000000-0000-7000-8000-000000000099");
+
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder()
         .WithImage("postgres:16-alpine")
         .WithDatabase("sgcf_test")
         .WithUsername("sgcf")
         .WithPassword("sgcf_test")
         .Build();
+
+    // Contexto resolvido compartilhado — IsResolved=true para que o EF query filter
+    // e o TenantSaveInterceptor funcionem como em produção.
+    private readonly ITenantContext _tenantCtx = CreateResolvedTestContext();
 
     public SgcfDbContext Context { get; private set; } = default!;
     public IClock Clock { get; } = CreateFixedClock();
@@ -31,14 +39,18 @@ public sealed class CotacoesDbFixture : IAsyncLifetime
         await _container.StartAsync();
 
         ServiceCollection services = new();
-        services.AddSingleton(CreateUnresolvedTenantContext());
-        services.AddDbContext<SgcfDbContext>(opts =>
+        services.AddSingleton(_tenantCtx);
+        services.AddDbContext<SgcfDbContext>((sp, opts) =>
             opts.UseNpgsql(
                 _container.GetConnectionString(),
-                npgsql => npgsql.UseNodaTime()));
+                npgsql => npgsql.UseNodaTime())
+            .AddInterceptors(
+                new TenantSaveInterceptor(
+                    sp.GetRequiredService<ITenantContext>(),
+                    NullLogger<TenantSaveInterceptor>.Instance)));
 
-        ServiceProvider sp = services.BuildServiceProvider();
-        Context = sp.GetRequiredService<SgcfDbContext>();
+        ServiceProvider sp2 = services.BuildServiceProvider();
+        Context = sp2.GetRequiredService<SgcfDbContext>();
         await Context.Database.MigrateAsync();
     }
 
@@ -48,24 +60,28 @@ public sealed class CotacoesDbFixture : IAsyncLifetime
         await _container.DisposeAsync();
     }
 
-    /// <summary>Cria novo contexto com mesma connection string (útil para leituras isoladas).</summary>
+    /// <summary>Cria novo contexto com mesma connection string e mesmo tenant de teste (útil para leituras isoladas).</summary>
     public SgcfDbContext CreateFreshContext()
     {
         DbContextOptions<SgcfDbContext> opts = new DbContextOptionsBuilder<SgcfDbContext>()
             .UseNpgsql(_container.GetConnectionString(), npgsql => npgsql.UseNodaTime())
+            .AddInterceptors(new TenantSaveInterceptor(
+                _tenantCtx, NullLogger<TenantSaveInterceptor>.Instance))
             .Options;
-        return new SgcfDbContext(opts, CreateUnresolvedTenantContext());
+        return new SgcfDbContext(opts, _tenantCtx);
     }
 
     /// <summary>
-    /// Cria ITenantContext não resolvido para uso nos testes de integração.
-    /// Contexto não resolvido desativa o global query filter — os testes controlam
-    /// TenantId diretamente nas entidades, sem filtro automático.
+    /// Cria ITenantContext resolvido com tenant de teste fixo.
+    /// IsResolved=true ativa o global query filter e o TenantSaveInterceptor,
+    /// garantindo que os testes exercitem o mesmo caminho de produção.
     /// </summary>
-    private static ITenantContext CreateUnresolvedTenantContext()
+    private static ITenantContext CreateResolvedTestContext()
     {
         ITenantContext ctx = Substitute.For<ITenantContext>();
-        ctx.IsResolved.Returns(false);
+        ctx.IsResolved.Returns(true);
+        ctx.TenantId.Returns(TestTenantId);
+        ctx.TenantIdOrDefault.Returns(TestTenantId);
         return ctx;
     }
 

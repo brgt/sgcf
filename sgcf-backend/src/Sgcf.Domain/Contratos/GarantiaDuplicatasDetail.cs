@@ -1,13 +1,15 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Contratos;
 
 /// <summary>
 /// Detalhe de garantia do tipo Duplicatas — extensão 1:1 com <see cref="Garantia"/>.
 /// </summary>
-public sealed class GarantiaDuplicatasDetail : Entity
+public sealed class GarantiaDuplicatasDetail : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid GarantiaId { get; private set; }
 
     /// <summary>Percentual de desconto aplicado ao valor de face, armazenado como fração (0..1).</summary>

@@ -1,5 +1,6 @@
 using NodaTime;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Antecipacao;
 
@@ -7,8 +8,9 @@ namespace Sgcf.Domain.Antecipacao;
 /// Registro persistido de uma simulação de antecipação.
 /// Captura o estado completo da simulação para auditoria e comparação histórica.
 /// </summary>
-public sealed class SimulacaoAntecipacao : Entity
+public sealed class SimulacaoAntecipacao : Entity, ITenantScoped
 {
+    public Guid TenantId { get; private set; }
     public Guid ContratoId { get; private set; }
     public TipoAntecipacao TipoAntecipacao { get; private set; }
     public Instant DataSimulacao { get; private set; }
