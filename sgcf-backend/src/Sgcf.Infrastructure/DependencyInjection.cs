@@ -23,11 +23,13 @@ using Sgcf.Application.Tenancy;
 using Sgcf.Application.Covenants;
 using Sgcf.Application.Conformidade;
 using Sgcf.Application.Documentos;
+using Sgcf.Application.Eventos;
 using Sgcf.Application.OrcamentosEncargo;
 using Sgcf.Application.Tesouraria;
 using Sgcf.Application.Tenancy.Services;
 using Sgcf.Infrastructure.Antecipacao;
 using Sgcf.Infrastructure.Cache.Simulacao;
+using Sgcf.Infrastructure.Eventos;
 using Sgcf.Infrastructure.Auditoria;
 using Sgcf.Infrastructure.Caching;
 using Sgcf.Infrastructure.Calendario;
@@ -156,6 +158,10 @@ public static class DependencyInjection
         services.AddScoped<ICovenantRepository, CovenantRepository>();
         services.AddScoped<IDocumentoContratualRepository, DocumentoContratualRepository>();
         services.AddScoped<IRegistroRegulatorioRepository, RegistroRegulatorioRepository>();
+
+        // Event bus — singleton fan-out channel for SSE.
+        services.AddSingleton<IEventoBus, InMemoryEventoBus>();
+        services.AddHostedService<EventoHeartbeatService>();
 
         return services;
     }
