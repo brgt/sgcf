@@ -29,7 +29,12 @@ public sealed record AtualizarPropostaCommand(
     string GarantiaExigida,
     decimal ValorGarantiaBrl,
     bool GarantiaEhCdbCativo,
-    decimal? RendimentoCdbAa) : IRequest<PropostaDto>;
+    decimal? RendimentoCdbAa,
+    /// <summary>
+    /// Taxa indicativa de mercado no momento da proposta, em % a.a. como fração.
+    /// Opcional — quando não informada, o valor existente é substituído por nulo. GAP-CKP-19.
+    /// </summary>
+    decimal? TaxaIndicativaAa = null) : IRequest<PropostaDto>;
 
 public sealed class AtualizarPropostaCommandValidator : AbstractValidator<AtualizarPropostaCommand>
 {
@@ -101,7 +106,8 @@ public sealed class AtualizarPropostaCommandHandler(
             valorGarantia,
             cmd.GarantiaEhCdbCativo,
             cmd.RendimentoCdbAa,
-            dataCaptura);
+            dataCaptura,
+            taxaIndicativaAa: cmd.TaxaIndicativaAa);
 
         decimal cet = CalculadoraCet.CalcularCet(novaProsta, ptaxEfetiva, dataCaptura);
         decimal valorTotalBrl = RegistrarPropostaCommandHandler.CalcularValorTotalBrl(

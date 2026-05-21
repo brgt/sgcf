@@ -28,4 +28,15 @@ public sealed record ComparativoDto(
     /// <c>aliquotaIrrfPercentual</c> é fornecida na query. Zero para outras modalidades
     /// e quando a alíquota não é informada. Não é persistido na Proposta (decisão MD-5/AD-3).
     /// </summary>
-    decimal IrrfEstimadoBrl = 0m);
+    decimal IrrfEstimadoBrl = 0m,
+    /// <summary>
+    /// Taxa indicativa de mercado no momento da proposta, em % a.a. como fração (0.065 = 6,5% a.a.).
+    /// Nula quando não capturada. GAP-CKP-19.
+    /// </summary>
+    decimal? TaxaIndicativaAaPercentual = null,
+    /// <summary>
+    /// Spread entre a taxa indicativa de mercado e a taxa efetiva da proposta, em bps.
+    /// Fórmula: (TaxaAaPercentual + SpreadAaPercentual - TaxaIndicativaAa) × 10 000.
+    /// Nulo quando <see cref="TaxaIndicativaAaPercentual"/> não está disponível. GAP-CKP-19.
+    /// </summary>
+    decimal? SpreadIndicativaPropostaBps = null);

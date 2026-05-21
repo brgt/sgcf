@@ -30,7 +30,12 @@ public sealed record RegistrarPropostaCommand(
     string GarantiaExigida,
     decimal ValorGarantiaBrl,
     bool GarantiaEhCdbCativo,
-    decimal? RendimentoCdbAa) : IRequest<PropostaDto>;
+    decimal? RendimentoCdbAa,
+    /// <summary>
+    /// Taxa indicativa de mercado no momento da proposta, em % a.a. como fração (0.065 = 6,5% a.a.).
+    /// Opcional — quando não informada, <c>TaxaIndicativaAa</c> ficará nula na proposta. GAP-CKP-19.
+    /// </summary>
+    decimal? TaxaIndicativaAa = null) : IRequest<PropostaDto>;
 
 public sealed class RegistrarPropostaCommandValidator : AbstractValidator<RegistrarPropostaCommand>
 {
@@ -218,7 +223,8 @@ public sealed class RegistrarPropostaCommandHandler(
             valorGarantia,
             cmd.GarantiaEhCdbCativo,
             cmd.RendimentoCdbAa,
-            dataCaptura);
+            dataCaptura,
+            taxaIndicativaAa: cmd.TaxaIndicativaAa);
 
         // Calcular CET e setar cache via método público do agregado
         decimal cet = CalculadoraCet.CalcularCet(proposta, ptaxEfetiva, dataCaptura);

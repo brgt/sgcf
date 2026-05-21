@@ -68,6 +68,13 @@ public sealed class CompararPropostasQueryHandler(
                 ? CalculadoraIrrfEstimado.Calcular(p, ptaxParaIrrf, query.AliquotaIrrfPercentual)
                 : 0m;
 
+            // Spread triangle: indicativa → proposta aceita (GAP-CKP-19).
+            // Spread em bps = (taxaNominal - taxaIndicativa) × 10 000.
+            // Nulo quando a taxa indicativa não foi capturada na proposta.
+            decimal? spreadIndicativaPropostaBps = p.TaxaIndicativaAa.HasValue
+                ? Math.Round((taxaNominal - p.TaxaIndicativaAa.Value) * 10_000m, 2, MidpointRounding.AwayFromZero)
+                : null;
+
             comparativo.Add(new ComparativoDto(
                 p.Id,
                 p.BancoId,
@@ -80,7 +87,9 @@ public sealed class CompararPropostasQueryHandler(
                 p.GarantiaExigida,
                 p.ValorGarantiaExigidaBrl.Valor,
                 p.Status.ToString(),
-                IrrfEstimadoBrl: irrfEstimadoBrl));
+                IrrfEstimadoBrl: irrfEstimadoBrl,
+                TaxaIndicativaAaPercentual: p.TaxaIndicativaAa,
+                SpreadIndicativaPropostaBps: spreadIndicativaPropostaBps));
         }
 
         // Ordena pelo custo total equivalente (menor = melhor — SPEC §5.3)

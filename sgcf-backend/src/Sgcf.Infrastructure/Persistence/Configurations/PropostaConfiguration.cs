@@ -119,6 +119,11 @@ internal sealed class PropostaConfiguration : IEntityTypeConfiguration<Proposta>
             .HasColumnType("numeric(10,6)")
             .IsRequired(false);
 
+        builder.Property(p => p.TaxaIndicativaAaDecimal)
+            .HasColumnName("taxa_indicativa_aa_decimal")
+            .HasColumnType("numeric(10,6)")
+            .IsRequired(false);
+
         builder.Property(p => p.CetCalculadoAaPercentual)
             .HasColumnName("cet_calculado_aa_percentual")
             .HasColumnType("numeric(10,6)")
@@ -153,7 +158,7 @@ internal sealed class PropostaConfiguration : IEntityTypeConfiguration<Proposta>
             .HasColumnType("text")
             .IsRequired(false);
 
-        // Propriedades computadas (Money wrappers) não são persistidas.
+        // Propriedades computadas (Money wrappers e passthroughs de backing fields) não são persistidas.
         builder.Ignore(p => p.ValorOferecidoMoedaOriginal);
         builder.Ignore(p => p.TaxaAaPercentual);
         builder.Ignore(p => p.IofPercentual);
@@ -162,5 +167,6 @@ internal sealed class PropostaConfiguration : IEntityTypeConfiguration<Proposta>
         builder.Ignore(p => p.ValorGarantiaExigidaBrl);
         builder.Ignore(p => p.RendimentoCdbAaPercentual);
         builder.Ignore(p => p.ValorTotalEstimadoBrl);
+        builder.Ignore(p => p.TaxaIndicativaAa);
     }
 }

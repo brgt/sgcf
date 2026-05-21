@@ -260,7 +260,8 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
         bool garantiaEhCdbCativo,
         decimal? rendimentoCdbAaPercentual,
         LocalDate dataCaptura,
-        LocalDate? dataValidadeMercado = null)
+        LocalDate? dataValidadeMercado = null,
+        decimal? taxaIndicativaAa = null)
     {
         if (Status is not StatusCotacao.EmCaptacao
             and not StatusCotacao.EmAnaliseBanco
@@ -289,7 +290,8 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
             garantiaEhCdbCativo,
             rendimentoCdbAaPercentual,
             dataCaptura,
-            dataValidadeMercado);
+            dataValidadeMercado,
+            taxaIndicativaAa);
 
         _propostas.Add(proposta);
         return proposta;

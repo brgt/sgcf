@@ -55,6 +55,14 @@ public sealed class Proposta : Entity, ITenantScoped
     public decimal? RendimentoCdbAaPercentual => RendimentoCdbAaPercentualDecimal;
 
     /// <summary>
+    /// Taxa indicativa de mercado capturada no momento da proposta, em % a.a. como fração (0.065 = 6,5% a.a.).
+    /// Permite calcular o spread entre a taxa de mercado e a taxa efetiva aceita. SPEC GAP-CKP-19.
+    /// </summary>
+    internal decimal? TaxaIndicativaAaDecimal { get; private set; }
+
+    public decimal? TaxaIndicativaAa => TaxaIndicativaAaDecimal;
+
+    /// <summary>
     /// CET calculado em % a.a., armazenado como cache.
     /// Invalidado toda vez que qualquer dado da proposta muda.
     /// null indica que precisa ser (re)calculado.
@@ -100,7 +108,8 @@ public sealed class Proposta : Entity, ITenantScoped
         bool garantiaEhCdbCativo,
         decimal? rendimentoCdbAaPercentual,
         LocalDate dataCaptura,
-        LocalDate? dataValidadeMercado = null)
+        LocalDate? dataValidadeMercado = null,
+        decimal? taxaIndicativaAa = null)
     {
         ValidarInvariantes(
             taxaAaPercentual,
@@ -129,10 +138,20 @@ public sealed class Proposta : Entity, ITenantScoped
         DataCaptura = dataCaptura;
         DataValidadeMercado = dataValidadeMercado;
         Status = StatusProposta.Recebida;
+        TaxaIndicativaAaDecimal = taxaIndicativaAa;
 
         // Cache inválido: será calculado na primeira chamada
         CetCalculadoAaPercentual = null;
         ValorTotalEstimadoBrlDecimal = null;
+    }
+
+    /// <summary>
+    /// Atualiza a taxa indicativa de mercado associada à proposta.
+    /// Pode ser nula quando a taxa indicativa não foi capturada. SPEC GAP-CKP-19.
+    /// </summary>
+    internal void AtualizarTaxaIndicativa(decimal? novaTaxa)
+    {
+        TaxaIndicativaAaDecimal = novaTaxa;
     }
 
     /// <summary>

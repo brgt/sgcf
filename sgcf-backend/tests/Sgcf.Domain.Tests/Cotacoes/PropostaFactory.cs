@@ -37,7 +37,8 @@ internal static class PropostaFactory
         decimal valorGarantia = 500_000m,
         bool garantiaEhCdbCativo = false,
         decimal? rendimentoCdbAaPercentual = null,
-        LocalDate? dataCaptura = null)
+        LocalDate? dataCaptura = null,
+        decimal? taxaIndicativaAa = null)
     {
         return new Proposta(
             cotacaoId: cotacaoId ?? Guid.NewGuid(),
@@ -56,7 +57,8 @@ internal static class PropostaFactory
             valorGarantiaExigidaBrl: new Money(valorGarantia, Moeda.Brl),
             garantiaEhCdbCativo: garantiaEhCdbCativo,
             rendimentoCdbAaPercentual: rendimentoCdbAaPercentual,
-            dataCaptura: dataCaptura ?? new LocalDate(2026, 5, 15));
+            dataCaptura: dataCaptura ?? new LocalDate(2026, 5, 15),
+            taxaIndicativaAa: taxaIndicativaAa);
     }
 
     internal static Cotacao CriarCotacaoRascunho(
