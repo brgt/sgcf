@@ -26,7 +26,7 @@ public sealed class AuditoriaCrossTenantTests(MultiTenantFixture fixture)
     {
         // Auditoria exige policy "Auditoria" — o CrossTenantTestAuthHandler inclui "admin",
         // que deve satisfazer essa policy.
-        HttpResponseMessage res = await ClientA.GetAsync("/audit/eventos");
+        HttpResponseMessage res = await ClientA.GetAsync("/api/v1/auditoria");
 
         // 200 ou 403: 403 indica que "admin" não satisfaz a policy Auditoria — neste caso
         // o teste confirma que o endpoint existe e responde (não dispara 500).
@@ -46,7 +46,7 @@ public sealed class AuditoriaCrossTenantTests(MultiTenantFixture fixture)
         await CriarContratoAsync(ClientA, bancoId, numA);
 
         // Act — TenantB consulta seus eventos de auditoria
-        HttpResponseMessage resB = await ClientB.GetAsync("/audit/eventos");
+        HttpResponseMessage resB = await ClientB.GetAsync("/api/v1/auditoria");
 
         if (resB.StatusCode == HttpStatusCode.Forbidden)
         {
