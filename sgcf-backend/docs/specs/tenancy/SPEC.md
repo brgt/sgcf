@@ -1,6 +1,6 @@
 # SPEC — Multi-Tenancy (Shared Schema + RLS)
 
-> **Status:** Parcialmente implementado (Tasks −1.1 a −1.9 entregues; −1.10, −1.11, −1.12 pendentes)
+> **Status:** Implementado (Tasks −1.1 a −1.12 entregues — Fase −1 completa)
 > **Data:** 2026-05-20
 > **Versão:** v1.1
 > **Audiência:** Time de backend SGCF, líder de arquitetura, SRE, PO
