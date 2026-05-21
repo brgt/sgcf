@@ -41,6 +41,11 @@ public static class DependencyInjection
         string connStr = configuration.GetConnectionString("Postgres")
             ?? throw new InvalidOperationException("ConnectionString 'Postgres' não configurada.");
 
+        // IDbConnectionFactory: singleton — cria conexões brutas para o RLS healthcheck.
+        // NpgsqlConnectionFactory é internal; registrado aqui como singleton porque connStr é imutável.
+        services.AddSingleton<IDbConnectionFactory>(new NpgsqlConnectionFactory(connStr));
+        services.AddScoped<IRlsHealthCheckService, RlsHealthCheckService>();
+
         // TenantContext: scoped por request — resolvido pelo TenantResolverMiddleware.
         // Registrado em dois formatos: concreto (para Resolve interno) e interface (para Application).
         services.AddScoped<TenantContext>();
