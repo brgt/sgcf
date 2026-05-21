@@ -40,10 +40,10 @@
 
 ## Fase 3 — Cockpit Tesouraria intraday (Sprints 5 a 7)
 
-- [ ] **3.1** Domínio `ContaBancaria` + CRUD `GET/POST/PUT/DELETE /contas-bancarias`.
-- [ ] **3.2** GAP-CKP-08 — `SaldoCaixa` com edição por data + `POST /tesouraria/saldos` (upsert idempotente) + `GET /tesouraria/saldos` (série histórica) + `GET /tesouraria/posicao-caixa?dataReferencia=`.
+- [x] **3.1** Domínio `ContaBancaria` + CRUD `GET/POST/PUT/DELETE /contas-bancarias`.
+- [x] **3.2** GAP-CKP-08 — `SaldoCaixa` com edição por data + `POST /tesouraria/saldos` (upsert idempotente) + `GET /tesouraria/saldos` (série histórica) + `GET /tesouraria/posicao-caixa?dataReferencia=`.
 - [ ] **3.3** GAP-CKP-09 — `GET /tesouraria/fluxo-caixa?granularidade=dia` + `POST /tesouraria/eventos-fluxo`.
-- [ ] **3.4** GAP-CKP-10 — `GET /tesouraria/hedge-efetividade`.
+- [x] **3.4** GAP-CKP-10 — `GET /tesouraria/hedge-efetividade`.
 
 ### Checkpoint C
 - [ ] Demo com gerente de tesouraria (15 min) operando o cockpit.

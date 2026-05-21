@@ -78,6 +78,7 @@ public class SgcfDbContext(
     public DbSet<SimulacaoContratacao> SimulacoesContratacao => Set<SimulacaoContratacao>();
     public DbSet<ParametroSistema> ParametrosSistema => Set<ParametroSistema>();
     public DbSet<ContaBancaria> ContasBancarias => Set<ContaBancaria>();
+    public DbSet<SaldoCaixa> SaldosCaixa => Set<SaldoCaixa>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
