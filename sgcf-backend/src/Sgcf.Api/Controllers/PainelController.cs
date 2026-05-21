@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NodaTime.TimeZones;
+using Sgcf.Api.Filters;
 using Sgcf.Application.Authorization;
+using Sgcf.Application.Common;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Painel.Commands;
 using Sgcf.Application.Painel.Queries;
@@ -133,6 +135,51 @@ public sealed class PainelController(IMediator mediator, IClock clock) : Control
             // AD-7: ano fora do suporte MVP (Q9) ou AnoBase incompatível → 409 Conflict
             return Conflict(new { detail = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Retorna a dívida ativa agregada por modalidade de contrato, com valor BRL e percentual
+    /// de participação de cada modalidade no total da carteira.
+    /// </summary>
+    [HttpGet("divida/breakdown-modalidade")]
+    [ProducesEnvelope]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<EnvelopeResponse<BreakdownModalidadeDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBreakdownModalidade(CancellationToken cancellationToken)
+    {
+        EnvelopeResponse<BreakdownModalidadeDto> resultado = await mediator.Send(
+            new GetBreakdownModalidadeQuery(),
+            cancellationToken);
+
+        return Ok(resultado);
+    }
+
+    /// <summary>
+    /// Retorna a curva de vencimentos futuros agrupada em buckets temporais (mês, trimestre ou ano)
+    /// com breakdown por modalidade de contrato. Todos os valores são convertidos para BRL.
+    /// </summary>
+    /// <param name="meses">Horizonte em meses: 12, 24, 36 ou 60. Qualquer outro valor usa 12.</param>
+    /// <param name="granularidade">Granularidade dos buckets: Mes, Trimestre ou Ano.</param>
+    /// <param name="bancoId">Filtro opcional por banco credor.</param>
+    /// <param name="modalidade">Filtro opcional por modalidade de contrato (ex: CapitalDeGiro).</param>
+    /// <param name="moeda">Filtro opcional por moeda original do contrato (ex: Brl, Usd).</param>
+    [HttpGet("vencimentos/horizonte")]
+    [ProducesEnvelope]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<EnvelopeResponse<CurvaVencimentosDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCurvaVencimentos(
+        [FromQuery] int meses = 12,
+        [FromQuery] GranularidadeHorizonte granularidade = GranularidadeHorizonte.Mes,
+        [FromQuery] Guid? bancoId = null,
+        [FromQuery] string? modalidade = null,
+        [FromQuery] string? moeda = null,
+        CancellationToken ct = default)
+    {
+        EnvelopeResponse<CurvaVencimentosDto> resultado = await mediator.Send(
+            new GetCurvaVencimentosQuery(meses, granularidade, bancoId, modalidade, moeda),
+            ct);
+
+        return Ok(resultado);
     }
 
     /// <summary>
