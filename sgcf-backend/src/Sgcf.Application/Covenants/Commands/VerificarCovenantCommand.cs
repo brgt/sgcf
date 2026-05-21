@@ -56,6 +56,6 @@ public sealed class VerificarCovenantCommandHandler(
             agora);
 
         await repository.SaveChangesAsync(cancellationToken);
-        return CreateCovenantCommandHandler.ToDto(covenant);
+        return CovenantDto.From(covenant);
     }
 }

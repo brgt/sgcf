@@ -13,4 +13,12 @@ public sealed record CovenantDto(
     string? UltimaVerificacaoEm,
     string? ObservacaoVerificacao,
     decimal? LimiteNumerico,
-    decimal? ValorApurado);
+    decimal? ValorApurado)
+{
+    public static CovenantDto From(Covenant c) =>
+        new(c.Id, c.ContratoId, c.Descricao, c.Tipo, c.Status,
+            c.PeriodicidadeVerificacaoMeses,
+            c.ProximaVerificacaoEm?.ToString("yyyy-MM-dd", null),
+            c.UltimaVerificacaoEm?.ToString("yyyy-MM-dd", null),
+            c.ObservacaoVerificacao, c.LimiteNumerico, c.ValorApurado);
+}

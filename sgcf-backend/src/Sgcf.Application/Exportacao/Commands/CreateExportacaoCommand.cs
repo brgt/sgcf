@@ -31,18 +31,6 @@ public sealed class CreateExportacaoCommandHandler(
         await repository.SaveChangesAsync(cancellationToken);
 
         EnvelopeMeta meta = new(agora, [new FonteConsultada("banco_de_dados", "ok", 1)], Completude.Completo);
-        return new EnvelopeResponse<ExportacaoJobDto>(ToDto(job), meta);
+        return new EnvelopeResponse<ExportacaoJobDto>(ExportacaoJobDto.From(job), meta);
     }
-
-    internal static ExportacaoJobDto ToDto(ExportacaoJob j) =>
-        new(j.Id,
-            j.Tipo.ToString(),
-            j.Status.ToString(),
-            j.ParametrosJson,
-            j.ResultadoJson,
-            j.MensagemErro,
-            j.SolicitadoPor,
-            j.CriadoEm,
-            j.IniciadoEm,
-            j.ConcluidoEm);
 }

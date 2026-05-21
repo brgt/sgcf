@@ -50,19 +50,6 @@ public sealed class CreateCovenantCommandHandler(
         repository.Add(covenant);
         await repository.SaveChangesAsync(cancellationToken);
 
-        return ToDto(covenant);
+        return CovenantDto.From(covenant);
     }
-
-    internal static CovenantDto ToDto(Covenant c) =>
-        new(c.Id,
-            c.ContratoId,
-            c.Descricao,
-            c.Tipo,
-            c.Status,
-            c.PeriodicidadeVerificacaoMeses,
-            c.ProximaVerificacaoEm?.ToString("yyyy-MM-dd", null),
-            c.UltimaVerificacaoEm?.ToString("yyyy-MM-dd", null),
-            c.ObservacaoVerificacao,
-            c.LimiteNumerico,
-            c.ValorApurado);
 }

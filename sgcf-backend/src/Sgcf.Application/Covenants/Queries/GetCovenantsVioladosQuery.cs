@@ -1,7 +1,6 @@
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Common;
-using Sgcf.Application.Covenants.Commands;
 using Sgcf.Domain.Covenants;
 
 namespace Sgcf.Application.Covenants.Queries;
@@ -30,7 +29,7 @@ public sealed class GetCovenantsVioladosQueryHandler(
         List<Covenant> todos = [..violados, ..vencendo.Where(c => !violadosIds.Contains(c.Id))];
 
         List<CovenantDto> dtos = todos
-            .Select(CreateCovenantCommandHandler.ToDto)
+            .Select(CovenantDto.From)
             .ToList();
 
         EnvelopeMeta meta = new(

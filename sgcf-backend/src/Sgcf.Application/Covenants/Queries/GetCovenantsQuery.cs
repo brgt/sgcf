@@ -1,7 +1,6 @@
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Common;
-using Sgcf.Application.Covenants.Commands;
 using Sgcf.Domain.Covenants;
 
 namespace Sgcf.Application.Covenants.Queries;
@@ -23,7 +22,7 @@ public sealed class GetCovenantsQueryHandler(
         IReadOnlyList<Covenant> covenants = await repository.ListByContratoAsync(query.ContratoId, cancellationToken);
 
         List<CovenantDto> dtos = covenants
-            .Select(CreateCovenantCommandHandler.ToDto)
+            .Select(CovenantDto.From)
             .ToList();
 
         EnvelopeMeta meta = new(

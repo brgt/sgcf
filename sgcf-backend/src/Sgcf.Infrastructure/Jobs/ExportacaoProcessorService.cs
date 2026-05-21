@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NodaTime;
 using Sgcf.Application.Exportacao;
 using Sgcf.Domain.Exportacao;
@@ -9,7 +10,7 @@ namespace Sgcf.Infrastructure.Jobs;
 
 /// <summary>
 /// Serviço de background que varre os <see cref="ExportacaoJob"/> com status
-/// <see cref="StatusExportacao.Pendente"/> a cada 10 segundos e os processa.
+/// <see cref="StatusExportacao.Pendente"/> a cada <see cref="ExportacaoProcessorOptions.IntervalSeconds"/> segundos e os processa.
 ///
 /// Como background services não têm TenantContext resolvido no scope do DI,
 /// usa <see cref="IExportacaoJobRepository.ListPendentesTodosTenantsAsync"/> com
@@ -21,14 +22,16 @@ namespace Sgcf.Infrastructure.Jobs;
 internal sealed partial class ExportacaoProcessorService(
     IServiceProvider serviceProvider,
     IClock clock,
+    IOptions<ExportacaoProcessorOptions> options,
     ILogger<ExportacaoProcessorService> logger) : BackgroundService
 {
+    private readonly ExportacaoProcessorOptions _options = options.Value;
     [LoggerMessage(Level = LogLevel.Error, Message = "Falha ao processar ExportacaoJob {JobId}.")]
     private partial void LogJobFalhou(Exception ex, Guid jobId);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        using PeriodicTimer timer = new(TimeSpan.FromSeconds(10));
+        using PeriodicTimer timer = new(TimeSpan.FromSeconds(_options.IntervalSeconds));
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {

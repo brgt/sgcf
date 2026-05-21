@@ -1,7 +1,6 @@
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Common;
-using Sgcf.Application.Exportacao.Commands;
 using Sgcf.Domain.Exportacao;
 
 namespace Sgcf.Application.Exportacao.Queries;
@@ -22,6 +21,6 @@ public sealed class GetExportacaoQueryHandler(
 
         Instant agora = clock.GetCurrentInstant();
         EnvelopeMeta meta = new(agora, [new FonteConsultada("banco_de_dados", "ok", 1)], Completude.Completo);
-        return new EnvelopeResponse<ExportacaoJobDto>(CreateExportacaoCommandHandler.ToDto(job), meta);
+        return new EnvelopeResponse<ExportacaoJobDto>(ExportacaoJobDto.From(job), meta);
     }
 }

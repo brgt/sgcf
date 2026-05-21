@@ -1,4 +1,5 @@
 using NodaTime;
+using Sgcf.Domain.Documentos;
 
 namespace Sgcf.Application.Documentos;
 
@@ -17,4 +18,10 @@ public sealed record DocumentoContratualDto(
     LocalDate? DataVencimento,
     string? Observacao,
     Instant CriadoEm,
-    Instant AtualizadoEm);
+    Instant AtualizadoEm)
+{
+    public static DocumentoContratualDto From(DocumentoContratual d) =>
+        new(d.Id, d.ContratoId, d.Tipo.ToString(), d.Status.ToString(),
+            d.Nome, d.UrlArmazenamento, d.DataEmissao, d.DataVencimento,
+            d.Observacao, d.CriadoEm, d.AtualizadoEm);
+}

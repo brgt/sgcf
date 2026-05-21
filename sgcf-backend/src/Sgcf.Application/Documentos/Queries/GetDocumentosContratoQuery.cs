@@ -1,7 +1,6 @@
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Common;
-using Sgcf.Application.Documentos.Commands;
 using Sgcf.Domain.Documentos;
 
 namespace Sgcf.Application.Documentos.Queries;
@@ -24,7 +23,7 @@ public sealed class GetDocumentosContratoQueryHandler(
             await repository.ListByContratoAsync(query.ContratoId, cancellationToken);
 
         List<DocumentoContratualDto> dtos = documentos
-            .Select(CreateDocumentoContratualCommandHandler.ToDto)
+            .Select(DocumentoContratualDto.From)
             .ToList();
 
         EnvelopeMeta meta = new(

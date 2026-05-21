@@ -35,6 +35,6 @@ public sealed class AtualizarStatusRegistroCommandHandler(
 
         EnvelopeMeta meta = new(agora, [new FonteConsultada("banco_de_dados", "ok", 1)], Completude.Completo);
         return new EnvelopeResponse<RegistroRegulatorioDto>(
-            CreateRegistroRegulatorioCommandHandler.ToDto(registro), meta);
+            RegistroRegulatorioDto.From(registro), meta);
     }
 }

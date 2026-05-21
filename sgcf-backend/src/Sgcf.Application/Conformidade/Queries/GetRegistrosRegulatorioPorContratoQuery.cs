@@ -1,7 +1,6 @@
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Common;
-using Sgcf.Application.Conformidade.Commands;
 using Sgcf.Domain.Conformidade;
 
 namespace Sgcf.Application.Conformidade.Queries;
@@ -24,7 +23,7 @@ public sealed class GetRegistrosRegulatorioPorContratoQueryHandler(
             await repository.ListByContratoAsync(query.ContratoId, cancellationToken);
 
         List<RegistroRegulatorioDto> dtos = registros
-            .Select(CreateRegistroRegulatorioCommandHandler.ToDto)
+            .Select(RegistroRegulatorioDto.From)
             .ToList();
 
         EnvelopeMeta meta = new(

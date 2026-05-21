@@ -1,7 +1,6 @@
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Common;
-using Sgcf.Application.Documentos.Commands;
 using Sgcf.Domain.Documentos;
 
 namespace Sgcf.Application.Documentos.Commands;
@@ -44,7 +43,7 @@ public sealed class UpdateDocumentoContratualCommandHandler(
 
         await repository.SaveChangesAsync(cancellationToken);
 
-        DocumentoContratualDto dto = CreateDocumentoContratualCommandHandler.ToDto(documento);
+        DocumentoContratualDto dto = DocumentoContratualDto.From(documento);
         EnvelopeMeta meta = new(agora, [new FonteConsultada("banco_de_dados", "ok", 1)], Completude.Completo);
         return new EnvelopeResponse<DocumentoContratualDto>(dto, meta);
     }

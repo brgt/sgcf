@@ -162,6 +162,8 @@ public static class DependencyInjection
         services.AddScoped<IRegistroRegulatorioRepository, RegistroRegulatorioRepository>();
         services.AddScoped<IExportacaoJobRepository, ExportacaoJobRepository>();
         services.AddHostedService<ExportacaoProcessorService>();
+        services.Configure<ExportacaoProcessorOptions>(
+            configuration.GetSection("ExportacaoProcessor"));
 
         // Event bus — singleton fan-out channel for SSE.
         services.AddSingleton<IEventoBus, InMemoryEventoBus>();

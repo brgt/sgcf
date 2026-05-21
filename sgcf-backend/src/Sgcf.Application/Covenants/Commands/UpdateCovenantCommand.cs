@@ -42,6 +42,6 @@ public sealed class UpdateCovenantCommandHandler(
         covenant.Atualizar(command.Descricao, command.PeriodicidadeVerificacaoMeses, proxima, command.LimiteNumerico, agora);
 
         await repository.SaveChangesAsync(cancellationToken);
-        return CreateCovenantCommandHandler.ToDto(covenant);
+        return CovenantDto.From(covenant);
     }
 }

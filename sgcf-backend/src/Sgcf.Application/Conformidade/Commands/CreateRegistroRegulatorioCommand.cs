@@ -33,18 +33,6 @@ public sealed class CreateRegistroRegulatorioCommandHandler(
         await repository.SaveChangesAsync(cancellationToken);
 
         EnvelopeMeta meta = new(agora, [new FonteConsultada("banco_de_dados", "ok", 1)], Completude.Completo);
-        return new EnvelopeResponse<RegistroRegulatorioDto>(ToDto(registro), meta);
+        return new EnvelopeResponse<RegistroRegulatorioDto>(RegistroRegulatorioDto.From(registro), meta);
     }
-
-    internal static RegistroRegulatorioDto ToDto(RegistroRegulatorio r) =>
-        new(r.Id,
-            r.ContratoId,
-            r.Tipo.ToString(),
-            r.Status.ToString(),
-            r.NumeroRegistro,
-            r.DataRegistro,
-            r.DataVencimento,
-            r.Observacao,
-            r.CriadoEm,
-            r.AtualizadoEm);
 }
