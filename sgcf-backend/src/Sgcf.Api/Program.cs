@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -5,6 +7,7 @@ using Microsoft.OpenApi.Models;
 using QuestPDF.Infrastructure;
 using Sgcf.Api.HostedServices;
 using Sgcf.Api.Middleware;
+using Sgcf.Api.Serialization;
 using Sgcf.Api.Services;
 using Sgcf.Application;
 using Sgcf.Application.Authorization;
@@ -62,7 +65,18 @@ if (builder.Environment.IsDevelopment())
 }
 builder.Services.AddScoped<ICurrentUserService, HttpCurrentUserService>();
 builder.Services.AddScoped<IRequestContextService, HttpRequestContextService>();
-builder.Services.AddControllers();
+builder.Services.AddControllers(opts => { })
+    .AddJsonOptions(opts =>
+    {
+        // Serializa enums como strings (ex: "Completo" em vez de 0).
+        // Aplicado globalmente para que EnvelopeMeta.Completude e demais enums
+        // do projeto sejam legíveis em todas as respostas JSON.
+        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+
+        // Serializa NodaTime.Instant como string ISO 8601 UTC (ex: "2026-05-21T12:00:00Z").
+        // Evita dependência de NodaTime.Serialization.SystemTextJson mantendo o mesmo formato.
+        opts.JsonSerializerOptions.Converters.Add(new InstantJsonConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
@@ -180,6 +194,7 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<Sgcf.Api.Filters.IdempotencyFilter>();
+builder.Services.AddScoped<Sgcf.Api.Filters.EnvelopeResultFilter>();
 
 WebApplication app = builder.Build();
 
