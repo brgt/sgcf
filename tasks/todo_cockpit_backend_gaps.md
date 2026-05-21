@@ -5,14 +5,14 @@
 
 ## Fase 0 — Transversais (Sprint 1)
 
-- [ ] **0.1** ADR-019 + `EnvelopeResponse<T>` + filtro `EnvelopeResultFilter`.
-- [ ] **0.2** Agregado `Alerta` + enums + repositório + migration EF Core.
-- [ ] **0.3** `AlertasController` (`GET /alertas`, `/contadores`, `POST dispensar`, `POST marcar-como-lido`).
-- [ ] **0.4** Rules engine inicial (Vencimento iminente, ContratoSemHedge, LimiteBancoUtilizacao) + migração de alertas legados.
-- [ ] **0.5** Expandir `StatusCotacao` com `EmAnaliseBanco` e `PropostaRecebida` + máquina de estados + migration + spec.
+- [x] **0.1** ADR-019 + `EnvelopeResponse<T>` + filtro `EnvelopeResultFilter`.
+- [x] **0.2** Agregado `Alerta` + enums + repositório + migration EF Core.
+- [x] **0.3** `AlertasController` (`GET /alertas`, `/contadores`, `POST dispensar`, `POST marcar-como-lido`).
+- [x] **0.4** Rules engine inicial (Vencimento iminente, ContratoSemHedge, LimiteBancoUtilizacao) + migração de alertas legados.
+- [x] **0.5** Expandir `StatusCotacao` com `EmAnaliseBanco` e `PropostaRecebida` + máquina de estados + migration + spec.
 
 ### Checkpoint A
-- [ ] CI verde.
+- [x] CI verde.
 - [ ] Endpoints `/alertas/*` validados pelo FE.
 - [ ] Envelope `{data, meta}` aprovado por FE em sessão de 30 min.
 - [ ] Novos estágios de cotação validados com Gerente Financeiro.
