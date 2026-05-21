@@ -6,25 +6,24 @@ using Sgcf.Domain.Tenancy;
 namespace Sgcf.Domain.Sistema;
 
 /// <summary>
-/// Parâmetros globais do sistema — singleton (uma única linha na tabela).
-/// Armazena configurações de controle operacional aplicadas a todo o portfólio.
+/// Parâmetros de sistema por tenant.
+/// Armazena configurações de controle operacional do portfólio do tenant.
 ///
 /// Decisão D-11 (Task 3.4): tetão mensal configurável via esta entidade.
 /// O campo <see cref="TetaoMensalCapacidadeBrl"/> limita a soma de captações +
 /// amortizações por mês. Quando excedido, gera alertas no QuadroDivida (não bloqueia).
 ///
-/// Design singleton: a chave <see cref="Chave"/> é sempre <c>"GLOBAL"</c>.
-/// Não existe multi-tenant neste MVP — uma única instância serve todo o sistema.
+/// Task −1.9: refatorado de singleton global para per-tenant.
+/// Cada tenant tem exatamente uma linha com <see cref="Chave"/> = <c>"DEFAULT"</c>.
+/// O discriminador <see cref="Chave"/> existe para extensão futura (múltiplos
+/// conjuntos de parâmetros por tenant) sem alteração de schema.
 /// </summary>
 public sealed class ParametroSistema : Entity, IAuditable, ITenantScoped
 {
     public Guid TenantId { get; private set; }
 
-    /// <summary>Chave fixa que garante o singleton — sempre "GLOBAL".</summary>
-    public const string ChaveGlobal = "GLOBAL";
-
-    /// <summary>Discriminador de linha — valor sempre igual a <see cref="ChaveGlobal"/>.</summary>
-    public string Chave { get; private set; } = ChaveGlobal;
+    /// <summary>Discriminador de linha — valor padrão <c>"DEFAULT"</c>.</summary>
+    public string Chave { get; private set; } = "DEFAULT";
 
     /// <summary>
     /// Valor decimal persistido internamente. Nullable — null indica "sem tetão configurado".
@@ -50,28 +49,21 @@ public sealed class ParametroSistema : Entity, IAuditable, ITenantScoped
     private ParametroSistema() { }
 
     /// <summary>
-    /// Cria o singleton global de parâmetros.
-    /// Sem tetão configurado — deve ser chamado apenas na seed da migration.
+    /// Cria os parâmetros de sistema padrão para um tenant específico.
+    ///
+    /// <para>
+    /// TenantId deve ser informado explicitamente porque este método é chamado
+    /// pelo provisionador — que opera fora do contexto de request do tenant alvo
+    /// (sem <c>TenantSaveInterceptor</c> ativo).
+    /// </para>
     /// </summary>
-    public static ParametroSistema Criar(IClock clock) =>
-        new()
-        {
-            Chave = ChaveGlobal,
-            TetaoMensalCapacidadeBrlDecimal = null,
-            UpdatedAt = clock.GetCurrentInstant()
-        };
-
-    /// <summary>
-    /// Cria a instância de parâmetros de sistema para um tenant específico.
-    /// Usada pelo provisionamento de tenants (Task -1.6) — define TenantId explicitamente
-    /// porque o provisionador opera fora do contexto de request do tenant alvo.
-    /// Valores iniciais sem tetão configurado; refinados via Task -1.9.
-    /// </summary>
-    public static ParametroSistema CriarParaTenant(Guid tenantId, IClock clock) =>
+    /// <param name="tenantId">Identificador do tenant dono destes parâmetros.</param>
+    /// <param name="clock">Relógio para timestamp inicial.</param>
+    public static ParametroSistema CriarDefault(Guid tenantId, IClock clock) =>
         new()
         {
             TenantId = tenantId,
-            Chave = ChaveGlobal,
+            Chave = "DEFAULT",
             TetaoMensalCapacidadeBrlDecimal = null,
             UpdatedAt = clock.GetCurrentInstant()
         };

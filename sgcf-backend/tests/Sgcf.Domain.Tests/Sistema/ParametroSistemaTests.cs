@@ -10,10 +10,13 @@ namespace Sgcf.Domain.Tests.Sistema;
 /// <summary>
 /// Testes unitários para <see cref="ParametroSistema"/>.
 /// Fase 3 Task 3.4 — tetão mensal configurável (D-11).
+/// Task −1.9 — per-tenant.
 /// </summary>
 [Trait("Category", "Unit")]
 public sealed class ParametroSistemaTests
 {
+    private static readonly Guid TenantFixo = Guid.Parse("00000000-0000-7000-8000-000000000099");
+
     private static IClock CriarClock(Instant instante)
     {
         IClock c = Substitute.For<IClock>();
@@ -24,22 +27,27 @@ public sealed class ParametroSistemaTests
     private static IClock CriarClockFixo()
         => CriarClock(Instant.FromUtc(2026, 5, 19, 12, 0));
 
-    // ── Teste 1: Criar sem tetão → TetaoMensalCapacidadeBrl é null ───────────
+    private static ParametroSistema CriarParametro(IClock? clock = null) =>
+        ParametroSistema.CriarDefault(TenantFixo, clock ?? CriarClockFixo());
+
+    // ── Teste 1: CriarDefault sem tetão → TetaoMensalCapacidadeBrl é null ────
 
     [Fact]
-    public void Criar_comTetaoNull_funciona()
+    public void CriarDefault_comTetaoNull_funciona()
     {
         // Arrange
         IClock clock = CriarClockFixo();
 
         // Act
-        ParametroSistema parametro = ParametroSistema.Criar(clock);
+        ParametroSistema parametro = ParametroSistema.CriarDefault(TenantFixo, clock);
 
         // Assert
         parametro.Should().NotBeNull();
+        parametro.TenantId.Should().Be(TenantFixo);
         parametro.TetaoMensalCapacidadeBrl.Should().BeNull(
             "parâmetro novo não tem tetão configurado");
         parametro.Id.Should().NotBeEmpty();
+        parametro.Chave.Should().Be("DEFAULT");
     }
 
     // ── Teste 2: AtualizarTetao → campo atualiza e timestamp avança ──────────
@@ -51,7 +59,7 @@ public sealed class ParametroSistemaTests
         Instant t1 = Instant.FromUtc(2026, 5, 19, 12, 0);
         Instant t2 = Instant.FromUtc(2026, 5, 19, 13, 0);
 
-        ParametroSistema parametro = ParametroSistema.Criar(CriarClock(t1));
+        ParametroSistema parametro = CriarParametro(CriarClock(t1));
         Money novoTetao = new(5_000_000m, Moeda.Brl);
 
         // Act
@@ -70,7 +78,7 @@ public sealed class ParametroSistemaTests
     public void AtualizarTetao_comNull_limpaTetao()
     {
         // Arrange
-        ParametroSistema parametro = ParametroSistema.Criar(CriarClockFixo());
+        ParametroSistema parametro = CriarParametro();
         parametro.AtualizarTetaoMensal(new Money(1_000_000m, Moeda.Brl), CriarClockFixo());
         parametro.TetaoMensalCapacidadeBrl.Should().NotBeNull("precondição: tetão estava configurado");
 
@@ -88,7 +96,7 @@ public sealed class ParametroSistemaTests
     public void AtualizarTetao_comMoedaNaoBrl_lancaArgumentException()
     {
         // Arrange
-        ParametroSistema parametro = ParametroSistema.Criar(CriarClockFixo());
+        ParametroSistema parametro = CriarParametro();
         Money emUsd = new(1_000_000m, Moeda.Usd);
 
         // Act & Assert
@@ -104,7 +112,7 @@ public sealed class ParametroSistemaTests
     public void AtualizarTetao_comValorNegativo_lancaArgumentOutOfRangeException()
     {
         // Arrange
-        ParametroSistema parametro = ParametroSistema.Criar(CriarClockFixo());
+        ParametroSistema parametro = CriarParametro();
         Money negativo = new(-1m, Moeda.Brl);
 
         // Act & Assert

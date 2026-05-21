@@ -1,19 +1,21 @@
-using NodaTime;
 using Sgcf.Domain.Sistema;
 
 namespace Sgcf.Application.Sistema;
 
 /// <summary>
-/// Repositório para a entidade singleton <see cref="ParametroSistema"/>.
-/// Garante que sempre existe exatamente uma linha na tabela (padrão get-or-create).
+/// Repositório para <see cref="ParametroSistema"/> per-tenant.
+///
+/// O EF Core global query filter garante que <see cref="GetAsync"/> retorna
+/// apenas o registro do tenant ativo no contexto atual — nenhum parâmetro
+/// de tenant é passado explicitamente nos métodos de leitura.
 /// </summary>
 public interface IParametroSistemaRepository
 {
     /// <summary>
-    /// Retorna o singleton de parâmetros do sistema.
-    /// Se ainda não existir, cria e persiste o registro padrão (sem tetão).
+    /// Retorna os parâmetros de sistema do tenant atual.
+    /// Retorna <c>null</c> quando o tenant ainda não foi provisionado.
     /// </summary>
-    public Task<ParametroSistema> GetOrCreateGlobalAsync(IClock clock, CancellationToken ct = default);
+    public Task<ParametroSistema?> GetAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Verifica se já existe um registro de parâmetros de sistema para o tenant informado.

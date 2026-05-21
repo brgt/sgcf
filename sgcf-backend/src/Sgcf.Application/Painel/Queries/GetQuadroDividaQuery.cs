@@ -217,14 +217,15 @@ public sealed class GetQuadroDividaQueryHandler(
     /// <summary>
     /// Carrega o parâmetro de tetão e executa a validação pura — nenhuma I/O adicional
     /// além da leitura do parâmetro (Task 3.4 — D-11).
+    /// Quando o tenant não tem ParametroSistema (não provisionado), a validação é ignorada.
     /// </summary>
     private async Task<IReadOnlyList<string>> CalcularAlertasTetaoAsync(
         QuadroDividaProjecaoDto projecaoDto,
         CancellationToken ct)
     {
-        Domain.Sistema.ParametroSistema parametros =
-            await parametroSistemaRepo.GetOrCreateGlobalAsync(clock, ct);
-        return ValidadorTetaoMensal.Validar(projecaoDto, parametros.TetaoMensalCapacidadeBrl?.Valor);
+        Domain.Sistema.ParametroSistema? parametros =
+            await parametroSistemaRepo.GetAsync(ct);
+        return ValidadorTetaoMensal.Validar(projecaoDto, parametros?.TetaoMensalCapacidadeBrl?.Valor);
     }
 
     // ── Cenário de simulação (Fase 3 Task 3.1) ────────────────────────────────

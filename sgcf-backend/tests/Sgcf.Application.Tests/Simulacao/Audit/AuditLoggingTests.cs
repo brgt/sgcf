@@ -177,7 +177,8 @@ public sealed class AuditLoggingTests
     public void ParametroSistema_ImplementaIAuditable()
     {
         // Arrange
-        ParametroSistema parametros = ParametroSistema.Criar(_clock);
+        Guid tenantId = Guid.Parse("00000000-0000-7000-8000-000000000099");
+        ParametroSistema parametros = ParametroSistema.CriarDefault(tenantId, _clock);
 
         // Assert — falha até que ParametroSistema implemente IAuditable
         parametros.Should().BeAssignableTo<IAuditable>(

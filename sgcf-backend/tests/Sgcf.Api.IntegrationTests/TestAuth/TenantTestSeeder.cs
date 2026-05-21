@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Sgcf.Application.Tenancy;
+using Sgcf.Application.Tenancy.Services;
 using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Api.IntegrationTests.TestAuth;
@@ -23,6 +24,9 @@ internal static class ProxysDevTenant
 /// <c>DevTenantSeederService</c> roda no startup do host e falha com 42P01 porque
 /// as migrations ainda não foram aplicadas. Este helper cobre o seed pós-migration
 /// para que <c>TenantResolverMiddleware</c> encontre o tenant e não retorne 401.
+///
+/// Task −1.9: provisiona o tenant após criar, garantindo que <c>ParametroSistema</c>
+/// e <c>ParametroCotacao</c> existam para o tenant de testes.
 /// </summary>
 internal static class TenantTestSeeder
 {
@@ -32,20 +36,23 @@ internal static class TenantTestSeeder
         ITenantRepository repo  = scope.ServiceProvider.GetRequiredService<ITenantRepository>();
         IClock            clock = scope.ServiceProvider.GetRequiredService<IClock>();
 
-        if (await repo.GetAsync(ProxysDevTenant.Id, CancellationToken.None) is not null)
+        if (await repo.GetAsync(ProxysDevTenant.Id, CancellationToken.None) is null)
         {
-            return;
+            Tenant tenant = Tenant.Criar(
+                ProxysDevTenant.Id,
+                ProxysDevTenant.Slug,
+                ProxysDevTenant.Nome,
+                ProxysDevTenant.Cnpj,
+                PlanoAssinatura.Padrao,
+                clock);
+
+            await repo.AddAsync(tenant, CancellationToken.None);
+            await repo.SaveChangesAsync(CancellationToken.None);
         }
 
-        Tenant tenant = Tenant.Criar(
-            ProxysDevTenant.Id,
-            ProxysDevTenant.Slug,
-            ProxysDevTenant.Nome,
-            ProxysDevTenant.Cnpj,
-            PlanoAssinatura.Padrao,
-            clock);
-
-        await repo.AddAsync(tenant, CancellationToken.None);
-        await repo.SaveChangesAsync(CancellationToken.None);
+        // Provisiona o tenant (idempotente) para garantir ParametroSistema e ParametroCotacao.
+        // Necessário desde Task −1.9: handlers de parâmetros retornam 404 quando não provisionado.
+        ITenantProvisioner provisioner = scope.ServiceProvider.GetRequiredService<ITenantProvisioner>();
+        await provisioner.ProvisionarAsync(ProxysDevTenant.Id, CancellationToken.None);
     }
 }

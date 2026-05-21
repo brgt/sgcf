@@ -67,8 +67,9 @@ public sealed class GetQuadroDividaQueryHandlerTests
     {
         IParametroSistemaRepository r = Substitute.For<IParametroSistemaRepository>();
         IClock c = CriarClock();
-        Domain.Sistema.ParametroSistema parametros = Domain.Sistema.ParametroSistema.Criar(c);
-        r.GetOrCreateGlobalAsync(Arg.Any<IClock>(), Arg.Any<CancellationToken>())
+        Domain.Sistema.ParametroSistema parametros = Domain.Sistema.ParametroSistema.CriarDefault(
+            Guid.Parse("00000000-0000-7000-8000-000000000099"), c);
+        r.GetAsync(Arg.Any<CancellationToken>())
          .Returns(parametros);
         return r;
     }

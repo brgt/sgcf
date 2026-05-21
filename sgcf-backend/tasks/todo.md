@@ -68,12 +68,14 @@
 
 - [ ] **0.3.1 [M]** Mock auth composable + `RoleGate` component
   - **Acceptance:**
-    - `useAuth()` returns `{ user, isAuthenticated, hasPolicy(name), login(), logout() }`
-    - Reads `VITE_DEV_TOKEN` and `VITE_DEV_ROLES` from `import.meta.env`
+    - `useAuth()` returns `{ user, isAuthenticated, hasPolicy(name), login(), logout(), tenantId }`
+    - Reads `VITE_DEV_TOKEN`, `VITE_DEV_ROLES`, and **`VITE_DEV_TENANT_ID`** from `import.meta.env`
+    - Mock token (or decoded payload) must include `tenant_id` claim — `TenantResolverMiddleware` reads this claim and returns 401 if absent
+    - `.env.development` default: `VITE_DEV_TENANT_ID=00000000-0000-7000-8000-000000000099` (matches `TenantTestSeeder` value)
     - `hasPolicy('Escrita')` returns true when role is `tesouraria` or `admin` (mirrors backend Policies.cs)
     - `<RoleGate policy="Admin"><AdminButton/></RoleGate>` hides children when policy fails
-  - **Verify:** unit test all 6 policies with various role sets
-  - **Files:** `shared/auth/useAuth.ts`, `shared/auth/RoleGate.vue`, `shared/auth/policies.ts`
+  - **Verify:** unit test all 6 policies with various role sets; integration smoke: `GET /api/v1/bancos` with mock token returns 200 (not 401)
+  - **Files:** `shared/auth/useAuth.ts`, `shared/auth/RoleGate.vue`, `shared/auth/policies.ts`, `.env.development`, `.env.example`
 
 - [ ] **0.4.1 [M]** Axios client with interceptors
   - **Acceptance:**
@@ -82,11 +84,18 @@
     - On 401: clear auth + redirect `/login`
     - On 403: toast error + reject promise (no redirect; user stays on page)
     - On network error: typed error message for UI
+    - **Note (post-v1 / admin panel):** Super-admin impersonation uses header `X-Tenant-Id: <uuid>`. Document this header name as a comment in `client.ts`; do not implement injection until the admin panel is in scope.
   - **Verify:** unit tests with mocked Axios for each interceptor branch
   - **Files:** `shared/api/client.ts`, `shared/api/types.ts` (Error envelope shape)
 
 - [ ] **0.4.2 [L]** TypeScript DTOs mirroring all C# DTOs
   - **Acceptance:** Every DTO from API map has a corresponding TS interface in `shared/api/types.ts`. Enums (`ModalidadeContrato`, `Moeda`, `StatusContrato`, `TipoCotacao`, `TipoGarantia`, etc.) defined as const objects + type unions.
+  - **Multi-tenant additions (required):** The following types were added by the multi-tenant implementation and must be included:
+    - `StatusTenant` enum: `'Ativo' | 'Suspenso' | 'Arquivado'`
+    - `PlanoAssinatura` enum: mirrors `PlanoAssinatura.cs` values
+    - `TenantDto`: `{ id: string; slug: string; nomeEmpresa: string; status: StatusTenant; plano: PlanoAssinatura; criadoEm: string }`
+    - `ResultadoProvisionamento`: `{ tenantId: string; tenantSlug: string; criados: Record<string, number>; ignorados: Record<string, number>; provisionadoEm: string }`
+    - `TenantSuspendoError` / `TenantArquivadoError`: backend now throws typed exceptions — map error `type` discriminator in the error envelope parser so UI can show specific messages
   - **Verify:** type-check passes; no `any` in the file
   - **Files:** `shared/api/types.ts`, `shared/api/enums.ts`
 
@@ -290,6 +299,18 @@
   - **Verify:** Playwright smoke
   - **Files:** `AntecipacaoPortfolioPage.vue`
 
+- [ ] **3.7 [L] (OPTIONAL — resolve Open Question 8 first)** Admin: Tenant management panel
+  - **Scope:** Only implement if Open Question 8 is answered "in scope". Routes under `/admin/tenants`.
+  - **Acceptance:**
+    - List all tenants with status badges (Ativo/Suspenso/Arquivado)
+    - Create tenant form (slug, nomeEmpresa, cnpj, plano)
+    - Actions per row: Suspender / Reativar / Arquivar / Provisionar
+    - `ResultadoProvisionamento` summary shown after provisioning
+    - All routes require `SuperAdmin` policy; hidden from sidebar for non-super-admins
+  - **Note:** Backend controller is at `/api/v1/admin/tenants` — this path **bypasses `TenantResolverMiddleware`** intentionally. No `tenant_id` claim needed for these calls; auth is checked via policy only.
+  - **Verify:** Playwright smoke: create tenant → provision → verify status = Ativo
+  - **Files:** `features/admin/tenants/*.vue`, `shared/api/types.ts` (TenantDto already added in 0.4.2)
+
 ### **Checkpoint 3**
 - [ ] All 8 controllers have working UI for every endpoint
 - [ ] Role-gated routes return 403 page
@@ -360,8 +381,13 @@
 
 ## Phase 5 — Real Auth (post-v1)
 
+- [ ] **5.0 [XS] PRE-CONDITION** Confirm OIDC `tenant_id` claim
+  - **Acceptance:** Verify with `https://dev-auth.proxysgroup.com.br` team that the access token includes claim `tenant_id` (exact name). `TenantResolverMiddleware` reads this claim; if absent or misnamed, all non-admin API calls return 401.
+  - **Verify:** Decode a real token from the OIDC provider and confirm the claim exists
+  - **Files:** no code change — this is a verification gate before 5.1
+
 - [ ] **5.1 [M]** OIDC integration with `oidc-client-ts`
-- [ ] **5.2 [S]** Swap mock `useAuth` for real implementation (interface unchanged)
+- [ ] **5.2 [S]** Swap mock `useAuth` for real implementation (interface unchanged; `tenantId` is read from token claims)
 - [ ] **5.3 [S]** Add logout flow (revoke token, redirect)
 - [ ] **5.4 [M]** Silent renew + session expiry handling
 

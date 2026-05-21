@@ -25,6 +25,7 @@ public sealed partial class TenantProvisioner(
     ITenantRepository tenantRepo,
     IParametroSistemaRepository parametroSistemaRepo,
     IParametroCotacaoRepository parametroCotacaoRepo,
+    ITenantContext tenantContext,
     IClock clock,
     ILogger<TenantProvisioner> logger) : ITenantProvisioner
 {
@@ -35,15 +36,18 @@ public sealed partial class TenantProvisioner(
 
         if (tenant.Status == StatusTenant.Arquivado)
         {
-            throw new InvalidOperationException(
-                $"Tenant '{tenant.Slug}' está arquivado e não pode ser provisionado.");
+            throw new TenantArquivadoException(tenant.Slug);
         }
 
         if (tenant.Status == StatusTenant.Suspenso)
         {
-            throw new InvalidOperationException(
-                $"Tenant '{tenant.Slug}' está suspenso. Reative o tenant antes de provisionar.");
+            throw new TenantSuspendoException(tenant.Slug);
         }
+
+        // Resolve o contexto de tenant para este escopo antes de qualquer operação de I/O.
+        // Garante que TenantConnectionInterceptor emita set_config e que o EF query filter
+        // seja ativo — necessário porque este path (admin) está no bypass do middleware.
+        tenantContext.Resolve(tenant.Id, tenant.Slug, isSuperAdmin: false, isImpersonating: false);
 
         Dictionary<string, int> criados = [];
         Dictionary<string, int> ignorados = [];
@@ -79,7 +83,7 @@ public sealed partial class TenantProvisioner(
         }
         else
         {
-            ParametroSistema parametro = ParametroSistema.CriarParaTenant(tenant.Id, clock);
+            ParametroSistema parametro = ParametroSistema.CriarDefault(tenant.Id, clock);
             parametroSistemaRepo.Add(parametro);
             criados["parametrosSistema"] = 1;
             ignorados["parametrosSistema"] = 0;

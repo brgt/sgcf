@@ -4,7 +4,7 @@
 **Repo layout:** Separate Vite SPA in sibling folder `sgcf-frontend/` (separate from `sgcf-backend/`)
 **Backend baseline:** Sgcf.Api at `http://localhost:5000`, 27 endpoints across 8 controllers (already running)
 **Auth in v1:** Dev token from `.env`, hardcoded role claims for local testing. Real OIDC deferred to Phase 5.
-**Scope:** All 8 controllers in v1 (Bancos, Contratos, Hedges, Painel, ParametrosCotacao, PlanoContas, Simulador, EBITDA).
+**Scope:** All 8 operational controllers in v1 (Bancos, Contratos, Hedges, Painel, ParametrosCotacao, PlanoContas, Simulador, EBITDA). `TenantsController` (`/api/v1/admin/tenants`) is a 9th controller added by the multi-tenant implementation — super-admin UI is **out of scope for v1** (see Open Question 8).
 
 ---
 
@@ -18,7 +18,7 @@
 | AD-04 | VeeValidate + Zod for forms | Type-safe, schema co-located with form, plays well with Nordware `Input` `error` prop |
 | AD-05 | Axios with interceptors | Auth header injection + global 401/403 handler + correlation ID forwarding |
 | AD-06 | vue-i18n (PT-BR only initially, architected for multi-lang) | All UI strings centralized; future EN/ES with no refactor |
-| AD-07 | Mock auth in v1 via `.env`: VITE_DEV_TOKEN + VITE_DEV_ROLES | Skip OIDC integration; allows role-based UI testing today |
+| AD-07 | Mock auth in v1 via `.env`: VITE_DEV_TOKEN + VITE_DEV_ROLES + **VITE_DEV_TENANT_ID** | Skip OIDC integration; allows role-based UI testing today. `TenantResolverMiddleware` resolves tenant from JWT claim `tenant_id` — the mock token must include it or every API call returns 401. |
 | AD-08 | Money rendering uses backend's 6-decimal precision, displays at 2 decimals (BRL locale) | Match backend's `Math.Round(x, 6, AwayFromZero)` semantics; never mutate decimals client-side |
 | AD-09 | Dates: ISO 8601 strings on the wire, `@js-joda/core` client-side | Backend uses NodaTime LocalDate (`yyyy-MM-dd`) and Instant (`yyyy-MM-ddTHH:mm:ss.fffffffZ`). js-joda mirrors NodaTime's API in JS. |
 | AD-10 | Role-gated UI via `<RoleGate>` wrapper + `useAuth().hasPolicy(...)` composable | Hide buttons/menu items for unauthorized roles; backend remains the source of truth |
@@ -610,6 +610,8 @@ The biggest, most complex feature. Slice vertically per CRUD operation.
 
 OIDC integration against `https://dev-auth.proxysgroup.com.br`. Swap mock `useAuth` for real one. No other code changes required if `useAuth` interface is stable.
 
+**Pre-condition (must confirm before Phase 5 starts):** OIDC provider must emit a `tenant_id` claim in the access token. `TenantResolverMiddleware` reads this claim to resolve the tenant context. If missing, every request to a non-admin endpoint returns 401.
+
 ---
 
 ## 9. Parallelization Opportunities
@@ -634,6 +636,8 @@ Once Phase 0 is complete, multiple features can be built in parallel by differen
 | R-06 | TanStack Query cache invalidation cascade (e.g., create contract should refresh painel) | Medium | Use a `cross-feature.ts` invalidation map: contract mutations invalidate `[painel]`, `[contratos]`, `[bancos, exposure]`. |
 | R-07 | 27 endpoints × 6 modalities × 8 garantia types = ~120 forms; risk of inconsistency | Medium | Strict pattern enforcement: every form uses `useForm` + zod + Nordware components; PR checklist enforces. |
 | R-08 | Real OIDC integration later breaks mock interface assumptions | Low | `useAuth()` interface stays stable: `{ user, isAuthenticated, hasPolicy, login, logout }`. Mock implementation matches that interface exactly. |
+| R-11 | OIDC provider does not emit `tenant_id` claim → all Phase 5 requests return 401 | High | `TenantResolverMiddleware` reads claim name `tenant_id` from JWT. Verify with OIDC team that `https://dev-auth.proxysgroup.com.br` includes this claim before Phase 5 starts. |
+| R-12 | Super-admin `X-Tenant-Id` impersonation header not forwarded by Axios | Medium | Deferred to post-v1 admin panel. No standard user flow touches this header. Document the header name (`X-Tenant-Id`) in `shared/api/client.ts` as a comment so Phase 5 dev finds it easily. |
 | R-09 | Bundle bloat from 8 features in one SPA | Medium | Route-level code splitting (`() => import('./BancosListPage.vue')`). Target initial bundle <200 kB gzipped. |
 | R-10 | Backend has no idempotency-key generation strategy in spec → frontend retries cause duplicates | Medium | Generate UUID v4 client-side per submit attempt, pass as `Idempotency-Key` header; backend's `IdempotencyFilter` deduplicates. |
 
@@ -661,6 +665,7 @@ Once Phase 0 is complete, multiple features can be built in parallel by differen
 5. **Filter presets**: Per-user persistence (localStorage), per-org (backend), or none in v1? (Recommendation: none in v1.)
 6. **Painel auto-refresh**: Poll every 60s? Manual refresh button only? (Recommendation: refetch on window focus + manual button; no polling.)
 7. **EBITDA history view**: Read-only list of past months in addition to upsert form? Backend exposes only the upsert. (Recommendation: hide history until backend adds a query.)
+8. **Super-admin tenant panel**: Does v1 need a UI for `TenantsController` (`/api/v1/admin/tenants`) — list/create/suspend/archive/provision? (Recommendation: out of scope for v1; admin ops performed via API calls or separate tool. If in scope, add Phase 3 task 3.7.)
 
 ---
 

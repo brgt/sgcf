@@ -17,14 +17,22 @@ namespace Sgcf.Api.Controllers;
 public sealed class ParametrosSistemaController(IMediator mediator) : ControllerBase
 {
     /// <summary>
-    /// Retorna os parâmetros globais do sistema.
+    /// Retorna os parâmetros de sistema do tenant atual.
+    /// Retorna 404 quando o tenant não está provisionado.
     /// </summary>
     [HttpGet]
     [Authorize(Policy = Policies.Leitura)]
     [ProducesResponseType<ParametrosSistemaDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(CancellationToken ct)
     {
-        ParametrosSistemaDto result = await mediator.Send(new GetParametrosSistemaQuery(), ct);
+        ParametrosSistemaDto? result = await mediator.Send(new GetParametrosSistemaQuery(), ct);
+
+        if (result is null)
+        {
+            return NotFound(new { error = "ParametrosSistema não encontrados. O tenant pode não estar provisionado." });
+        }
+
         return Ok(result);
     }
 

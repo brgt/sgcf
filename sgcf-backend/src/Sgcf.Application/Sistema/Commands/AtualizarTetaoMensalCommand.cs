@@ -6,7 +6,7 @@ using Sgcf.Domain.Sistema;
 namespace Sgcf.Application.Sistema.Commands;
 
 /// <summary>
-/// Atualiza o tetão mensal de movimentação nos parâmetros do sistema.
+/// Atualiza o tetão mensal de movimentação nos parâmetros do tenant atual.
 /// </summary>
 /// <param name="Valor">
 /// Novo valor em BRL. <c>null</c> remove o limite (desabilita a validação).
@@ -16,7 +16,8 @@ public sealed record AtualizarTetaoMensalCommand(decimal? Valor)
 
 /// <summary>
 /// Handler de <see cref="AtualizarTetaoMensalCommand"/>.
-/// Persiste o novo valor via repositório singleton.
+/// Persiste o novo valor via repositório per-tenant.
+/// Retorna <see cref="KeyNotFoundException"/> se o tenant não estiver provisionado.
 /// </summary>
 public sealed class AtualizarTetaoMensalCommandHandler(
     IParametroSistemaRepository repo,
@@ -28,7 +29,10 @@ public sealed class AtualizarTetaoMensalCommandHandler(
         CancellationToken cancellationToken)
     {
         ParametroSistema parametros =
-            await repo.GetOrCreateGlobalAsync(clock, cancellationToken);
+            await repo.GetAsync(cancellationToken)
+            ?? throw new KeyNotFoundException(
+                "ParametroSistema não encontrado para o tenant atual. " +
+                "Verifique se o tenant foi corretamente provisionado.");
 
         Money? novoValor = request.Valor.HasValue
             ? new Money(request.Valor.Value, Moeda.Brl)

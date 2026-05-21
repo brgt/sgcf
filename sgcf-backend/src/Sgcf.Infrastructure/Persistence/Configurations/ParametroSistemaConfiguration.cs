@@ -5,12 +5,11 @@ using Sgcf.Domain.Sistema;
 namespace Sgcf.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// Configuração EF Core para <see cref="ParametroSistema"/>.
+/// Configuração EF Core para <see cref="ParametroSistema"/> — per-tenant.
 ///
-/// Design singleton: tabela contém exatamente uma linha.
-/// A chave discriminadora <c>Chave = "GLOBAL"</c> é única e funciona como PK natural.
-/// A seed da linha padrão é feita pela migration S10 — não aqui, para evitar
-/// conflito com ambientes de teste que não rodam todas as migrations.
+/// Cada tenant tem exatamente uma linha com Chave = "DEFAULT".
+/// O índice único composto (tenant_id, chave) garante isolação.
+/// A seed dos registros é feita pelo provisionamento (Task −1.6), não aqui.
 /// </summary>
 internal sealed class ParametroSistemaConfiguration : IEntityTypeConfiguration<ParametroSistema>
 {
@@ -26,8 +25,8 @@ internal sealed class ParametroSistemaConfiguration : IEntityTypeConfiguration<P
             .HasColumnType("uuid")
             .ValueGeneratedNever();
 
-        // Discriminador singleton — valor sempre "GLOBAL".
-        // Índice único composto (tenant_id, chave) garante um GLOBAL por tenant.
+        // Discriminador — valor padrão "DEFAULT".
+        // Índice único composto (tenant_id, chave) garante um registro por tenant.
         builder.Property(p => p.Chave)
             .HasColumnName("chave")
             .HasColumnType("varchar(32)")
