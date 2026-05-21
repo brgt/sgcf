@@ -20,6 +20,8 @@ using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Sistema;
 using Sgcf.Application.Tenancy;
+using Sgcf.Application.Covenants;
+using Sgcf.Application.OrcamentosEncargo;
 using Sgcf.Application.Tesouraria;
 using Sgcf.Application.Tenancy.Services;
 using Sgcf.Infrastructure.Antecipacao;
@@ -148,6 +150,8 @@ public static class DependencyInjection
         services.AddScoped<IEventoFluxoCaixaRepository, EventoFluxoCaixaRepository>();
         services.AddScoped<IPreferenciaUsuarioRepository, PreferenciaUsuarioRepository>();
         services.AddScoped<ITaxaBenchmarkRepository, TaxaBenchmarkRepository>();
+        services.AddScoped<IOrcamentoEncargoRepository, OrcamentoEncargoRepository>();
+        services.AddScoped<ICovenantRepository, CovenantRepository>();
 
         return services;
     }

@@ -21,6 +21,8 @@ using Sgcf.Domain.Preferencias;
 using Sgcf.Domain.Simulacao;
 using Sgcf.Domain.Sistema;
 using Sgcf.Domain.Tenancy;
+using Sgcf.Domain.Covenants;
+using Sgcf.Domain.OrcamentosEncargo;
 using Sgcf.Domain.Tesouraria;
 
 namespace Sgcf.Infrastructure.Persistence;
@@ -85,6 +87,8 @@ public class SgcfDbContext(
     public DbSet<EventoFluxoCaixa> EventosFluxoCaixa => Set<EventoFluxoCaixa>();
     public DbSet<PreferenciaUsuario> PreferenciasUsuario => Set<PreferenciaUsuario>();
     public DbSet<TaxaBenchmark> TaxasBenchmark => Set<TaxaBenchmark>();
+    public DbSet<OrcamentoEncargo> OrcamentosEncargo => Set<OrcamentoEncargo>();
+    public DbSet<Covenant> Covenants => Set<Covenant>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
