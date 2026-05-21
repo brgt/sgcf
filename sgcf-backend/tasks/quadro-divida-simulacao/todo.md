@@ -165,17 +165,17 @@
 
 > Paralelização total: 4.1, 4.2, 4.3, 4.4 independentes.
 
-- [ ] **4.1 [M]** Comparativo entre cenários _(fora do escopo da entrega v0.10.0 — previsto para próximo sprint)_
-  - [ ] `CompararCenariosQuery` + handler
-  - [ ] `POST /api/v1/simulacoes/comparar` (máx 5 cenários)
-  - [ ] DTO com deltas mensais vs. baseline
-  - [ ] Integration test com 3 cenários
+- [x] **4.1 [M]** Comparativo entre cenários
+  - [x] `CompararCenariosQuery` + handler
+  - [x] `POST /api/v1/simulacoes/comparar` (máx 5 cenários)
+  - [x] DTO com deltas mensais vs. baseline
+  - [x] Integration test com 3 cenários — `tests/Sgcf.Api.IntegrationTests/Simulacao/CompararCenariosApiTests.cs`
 
-- [ ] **4.2 [M]** Golden dataset — 1 mês da planilha _(fora do escopo da entrega v0.10.0)_
-  - [ ] `tests/Sgcf.GoldenDataset/data/quadro-divida-2026/input.json`
-  - [ ] `output_esperado.json` reproduzindo janeiro/2026
-  - [ ] Driver test com tolerância R$ 1,00
-  - [ ] README documenta premissas
+- [x] **4.2 [M]** Golden dataset — 1 mês da planilha
+  - [x] `tests/Sgcf.GoldenDataset/data/quadro-divida-2026/input.json`
+  - [x] `output_esperado.json` reproduzindo janeiro/2026
+  - [x] Driver test com tolerância R$ 1,00
+  - [x] README documenta premissas
 
 - [x] **4.3 [M]** Documentação
   - [x] `docs/api/painel.md` — seção Quadro da Dívida + VencimentoItemDto com bancoId
@@ -185,12 +185,12 @@
   - [x] `docs/api/schemas.md` — novos DTOs e enums do módulo Simulações
   - [x] `docs/changelog/CHANGELOG.md` — v0.10.0
 
-- [ ] **4.4 [M]** Tools MCP read-only _(fora do escopo da entrega v0.10.0)_
-  - [ ] `get_quadro_divida(ano, cenarioId?)`
-  - [ ] `list_cenarios_simulacao(status?, anoBase?)`
-  - [ ] `get_cenario_simulacao(id)`
-  - [ ] JSON Schema em `docs/mcp/tools/`
-  - [ ] Tests em `Sgcf.Mcp.Tests`
+- [x] **4.4 [M]** Tools MCP read-only
+  - [x] `get_quadro_divida(ano, cenarioId?)`
+  - [x] `list_cenarios_simulacao(status?, anoBase?)`
+  - [x] `get_cenario_simulacao(id)`
+  - [x] JSON Schema em `docs/mcp/tools/`
+  - [x] Tests em `Sgcf.Mcp.Tests`
 
 - [x] **Checkpoint Final — Release v0.10.0** [ENTREGUE]
   - [x] Fases 1, 2 e 3 completas (14 tasks implementadas)

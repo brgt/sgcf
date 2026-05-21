@@ -41,11 +41,14 @@
     <PackageReference Include="NSubstitute" />
   </ItemGroup>
 
-  <!-- Copy all JSON golden files to the output directory -->
-  <ItemGroup>
-    <None Update="data\**\*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+  <!-- Copy golden dataset JSON files preserving directory structure (data/**) -->
+  <Target Name="CopyGoldenDataFiles" BeforeTargets="Build">
+    <ItemGroup>
+      <_GoldenJson Include="data/**/*.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_GoldenJson)"
+          DestinationFiles="@(_GoldenJson->'$(OutputPath)%(Identity)')"
+          SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

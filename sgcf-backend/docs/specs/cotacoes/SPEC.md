@@ -3,8 +3,14 @@
 > **Status:** Draft para aprovação
 > **Data:** 2026-05-16
 > **Autor:** Análise técnica colaborativa (PO + arquitetura)
-> **Versão:** v1.0
+> **Versão:** v1.1 (atualizado 2026-05-20 para multi-tenancy)
 > **Modalidades MVP:** FINIMP (somente)
+>
+> **Atualização v1.1 — Multi-Tenancy:** Esta spec foi atualizada para refletir a implementação
+> multi-tenant (shared schema + RLS) entregue antes do módulo de cotações. Todas as entidades
+> (`Cotacao`, `Proposta`, `LimiteBanco`, `EconomiaNegociacao`) implementam `ITenantScoped` e
+> precisam de `tenant_id UUID NOT NULL` + RLS policy em suas migrations. O item §11.6 que
+> declarava "Multi-tenancy fora do escopo" foi corrigido.
 
 ---
 
@@ -55,8 +61,9 @@ Hoje as cotações de FINIMP são feitas por planilha/email, sem rastreabilidade
 ```
 ┌────────────────────────────────────────────────────┐
 │                    Cotacao                          │
-│  (aggregate root)                                   │
+│  (aggregate root — implements ITenantScoped)        │
 │  - Id                                               │
+│  - TenantId (preenchido pelo TenantSaveInterceptor) │
 │  - CodigoInterno (ex: COT-2026-0001)                │
 │  - Modalidade (Finimp no MVP)                       │
 │  - ValorAlvoBRL (valor desejado em moeda funcional) │
@@ -77,7 +84,9 @@ Hoje as cotações de FINIMP são feitas por planilha/email, sem rastreabilidade
                   ▼
 ┌────────────────────────────────────────────────────┐
 │                  Proposta                           │
+│  (implements ITenantScoped)                         │
 │  - Id                                               │
+│  - TenantId (preenchido pelo TenantSaveInterceptor) │
 │  - CotacaoId                                        │
 │  - BancoId                                          │
 │  - MoedaOriginal (Brl, Usd, Eur, Cny, Jpy)          │
@@ -104,8 +113,9 @@ Hoje as cotações de FINIMP são feitas por planilha/email, sem rastreabilidade
 
 ┌────────────────────────────────────────────────────┐
 │             LimiteBanco                             │
-│  (aggregate independente)                           │
+│  (aggregate independente — implements ITenantScoped)│
 │  - Id                                               │
+│  - TenantId (preenchido pelo TenantSaveInterceptor) │
 │  - BancoId                                          │
 │  - Modalidade                                       │
 │  - ValorLimiteBRL                                   │
@@ -143,8 +153,10 @@ Hoje as cotações de FINIMP são feitas por planilha/email, sem rastreabilidade
 
 ┌────────────────────────────────────────────────────┐
 │         EconomiaNegociacao                          │
-│  (criada no momento de "Convertida em Contrato")    │
+│  (criada no momento de "Convertida em Contrato"     │
+│   implements ITenantScoped)                         │
 │  - Id                                               │
+│  - TenantId (preenchido pelo TenantSaveInterceptor) │
 │  - CotacaoId                                        │
 │  - ContratoId                                       │
 │  - SnapshotPropostaJson (jsonb, imutável)           │
@@ -470,12 +482,20 @@ src/
 
 | Tabela                | Chave          | Notas                                                 |
 | --------------------- | -------------- | ----------------------------------------------------- |
-| `cotacao`             | `id` (uuid v7) | `codigo_interno` único                                |
-| `proposta`            | `id` (uuid v7) | FK para `cotacao`                                     |
-| `limite_banco`        | `id` (uuid v7) | UQ (`banco_id`, `modalidade`, `data_vigencia_inicio`) |
-| `economia_negociacao` | `id` (uuid v7) | UQ `cotacao_id` (1:1); FK `contrato_id`               |
+| `cotacao`             | `id` (uuid v7) | `tenant_id UUID NOT NULL`; `codigo_interno` único **por tenant** |
+| `proposta`            | `id` (uuid v7) | `tenant_id UUID NOT NULL`; FK para `cotacao`          |
+| `limite_banco`        | `id` (uuid v7) | `tenant_id UUID NOT NULL`; UQ (`tenant_id`, `banco_id`, `modalidade`, `data_vigencia_inicio`) |
+| `economia_negociacao` | `id` (uuid v7) | `tenant_id UUID NOT NULL`; UQ `cotacao_id` (1:1); FK `contrato_id` |
 
 Migration EF Core: `S3Cotacoes` (próxima na sequência).
+
+> **Multi-tenant obrigatório:** toda tabela acima deve ter:
+> 1. `tenant_id UUID NOT NULL` — preenchido pelo `TenantSaveInterceptor`
+> 2. Índice composto `(tenant_id, ...)` substituindo índices simples
+> 3. RLS policy: `USING (tenant_id = current_setting('app.tenant_id', true)::uuid)`
+>
+> O EF global filter (`IsResolved && TenantId == atual`) é a primeira camada. RLS é a segunda.
+> Ambas são obrigatórias — não confiar em apenas uma delas.
 
 ---
 
@@ -531,7 +551,7 @@ Segue o `CLAUDE.md` do projeto:
 3. **Workflow multi-nível de aprovação.** Aceitação direta pelo operador; log da aprovação satisfaz auditoria.
 4. **Notificações automáticas.** Sem email/push quando NDF varia ou cotação fica "velha" — operador olha quando precisa.
 5. **Integração com bancos via API/Open Finance.** Captura 100% manual no MVP.
-6. **Multi-tenancy.** Cotações são de uma única organização.
+6. ~~**Multi-tenancy.** Cotações são de uma única organização.~~ **[REMOVIDO — sistema é multi-tenant]** Cotações são isoladas por tenant via `ITenantScoped` + EF global filter + RLS. Cada organização vê apenas suas próprias cotações, propostas e limites.
 7. **Versionamento de cotação.** Editar uma proposta sobrescreve; histórico via `audit_log` existente.
 8. **Hedge separado da proposta.** Hedge segue modelo existente em contratos; cotação registra apenas se o banco "exige NDF" e o custo.
 9. **Splitting de cotação em múltiplos contratos.** 1:1 fixo no MVP.

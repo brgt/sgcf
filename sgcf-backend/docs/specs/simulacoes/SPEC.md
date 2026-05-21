@@ -292,8 +292,9 @@ sgcf-backend/
 ```
 ┌────────────────────────────────────────────────────────┐
 │                  CenarioSimulacao                       │
-│  (aggregate root)                                       │
+│  (aggregate root — implements ITenantScoped)            │
 │  - Id                                                   │
+│  - TenantId (preenchido pelo TenantSaveInterceptor)     │
 │  - Nome  (ex: "Realista 2026", "Otimista Q3")          │
 │  - Descricao? (texto livre)                            │
 │  - AnoBase (2026)                                       │
@@ -306,7 +307,9 @@ sgcf-backend/
                   ▼
 ┌────────────────────────────────────────────────────────┐
 │              SimulacaoContratacao                       │
+│  (implements ITenantScoped — tenant_id herdado via FK) │
 │  - Id                                                   │
+│  - TenantId (preenchido pelo TenantSaveInterceptor)     │
 │  - CenarioId (FK)                                       │
 │  - BancoId (FK → banco; RESTRICT)                       │
 │  - Modalidade (FINIMP, BalcaoCaixa, NCE, ...)           │
@@ -656,9 +659,14 @@ Response: `ResultadoComparacaoCenariosDto` com cada quadro projetado + deltas me
 
 ### 8.1 Migration `S8_SimulacaoContratacao`
 
+> **Multi-tenant:** ambas as tabelas implementam `ITenantScoped`. `tenant_id UUID NOT NULL`
+> é obrigatório. O `TenantSaveInterceptor` preenche automaticamente no momento do INSERT.
+> RLS policies devem ser criadas na mesma migration.
+
 ```sql
 CREATE TABLE cenario_simulacao (
     id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,                           -- multi-tenant: isolação por tenant
     nome TEXT NOT NULL,
     descricao TEXT,
     ano_base INTEGER NOT NULL CHECK (ano_base BETWEEN 2020 AND 2100),
@@ -670,16 +678,22 @@ CREATE TABLE cenario_simulacao (
     CONSTRAINT chk_status_cenario CHECK (status IN (1, 2, 3))
 );
 
-CREATE INDEX idx_cenario_status_owner
-    ON cenario_simulacao (status, criado_por)
+CREATE INDEX idx_cenario_tenant_status_owner
+    ON cenario_simulacao (tenant_id, status, criado_por)
     WHERE deleted_at IS NULL;
 
-CREATE INDEX idx_cenario_ano_base
-    ON cenario_simulacao (ano_base)
+CREATE INDEX idx_cenario_tenant_ano_base
+    ON cenario_simulacao (tenant_id, ano_base)
     WHERE deleted_at IS NULL;
+
+-- RLS: isolação na segunda camada (primeira é o EF global filter)
+ALTER TABLE cenario_simulacao ENABLE ROW LEVEL SECURITY;
+CREATE POLICY cenario_simulacao_tenant_isolation ON cenario_simulacao
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
 
 CREATE TABLE simulacao_contratacao (
     id UUID PRIMARY KEY,
+    tenant_id UUID NOT NULL,                           -- multi-tenant: deve coincidir com cenario_simulacao.tenant_id
     cenario_id UUID NOT NULL REFERENCES cenario_simulacao(id) ON DELETE CASCADE,
     banco_id UUID NOT NULL REFERENCES banco(id) ON DELETE RESTRICT,
     modalidade INTEGER NOT NULL,
@@ -707,8 +721,12 @@ CREATE TABLE simulacao_contratacao (
     CONSTRAINT chk_datas CHECK (data_primeiro_vencimento > data_contratacao_prevista)
 );
 
-CREATE INDEX idx_simulacao_cenario ON simulacao_contratacao (cenario_id);
+CREATE INDEX idx_simulacao_tenant_cenario ON simulacao_contratacao (tenant_id, cenario_id);
 CREATE INDEX idx_simulacao_banco ON simulacao_contratacao (banco_id);
+
+ALTER TABLE simulacao_contratacao ENABLE ROW LEVEL SECURITY;
+CREATE POLICY simulacao_contratacao_tenant_isolation ON simulacao_contratacao
+    USING (tenant_id = current_setting('app.tenant_id', true)::uuid);
 ```
 
 ### 8.2 Soft delete query filter
@@ -716,9 +734,16 @@ CREATE INDEX idx_simulacao_banco ON simulacao_contratacao (banco_id);
 `SgcfDbContext.OnModelCreating`:
 
 ```csharp
+// O EF global filter combina isolação de tenant com soft-delete.
+// Padrão: tenantContext.IsResolved && e.TenantId == tenantContext.TenantIdOrDefault && e.DeletedAt == null
+// Implementado via ParameterReplacer (ExpressionVisitor) em SgcfDbContext — não adicionar manualmente.
 modelBuilder.Entity<CenarioSimulacao>()
-    .HasQueryFilter(c => c.DeletedAt == null);
+    .HasQueryFilter(c => c.DeletedAt == null); // tenant filter combinado automaticamente pelo contexto
 ```
+
+> **Importante:** Não adicione `WHERE tenant_id = ...` manualmente. O EF global filter
+> combina a expressão de soft-delete com o filtro de tenant através do `ParameterReplacer`.
+> Contexto não resolvido (`IsResolved=false`) retorna zero linhas — comportamento intencional.
 
 ### 8.3 Audit interceptor
 
@@ -994,7 +1019,7 @@ public Property SomaDeSharesPorMes_E_100PorCento(List<EventoProjecao> eventos, .
 - ❌ Garantias previstas na simulação
 - ❌ Indexador diferente de CDI (IPCA, TR, USD-LIBOR, etc.)
 - ❌ Tools MCP de escrita (criar/editar cenário via agente)
-- ❌ Compartilhamento entre tenants (sistema é single-tenant Proxys)
+- ❌ Compartilhamento de cenários entre tenants — cada tenant vê apenas seus próprios cenários, isolados automaticamente pelo EF Core global filter + RLS. Não existe UI nem endpoint para cross-tenant sharing.
 
 ---
 
