@@ -123,6 +123,7 @@ public static class DependencyInjection
         services.AddScoped<IExportacaoAuditLog, ExportacaoAuditLog>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();
+        services.AddScoped<IAlertaRepository, AlertaRepository>();
         services.AddScoped<IAlertaVencimentoRepository, AlertaVencimentoRepository>();
         services.AddScoped<IAlertaExposicaoBancoRepository, AlertaExposicaoBancoRepository>();
         services.AddScoped<ISnapshotMensalPosicaoRepository, SnapshotMensalPosicaoRepository>();

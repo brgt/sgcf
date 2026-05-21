@@ -59,6 +59,8 @@ public class SgcfDbContext(
     public DbSet<EventoCronograma> EventosCronograma => Set<EventoCronograma>();
     public DbSet<SimulacaoAntecipacao> SimulacoesAntecipacao => Set<SimulacaoAntecipacao>();
     public DbSet<EbitdaMensal> EbitdasMensais => Set<EbitdaMensal>();
+    public DbSet<Alerta> Alertas => Set<Alerta>();
+    public DbSet<AlertaPerfilVisivel> AlertasPerfisVisiveis => Set<AlertaPerfilVisivel>();
     public DbSet<AlertaVencimento> AlertasVencimento => Set<AlertaVencimento>();
     public DbSet<AlertaExposicaoBanco> AlertasExposicaoBanco => Set<AlertaExposicaoBanco>();
     public DbSet<SnapshotMensalPosicao> SnapshotsMensais => Set<SnapshotMensalPosicao>();
