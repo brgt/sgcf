@@ -104,4 +104,47 @@ public sealed class TesourariaController(ISender mediator) : ControllerBase
             await mediator.Send(new GetHedgeEfetividadeQuery(), ct);
         return Ok(resultado);
     }
+
+    /// <summary>
+    /// Cria em lote um ou mais eventos manuais de fluxo de caixa (entradas ou saídas).
+    /// </summary>
+    [HttpPost("eventos-fluxo")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType<IReadOnlyList<EventoFluxoCaixaDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateEventosFluxo(
+        [FromBody] IReadOnlyList<CreateEventoFluxoCaixaItemDto> itens,
+        CancellationToken ct)
+    {
+        try
+        {
+            IReadOnlyList<EventoFluxoCaixaDto> resultado =
+                await mediator.Send(new CreateEventoFluxoCaixaCommand(itens), ct);
+            return Ok(resultado);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Retorna a projeção de fluxo de caixa diária para o período informado.
+    /// Combina eventos previstos do cronograma de contratos com eventos manuais registrados.
+    /// Período default: hoje BRT até hoje + 30 dias. Máximo: 90 dias.
+    /// </summary>
+    [HttpGet("fluxo-caixa")]
+    [ProducesEnvelope]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<EnvelopeResponse<IReadOnlyList<FluxoCaixaDiaDto>>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> GetFluxoCaixa(
+        [FromQuery] string? dataDe,
+        [FromQuery] string? dataAte,
+        CancellationToken ct)
+    {
+        EnvelopeResponse<IReadOnlyList<FluxoCaixaDiaDto>> resultado =
+            await mediator.Send(new GetFluxoCaixaQuery(dataDe, dataAte), ct);
+        return Ok(resultado);
+    }
 }

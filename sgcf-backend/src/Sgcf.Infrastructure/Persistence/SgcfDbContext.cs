@@ -79,6 +79,7 @@ public class SgcfDbContext(
     public DbSet<ParametroSistema> ParametrosSistema => Set<ParametroSistema>();
     public DbSet<ContaBancaria> ContasBancarias => Set<ContaBancaria>();
     public DbSet<SaldoCaixa> SaldosCaixa => Set<SaldoCaixa>();
+    public DbSet<EventoFluxoCaixa> EventosFluxoCaixa => Set<EventoFluxoCaixa>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

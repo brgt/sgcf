@@ -142,6 +142,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantProvisioner, TenantProvisioner>();
         services.AddScoped<IContaBancariaRepository, ContaBancariaRepository>();
         services.AddScoped<ISaldoCaixaRepository, SaldoCaixaRepository>();
+        services.AddScoped<IEventoFluxoCaixaRepository, EventoFluxoCaixaRepository>();
 
         return services;
     }

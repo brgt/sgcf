@@ -63,4 +63,15 @@ public interface IEventoCronogramaRepository
     public Task<IReadOnlyList<EventoCronograma>> ListAtrasadosAntesDeAsync(
         LocalDate hoje,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retorna todos os eventos com <c>Status == Previsto</c> cuja <c>DataPrevista</c> esteja
+    /// dentro do intervalo <c>[dataInicio, dataFim]</c> (inclusivo).
+    /// O global query filter garante isolamento por tenant — não é necessário filtrar por contratoIds.
+    /// Usado para montar a projeção de fluxo de caixa cross-contrato.
+    /// </summary>
+    public Task<IReadOnlyList<EventoCronograma>> ListPrevistosNoPeriodoAsync(
+        LocalDate dataInicio,
+        LocalDate dataFim,
+        CancellationToken cancellationToken = default);
 }
