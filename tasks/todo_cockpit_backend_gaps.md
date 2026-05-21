@@ -54,7 +54,7 @@
 ## Fase 4 — P1 progressivo (Sprints 8+)
 
 - [ ] **4.1** GAP-CKP-11 — Resultado histórico de hedge.
-- [ ] **4.2** GAP-CKP-12 — Sensibilidade a indexadores (consolidação server-side).
+- [x] **4.2** GAP-CKP-12 — Sensibilidade a indexadores (consolidação server-side).
 - [ ] **4.3** GAP-CKP-13 — Covenants (domínio + endpoints + monitoramento).
 - [ ] **4.4** GAP-CKP-14 SOFR/Selic — saving vs benchmark além de CDI.
 - [ ] **4.5** GAP-CKP-15 — Orçamento de encargos financeiros.
