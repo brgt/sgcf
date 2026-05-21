@@ -388,3 +388,156 @@ Cria ou atualiza o EBITDA de um mês específico. Usado para calcular o índice 
 - `204 No Content` — Registrado com sucesso
 - `400 Bad Request` — Mês inválido ou valor inválido
 - `403 Forbidden` — Role insuficiente
+
+---
+
+## Endpoints do Cockpit Multi-Persona (Fases 1 e 2)
+
+Os endpoints abaixo foram adicionados para suportar o cockpit multi-persona (CFO, Gerente Financeiro, Gerente de Tesouraria). Eles seguem o envelope `{ data, meta }` definido no ADR-019. Para os indicadores que o frontend resolve com os endpoints existentes sem novo código de backend, consulte o [Cockpit FE Guide](./cockpit-fe-guide.md).
+
+### Fase 1 — Cockpit CFO
+
+#### Breakdown da Dívida por Modalidade
+
+```
+GET /api/v1/painel/divida/breakdown-modalidade
+Autorização: Leitura
+```
+
+Agrega contratos `Ativo` por `ModalidadeContrato`, convertendo para BRL com a estratégia spot → PTAX D-1. Implementado na Task 1.1 (GAP-CKP-01).
+
+**Response 200 OK:** `EnvelopeResponse<BreakdownModalidadeDto>`
+
+```json
+{
+  "data": {
+    "dataHoraCalculo": "2026-05-21T14:00:00Z",
+    "totalBrl": 45000000.00,
+    "itens": [
+      { "modalidade": "Finimp", "valorBrl": 28000000.00, "percentualPct": 62.2, "quantidadeContratos": 7 },
+      { "modalidade": "Lei4131", "valorBrl": 12000000.00, "percentualPct": 26.7, "quantidadeContratos": 3 },
+      { "modalidade": "Fgi", "valorBrl": 5000000.00, "percentualPct": 11.1, "quantidadeContratos": 4 }
+    ]
+  },
+  "meta": {
+    "dataHoraCalculo": "2026-05-21T14:00:00Z",
+    "fontesConsultadas": [ { "fonte": "contratos", "status": "OK", "registros": 14 } ],
+    "completude": "COMPLETO"
+  }
+}
+```
+
+> `Σ itens[].valorBrl` == `GET /api/v1/painel/divida` → `dividaBrutaBrl` (consistência garantida).
+
+---
+
+#### Curva de Vencimentos Multi-Ano
+
+```
+GET /api/v1/painel/vencimentos/horizonte
+Autorização: Leitura
+```
+
+Retorna vencimentos projetados de parcelas ativas com granularidade configurável. Implementado na Task 1.2 (GAP-CKP-03).
+
+**Query Parameters:**
+
+| Parâmetro | Tipo | Padrão | Descrição |
+|-----------|------|--------|-----------|
+| `meses` | int | `36` | Horizonte em meses: `12`, `24`, `36` ou `60` |
+| `granularidade` | string | `mes` | `mes`, `trimestre` ou `ano` |
+| `bancoId` | guid | — | Opcional |
+| `modalidade` | string | — | Opcional |
+| `moeda` | string | — | Opcional |
+
+**Response 200 OK:** `EnvelopeResponse<CurvaVencimentosDto>` com buckets etiquetados como `YYYY-MM`, `YYYY-Qx` ou `YYYY`.
+
+---
+
+#### Estrutura de Capital
+
+```
+GET /api/v1/painel/estrutura-capital
+Autorização: Leitura
+```
+
+Calcula Dívida/PL e ICR (EBITDA / Despesa Financeira) para o cockpit do CFO. Requer que dados contábeis estejam cadastrados via `POST /painel/dados-contabeis`. Implementado na Task 1.3 (GAP-CKP-04).
+
+**Response 200 OK:** `EnvelopeResponse<EstruturaCapitalDto>`
+
+```json
+{
+  "data": {
+    "dividaTotalBrl": 45000000.00,
+    "patrimonioLiquidoBrl": 32000000.00,
+    "dividaSobrePatrimonio": 1.41,
+    "ebitdaUltimos12mBrl": 18000000.00,
+    "despesaFinanceira12mBrl": 3200000.00,
+    "icr": 5.63,
+    "alertas": []
+  },
+  "meta": { "completude": "COMPLETO", ... }
+}
+```
+
+> Quando dados contábeis não estão cadastrados, `meta.completude = "PARCIAL"` e `alertas` contém `"DADOS_CONTABEIS_AUSENTES"`.
+
+---
+
+#### Registrar Dados Contábeis
+
+```
+POST /api/v1/painel/dados-contabeis
+Autorização: Auditoria
+```
+
+Cria ou atualiza dados contábeis mensais (Patrimônio Líquido e Despesa Financeira). Semanticamente idêntico ao `POST /painel/ebitda`. Implementado na Task 1.3.
+
+**Request Body:**
+
+```json
+{
+  "ano": 2026,
+  "mes": 5,
+  "patrimonioLiquidoBrl": 32000000.00,
+  "despesaFinanceiraBrl": 3200000.00
+}
+```
+
+**Responses:**
+- `204 No Content` — Registrado com sucesso
+- `400 Bad Request` — Parâmetros inválidos
+- `403 Forbidden` — Role insuficiente
+
+---
+
+### Fase 2 — Cockpit Gerente Financeiro
+
+#### Inadimplência Agregada (em progresso — Task 2.1)
+
+```
+GET /api/v1/painel/inadimplencia
+Autorização: Leitura
+```
+
+Retorna dias de atraso médio (ponderado por valor em mora) e distribuição por bucket de atraso. Implementado na Task 2.1 (GAP-CKP-07).
+
+**Status:** em desenvolvimento (Sprint 4).
+
+**Response 200 OK (prevista):** `EnvelopeResponse<InadimplenciaDto>`
+
+```json
+{
+  "data": {
+    "totalEmMoraBrl": 3200000.00,
+    "diasAtrasoMedio": 22.4,
+    "buckets": [
+      { "faixa": "1-15", "quantidadeContratos": 3, "valorBrl": 800000.00 },
+      { "faixa": "16-30", "quantidadeContratos": 2, "valorBrl": 1200000.00 },
+      { "faixa": "31-60", "quantidadeContratos": 1, "valorBrl": 900000.00 },
+      { "faixa": "60+",   "quantidadeContratos": 1, "valorBrl": 300000.00 }
+    ]
+  },
+  "meta": { "completude": "COMPLETO", ... }
+}
+```
