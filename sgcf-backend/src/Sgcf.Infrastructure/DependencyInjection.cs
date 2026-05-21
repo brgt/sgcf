@@ -14,6 +14,7 @@ using Sgcf.Application.Cambio;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Hedge;
 using Sgcf.Application.Painel;
+using Sgcf.Application.Preferencias;
 using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Sistema;
@@ -143,6 +144,7 @@ public static class DependencyInjection
         services.AddScoped<IContaBancariaRepository, ContaBancariaRepository>();
         services.AddScoped<ISaldoCaixaRepository, SaldoCaixaRepository>();
         services.AddScoped<IEventoFluxoCaixaRepository, EventoFluxoCaixaRepository>();
+        services.AddScoped<IPreferenciaUsuarioRepository, PreferenciaUsuarioRepository>();
 
         return services;
     }

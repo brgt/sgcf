@@ -16,6 +16,7 @@ using Sgcf.Domain.Cronograma;
 using Sgcf.Domain.Cotacoes;
 using Sgcf.Domain.Hedge;
 using Sgcf.Domain.Painel;
+using Sgcf.Domain.Preferencias;
 using Sgcf.Domain.Simulacao;
 using Sgcf.Domain.Sistema;
 using Sgcf.Domain.Tenancy;
@@ -80,6 +81,7 @@ public class SgcfDbContext(
     public DbSet<ContaBancaria> ContasBancarias => Set<ContaBancaria>();
     public DbSet<SaldoCaixa> SaldosCaixa => Set<SaldoCaixa>();
     public DbSet<EventoFluxoCaixa> EventosFluxoCaixa => Set<EventoFluxoCaixa>();
+    public DbSet<PreferenciaUsuario> PreferenciasUsuario => Set<PreferenciaUsuario>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
