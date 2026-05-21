@@ -200,12 +200,15 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
 
     /// <summary>
     /// Adiciona banco à lista de convidados da cotação.
-    /// Apenas em Rascunho ou EmCaptacao.
+    /// Apenas em Rascunho, EmCaptacao, EmAnaliseBanco ou PropostaRecebida.
     /// Validação de limite disponível é responsabilidade da Application (SPEC §3.2 regra 8).
     /// </summary>
     public void AdicionarBancoAlvo(Guid bancoId)
     {
-        if (Status is not StatusCotacao.Rascunho and not StatusCotacao.EmCaptacao)
+        if (Status is not StatusCotacao.Rascunho
+            and not StatusCotacao.EmCaptacao
+            and not StatusCotacao.EmAnaliseBanco
+            and not StatusCotacao.PropostaRecebida)
         {
             throw new InvalidOperationException(
                 $"Não é possível adicionar banco em cotação com status '{Status}'.");
@@ -217,10 +220,13 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
         }
     }
 
-    /// <summary>Remove banco da lista de convidados. Apenas em Rascunho ou EmCaptacao.</summary>
+    /// <summary>Remove banco da lista de convidados. Apenas em Rascunho, EmCaptacao, EmAnaliseBanco ou PropostaRecebida.</summary>
     public void RemoverBancoAlvo(Guid bancoId)
     {
-        if (Status is not StatusCotacao.Rascunho and not StatusCotacao.EmCaptacao)
+        if (Status is not StatusCotacao.Rascunho
+            and not StatusCotacao.EmCaptacao
+            and not StatusCotacao.EmAnaliseBanco
+            and not StatusCotacao.PropostaRecebida)
         {
             throw new InvalidOperationException(
                 $"Não é possível remover banco em cotação com status '{Status}'.");
@@ -256,7 +262,10 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
         LocalDate dataCaptura,
         LocalDate? dataValidadeMercado = null)
     {
-        if (Status is not StatusCotacao.EmCaptacao and not StatusCotacao.Comparada)
+        if (Status is not StatusCotacao.EmCaptacao
+            and not StatusCotacao.EmAnaliseBanco
+            and not StatusCotacao.PropostaRecebida
+            and not StatusCotacao.Comparada)
         {
             throw new InvalidOperationException(
                 $"Não é possível registrar proposta em cotação com status '{Status}'.");
@@ -297,14 +306,17 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
     }
 
     /// <summary>
-    /// Registra proposta recebida de um banco. Apenas em EmCaptacao ou Comparada.
+    /// Registra proposta recebida de um banco. Apenas em EmCaptacao, EmAnaliseBanco, PropostaRecebida ou Comparada.
     /// Invalida cache de CET na proposta após registro.
     /// </summary>
     internal void RegistrarProposta(Proposta proposta)
     {
         ArgumentNullException.ThrowIfNull(proposta);
 
-        if (Status is not StatusCotacao.EmCaptacao and not StatusCotacao.Comparada)
+        if (Status is not StatusCotacao.EmCaptacao
+            and not StatusCotacao.EmAnaliseBanco
+            and not StatusCotacao.PropostaRecebida
+            and not StatusCotacao.Comparada)
         {
             throw new InvalidOperationException(
                 $"Não é possível registrar proposta em cotação com status '{Status}'.");
@@ -333,14 +345,59 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
     }
 
     /// <summary>
-    /// Transição: EmCaptacao → Comparada.
-    /// Chamado manualmente pelo operador ou quando todas as propostas estão em status Recebida.
+    /// Transição: EmCaptacao | EmAnaliseBanco | PropostaRecebida → Comparada.
+    /// Chamado manualmente pelo operador quando encerra o período de captação.
     /// SPEC §4.1.
     /// </summary>
     public void EncerrarCaptacao(IClock clock)
     {
-        ExigirStatus(StatusCotacao.EmCaptacao, nameof(EncerrarCaptacao));
+        if (Status is not StatusCotacao.EmCaptacao
+            and not StatusCotacao.EmAnaliseBanco
+            and not StatusCotacao.PropostaRecebida)
+        {
+            throw new InvalidOperationException(
+                $"Operação '{nameof(EncerrarCaptacao)}' requer status 'EmCaptacao', 'EmAnaliseBanco' ou 'PropostaRecebida', mas status atual é '{Status}'.");
+        }
+
         Status = StatusCotacao.Comparada;
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Transição: EmCaptacao → EmAnaliseBanco.
+    /// Banco confirmou o recebimento da cotação e está analisando internamente.
+    /// SPEC §4.1.
+    /// </summary>
+    public void RegistrarAnalise(IClock clock)
+    {
+        ExigirStatus(StatusCotacao.EmCaptacao, nameof(RegistrarAnalise));
+        Status = StatusCotacao.EmAnaliseBanco;
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Transição: EmAnaliseBanco → PropostaRecebida.
+    /// Deve ser chamado quando a primeira <see cref="Proposta"/> é registrada e a cotação
+    /// ainda está em <see cref="StatusCotacao.EmAnaliseBanco"/>.
+    /// Se a cotação já está em <see cref="StatusCotacao.PropostaRecebida"/> ou
+    /// <see cref="StatusCotacao.Comparada"/>, o método é no-op (idempotente).
+    /// SPEC §4.1.
+    /// </summary>
+    public void RegistrarPrimeiraPropostaRecebida(IClock clock)
+    {
+        // No-op quando já avançou além deste ponto
+        if (Status is StatusCotacao.PropostaRecebida or StatusCotacao.Comparada)
+        {
+            return;
+        }
+
+        if (Status is not StatusCotacao.EmAnaliseBanco and not StatusCotacao.EmCaptacao)
+        {
+            throw new InvalidOperationException(
+                $"Operação '{nameof(RegistrarPrimeiraPropostaRecebida)}' requer status 'EmAnaliseBanco' ou 'EmCaptacao', mas status atual é '{Status}'.");
+        }
+
+        Status = StatusCotacao.PropostaRecebida;
         UpdatedAt = clock.GetCurrentInstant();
     }
 
@@ -415,7 +472,7 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
     }
 
     /// <summary>
-    /// Transição: Rascunho | EmCaptacao | Comparada → Recusada.
+    /// Transição: Rascunho | EmCaptacao | EmAnaliseBanco | PropostaRecebida | Comparada → Recusada.
     /// SPEC §4.1. Status finais (Convertida, Recusada) não têm saída.
     /// </summary>
     public void Cancelar(string motivo, IClock clock)
@@ -443,10 +500,13 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
     /// </summary>
     public void RefreshSnapshotMercado(decimal novoPtax, IClock clock)
     {
-        if (Status is not StatusCotacao.EmCaptacao and not StatusCotacao.Comparada)
+        if (Status is not StatusCotacao.EmCaptacao
+            and not StatusCotacao.EmAnaliseBanco
+            and not StatusCotacao.PropostaRecebida
+            and not StatusCotacao.Comparada)
         {
             throw new InvalidOperationException(
-                $"RefreshSnapshotMercado só é permitido em EmCaptacao ou Comparada. Status atual: '{Status}'.");
+                $"RefreshSnapshotMercado só é permitido em EmCaptacao, EmAnaliseBanco, PropostaRecebida ou Comparada. Status atual: '{Status}'.");
         }
 
         if (novoPtax <= 0)

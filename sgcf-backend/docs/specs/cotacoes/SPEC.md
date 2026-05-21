@@ -228,21 +228,31 @@ Quando um banco é adicionado a uma cotação via `POST /cotacoes/{id}/bancos` c
                        │ Enviar   │
                        ▼          │
                   ┌──────────────┐│
-                  │  Em Captação │┘   Registrar propostas
-                  │              ├───────────────────────┐
-                  └──────┬───────┘                       │
-                         │ Todas propostas recebidas     │
-                         │ (ou operador encerra captação)│
-                         ▼                               │
-                  ┌──────────────┐                       │
-              ┌──┤  Comparada   │◄──────────────────────┘
+                  │  EmCaptacao  │┘
+                  └──────┬───────┘
+                         │ RegistrarAnalise
+                         ▼
+                  ┌──────────────────┐
+                  │  EmAnaliseBanco  │    banco confirmou recebimento
+                  └──────┬───────────┘
+                         │ RegistrarPrimeiraPropostaRecebida
+                         ▼
+                  ┌──────────────────┐
+                  │ PropostaRecebida │    >= 1 proposta registrada
+                  └──────┬───────────┘
+                         │ EncerrarCaptacao (manual)
+                         │ (EmCaptacao e EmAnaliseBanco também
+                         │  podem encerrar diretamente)
+                         ▼
+                  ┌──────────────┐
+              ┌──┤  Comparada   │
               │   └──────┬───────┘
               │          │ Aceitar proposta
               │          ▼
-   Expirar    │   ┌──────────────┐
-   ou Recusar │   │   Aceita     │
-   tudo       │   └──────┬───────┘
-              │          │ Converter em contrato
+   Cancelar   │   ┌──────────────┐
+   (qualquer  │   │   Aceita     │
+   estado não │   └──────┬───────┘
+   final)     │          │ Converter em contrato
               ▼          ▼
        ┌──────────┐  ┌──────────────┐
        │ Recusada │  │ Convertida   │  ◄── EconomiaNegociacao registrada aqui
@@ -252,16 +262,23 @@ Quando um banco é adicionado a uma cotação via `POST /cotacoes/{id}/bancos` c
 
 ### 4.1. Transições válidas
 
-| De         | Para       | Comando                                                                       |
-| ---------- | ---------- | ----------------------------------------------------------------------------- |
-| Rascunho   | EmCaptacao | `EnviarCotacaoCommand`                                                        |
-| Rascunho   | Recusada   | `CancelarCotacaoCommand`                                                      |
-| EmCaptacao | Comparada  | `EncerrarCaptacaoCommand` (manual ou quando todas propostas estão `Recebida`) |
-| EmCaptacao | Recusada   | `CancelarCotacaoCommand`                                                      |
-| Comparada  | Aceita     | `AceitarPropostaCommand`                                                      |
-| Comparada  | Recusada   | `CancelarCotacaoCommand`                                                      |
-| Aceita     | Convertida | `ConverterEmContratoCommand`                                                  |
-| Aceita     | Comparada  | `DesfazerAceitacaoCommand` (apenas se ainda não convertida)                   |
+| De               | Para             | Comando / Método                                                              |
+| ---------------- | ---------------- | ----------------------------------------------------------------------------- |
+| Rascunho         | EmCaptacao       | `EnviarCotacaoCommand`                                                        |
+| Rascunho         | Recusada         | `CancelarCotacaoCommand`                                                      |
+| EmCaptacao       | EmAnaliseBanco   | `RegistrarAnaliseBancoCommand` — banco confirmou recebimento                  |
+| EmCaptacao       | PropostaRecebida | `RegistrarPrimeiraPropostaRecebida` — quando nenhuma análise foi registrada   |
+| EmCaptacao       | Comparada        | `EncerrarCaptacaoCommand`                                                     |
+| EmCaptacao       | Recusada         | `CancelarCotacaoCommand`                                                      |
+| EmAnaliseBanco   | PropostaRecebida | `RegistrarPrimeiraPropostaRecebida` — ao registrar primeira proposta          |
+| EmAnaliseBanco   | Comparada        | `EncerrarCaptacaoCommand`                                                     |
+| EmAnaliseBanco   | Recusada         | `CancelarCotacaoCommand`                                                      |
+| PropostaRecebida | Comparada        | `EncerrarCaptacaoCommand`                                                     |
+| PropostaRecebida | Recusada         | `CancelarCotacaoCommand`                                                      |
+| Comparada        | Aceita           | `AceitarPropostaCommand`                                                      |
+| Comparada        | Recusada         | `CancelarCotacaoCommand`                                                      |
+| Aceita           | Convertida       | `ConverterEmContratoCommand`                                                  |
+| Aceita           | Comparada        | `DesfazerAceitacaoCommand` (apenas se ainda não convertida)                   |
 
 Status finais (sem saída): `Convertida`, `Recusada`.
 

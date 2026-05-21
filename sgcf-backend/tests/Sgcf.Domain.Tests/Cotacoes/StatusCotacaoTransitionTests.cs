@@ -21,11 +21,17 @@ public sealed class StatusCotacaoTransitionTests
     [Theory]
     [InlineData("Rascunho→EmCaptacao")]
     [InlineData("EmCaptacao→Comparada")]
+    [InlineData("EmCaptacao→EmAnaliseBanco")]
+    [InlineData("EmAnaliseBanco→PropostaRecebida")]
+    [InlineData("EmAnaliseBanco→Comparada")]
+    [InlineData("PropostaRecebida→Comparada")]
     [InlineData("Comparada→Aceita")]
     [InlineData("Aceita→Convertida")]
     [InlineData("Aceita→Comparada")]
     [InlineData("Rascunho→Recusada")]
     [InlineData("EmCaptacao→Recusada")]
+    [InlineData("EmAnaliseBanco→Recusada")]
+    [InlineData("PropostaRecebida→Recusada")]
     [InlineData("Comparada→Recusada")]
     public void Transicao_valida_nao_deve_lancar_excecao(string transicao)
     {
@@ -40,6 +46,7 @@ public sealed class StatusCotacaoTransitionTests
     [InlineData("Rascunho→Comparada")]
     [InlineData("Rascunho→Aceita")]
     [InlineData("Rascunho→Convertida")]
+    [InlineData("Rascunho→PropostaRecebida")]
     [InlineData("Comparada→EmCaptacao")]
     [InlineData("Comparada→Convertida")]
     [InlineData("Convertida→Aceita")]
@@ -65,6 +72,30 @@ public sealed class StatusCotacaoTransitionTests
 
             case "EmCaptacao→Comparada":
                 CriarEmCaptacao().EncerrarCaptacao(Clock);
+                break;
+
+            case "EmCaptacao→EmAnaliseBanco":
+                CriarEmCaptacao().RegistrarAnalise(Clock);
+                break;
+
+            case "EmAnaliseBanco→PropostaRecebida":
+                CriarEmAnaliseBanco().RegistrarPrimeiraPropostaRecebida(Clock);
+                break;
+
+            case "EmAnaliseBanco→Comparada":
+                CriarEmAnaliseBanco().EncerrarCaptacao(Clock);
+                break;
+
+            case "PropostaRecebida→Comparada":
+                CriarPropostaRecebida().EncerrarCaptacao(Clock);
+                break;
+
+            case "EmAnaliseBanco→Recusada":
+                CriarEmAnaliseBanco().Cancelar("motivo", Clock);
+                break;
+
+            case "PropostaRecebida→Recusada":
+                CriarPropostaRecebida().Cancelar("motivo", Clock);
                 break;
 
             case "Comparada→Aceita":
@@ -115,6 +146,10 @@ public sealed class StatusCotacaoTransitionTests
                     cotacao.AceitarProposta(proposta.Id, "op@emp.com", Clock);
                     break;
                 }
+
+            case "Rascunho→PropostaRecebida":
+                CriarRascunho().RegistrarPrimeiraPropostaRecebida(Clock);
+                break;
 
             case "Rascunho→Comparada":
                 CriarRascunho().EncerrarCaptacao(Clock);
@@ -190,6 +225,20 @@ public sealed class StatusCotacaoTransitionTests
     {
         var c = CriarRascunho();
         c.Enviar(Clock);
+        return c;
+    }
+
+    private static Cotacao CriarEmAnaliseBanco()
+    {
+        var c = CriarEmCaptacao();
+        c.RegistrarAnalise(Clock);
+        return c;
+    }
+
+    private static Cotacao CriarPropostaRecebida()
+    {
+        var c = CriarEmAnaliseBanco();
+        c.RegistrarPrimeiraPropostaRecebida(Clock);
         return c;
     }
 
