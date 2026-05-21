@@ -120,6 +120,7 @@ public static class DependencyInjection
         services.AddScoped<ISimulacaoAntecipacaoRepository, SimulacaoAntecipacaoRepository>();
         services.AddScoped<IHedgeRepository, HedgeRepository>();
         services.AddScoped<IEbitdaMensalRepository, EbitdaMensalRepository>();
+        services.AddScoped<IDadosContabeisRepository, DadosContabeisRepository>();
         services.AddScoped<IExportacaoAuditLog, ExportacaoAuditLog>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAuditLogWriter, AuditLogWriter>();

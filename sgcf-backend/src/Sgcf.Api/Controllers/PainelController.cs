@@ -218,4 +218,51 @@ public sealed class PainelController(IMediator mediator, IClock clock) : Control
             return BadRequest(new { detail = ex.Message });
         }
     }
+
+    /// <summary>
+    /// Cadastra ou atualiza os dados contábeis mensais (Patrimônio Líquido e Despesa Financeira).
+    /// Requer perfil com permissão de escrita.
+    /// </summary>
+    [HttpPost("dados-contabeis")]
+    [Authorize(Policy = Policies.Escrita)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpsertDadosContabeis(
+        [FromBody] UpsertDadosContabeisRequest body,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await mediator.Send(
+                new UpsertDadosContabeisCommand(
+                    body.Ano,
+                    body.Mes,
+                    body.PatrimonioLiquidoBrl,
+                    body.DespesaFinanceiraBrl),
+                cancellationToken);
+
+            return NoContent();
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Retorna a estrutura de capital consolidada com ICR (EBITDA / Despesa Financeira).
+    /// Quando dados contábeis estão ausentes, retorna completude Parcial com alerta.
+    /// </summary>
+    [HttpGet("estrutura-capital")]
+    [ProducesEnvelope]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<EnvelopeResponse<EstruturaCapitalDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetEstruturaCapital(CancellationToken cancellationToken)
+    {
+        EnvelopeResponse<EstruturaCapitalDto> resultado = await mediator.Send(
+            new GetEstruturaCapitalQuery(),
+            cancellationToken);
+
+        return Ok(resultado);
+    }
 }
