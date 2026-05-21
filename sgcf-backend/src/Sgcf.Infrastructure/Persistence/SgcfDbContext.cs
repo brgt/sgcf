@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Tenancy;
+using Sgcf.Domain.Benchmarks;
 using Sgcf.Domain.Alertas;
 using Sgcf.Domain.Antecipacao;
 using Sgcf.Domain.Auditoria;
@@ -83,6 +84,7 @@ public class SgcfDbContext(
     public DbSet<SaldoCaixa> SaldosCaixa => Set<SaldoCaixa>();
     public DbSet<EventoFluxoCaixa> EventosFluxoCaixa => Set<EventoFluxoCaixa>();
     public DbSet<PreferenciaUsuario> PreferenciasUsuario => Set<PreferenciaUsuario>();
+    public DbSet<TaxaBenchmark> TaxasBenchmark => Set<TaxaBenchmark>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

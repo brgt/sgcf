@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Sgcf.Application.Alertas;
 using Sgcf.Application.Antecipacao;
+using Sgcf.Application.Benchmarks;
 using Sgcf.Application.Auditoria;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Calendario;
@@ -146,6 +147,7 @@ public static class DependencyInjection
         services.AddScoped<ISaldoCaixaRepository, SaldoCaixaRepository>();
         services.AddScoped<IEventoFluxoCaixaRepository, EventoFluxoCaixaRepository>();
         services.AddScoped<IPreferenciaUsuarioRepository, PreferenciaUsuarioRepository>();
+        services.AddScoped<ITaxaBenchmarkRepository, TaxaBenchmarkRepository>();
 
         return services;
     }
