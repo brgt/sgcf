@@ -56,6 +56,7 @@ public class SgcfDbContext(
     public DbSet<PlanoContasModelo> PlanoContasModelo => Set<PlanoContasModelo>();
     public DbSet<InstrumentoHedge> InstrumentosHedge => Set<InstrumentoHedge>();
     public DbSet<PosicaoSnapshot> PosicoesSnapshot => Set<PosicaoSnapshot>();
+    public DbSet<HistoricoMtmDiario> HistoricosMtm => Set<HistoricoMtmDiario>();
     public DbSet<CotacaoFx> CotacoesFx => Set<CotacaoFx>();
     public DbSet<ParametroCotacao> ParametrosCotacao => Set<ParametroCotacao>();
     public DbSet<EventoCronograma> EventosCronograma => Set<EventoCronograma>();

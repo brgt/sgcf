@@ -121,6 +121,7 @@ public static class DependencyInjection
         services.AddScoped<IResolveTipoCotacaoService, CotacaoResolverService>();
         services.AddScoped<ISimulacaoAntecipacaoRepository, SimulacaoAntecipacaoRepository>();
         services.AddScoped<IHedgeRepository, HedgeRepository>();
+        services.AddScoped<IHistoricoMtmRepository, HistoricoMtmRepository>();
         services.AddScoped<IEbitdaMensalRepository, EbitdaMensalRepository>();
         services.AddScoped<IDadosContabeisRepository, DadosContabeisRepository>();
         services.AddScoped<IExportacaoAuditLog, ExportacaoAuditLog>();
