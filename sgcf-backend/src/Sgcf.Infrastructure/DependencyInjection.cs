@@ -18,6 +18,7 @@ using Sgcf.Application.Simulacao;
 using Sgcf.Application.Simulacao.Cache;
 using Sgcf.Application.Sistema;
 using Sgcf.Application.Tenancy;
+using Sgcf.Application.Tesouraria;
 using Sgcf.Application.Tenancy.Services;
 using Sgcf.Infrastructure.Antecipacao;
 using Sgcf.Infrastructure.Cache.Simulacao;
@@ -139,6 +140,7 @@ public static class DependencyInjection
         services.AddScoped<IParametroSistemaRepository, ParametroSistemaRepository>();
         services.AddScoped<ITenantRepository, TenantRepository>();
         services.AddScoped<ITenantProvisioner, TenantProvisioner>();
+        services.AddScoped<IContaBancariaRepository, ContaBancariaRepository>();
 
         return services;
     }

@@ -19,6 +19,7 @@ using Sgcf.Domain.Painel;
 using Sgcf.Domain.Simulacao;
 using Sgcf.Domain.Sistema;
 using Sgcf.Domain.Tenancy;
+using Sgcf.Domain.Tesouraria;
 
 namespace Sgcf.Infrastructure.Persistence;
 
@@ -76,6 +77,7 @@ public class SgcfDbContext(
     public DbSet<CenarioSimulacao> CenariosSimulacao => Set<CenarioSimulacao>();
     public DbSet<SimulacaoContratacao> SimulacoesContratacao => Set<SimulacaoContratacao>();
     public DbSet<ParametroSistema> ParametrosSistema => Set<ParametroSistema>();
+    public DbSet<ContaBancaria> ContasBancarias => Set<ContaBancaria>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
