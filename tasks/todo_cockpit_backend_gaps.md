@@ -60,7 +60,7 @@
 - [ ] **4.5** GAP-CKP-15 — Orçamento de encargos financeiros.
 - [ ] **4.6** GAP-CKP-16 — Workflow de documentação.
 - [ ] **4.7** GAP-CKP-17 — Conformidade regulatória (DEF/RDE-ROF, SISCOSERV).
-- [ ] **4.8** GAP-CKP-18 — Tarifas e IOF agregados.
+- [x] **4.8** GAP-CKP-18 — Tarifas e IOF agregados.
 - [ ] **4.9** GAP-CKP-24 — Preferências de usuário backend.
 - [ ] **4.10** GAP-CKP-19 — Adicionar `TaxaIndicativaAa` a `Cotacao`/`Proposta` + spread agregado.
 

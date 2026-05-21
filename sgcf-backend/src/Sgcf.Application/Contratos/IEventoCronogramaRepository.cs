@@ -74,4 +74,12 @@ public interface IEventoCronogramaRepository
         LocalDate dataInicio,
         LocalDate dataFim,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retorna eventos dos tipos especificados (exceto Cancelado/Refinanciado).
+    /// Usado para agregar IOF e tarifas por banco/modalidade.
+    /// </summary>
+    public Task<IReadOnlyList<EventoCronograma>> ListPorTiposAsync(
+        IReadOnlyCollection<TipoEventoCronograma> tipos,
+        CancellationToken cancellationToken = default);
 }

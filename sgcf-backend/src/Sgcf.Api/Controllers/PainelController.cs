@@ -282,4 +282,17 @@ public sealed class PainelController(IMediator mediator, IClock clock) : Control
 
         return Ok(resultado);
     }
+
+    /// <summary>
+    /// Retorna a agregação de IOF e tarifas dos cronogramas de contratos por banco e modalidade.
+    /// </summary>
+    [HttpGet("tarifas-iof")]
+    [ProducesEnvelope]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<EnvelopeResponse<TarifasIofDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTarifasIof(CancellationToken ct)
+    {
+        EnvelopeResponse<TarifasIofDto> resultado = await mediator.Send(new GetTarifasIofQuery(), ct);
+        return Ok(resultado);
+    }
 }

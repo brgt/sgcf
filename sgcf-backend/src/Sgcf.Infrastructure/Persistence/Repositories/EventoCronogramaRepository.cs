@@ -118,4 +118,16 @@ internal sealed class EventoCronogramaRepository(SgcfDbContext context) : IEvent
             .ToListAsync(cancellationToken);
         return list.AsReadOnly();
     }
+
+    public async Task<IReadOnlyList<EventoCronograma>> ListPorTiposAsync(
+        IReadOnlyCollection<TipoEventoCronograma> tipos,
+        CancellationToken cancellationToken = default)
+    {
+        List<EventoCronograma> list = await context.EventosCronograma
+            .Where(e => tipos.Contains(e.Tipo)
+                     && e.Status != StatusEventoCronograma.Cancelado
+                     && e.Status != StatusEventoCronograma.Refinanciado)
+            .ToListAsync(cancellationToken);
+        return list.AsReadOnly();
+    }
 }
