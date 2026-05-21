@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using NodaTime;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Contabilidade;
 using Sgcf.Application.Sistema;
 using Sgcf.Domain.Cambio;
+using Sgcf.Domain.Contabilidade;
 using Sgcf.Domain.Sistema;
 using Sgcf.Domain.Tenancy;
 
@@ -15,7 +17,7 @@ namespace Sgcf.Application.Tenancy.Services;
 /// Categorias provisionadas (chaves camelCase no ResultadoProvisionamento):
 /// - <c>parametrosSistema</c>: singleton de parâmetros operacionais (ParametroSistema).
 /// - <c>parametrosCotacao</c>: regra padrão de cotação PTAX D-1 (ParametroCotacao).
-/// - <c>planoContas</c>: postergado para Task -1.10 (PlanoContasModelo não existe ainda).
+/// - <c>planoContas</c>: cópia do modelo global por tenant (Task −1.10).
 ///
 /// Idempotência: cada categoria verifica se já existe antes de inserir.
 /// O TenantId é definido explicitamente nas entidades porque o provisionador opera
@@ -25,6 +27,8 @@ public sealed partial class TenantProvisioner(
     ITenantRepository tenantRepo,
     IParametroSistemaRepository parametroSistemaRepo,
     IParametroCotacaoRepository parametroCotacaoRepo,
+    IPlanoContasRepository planoContasRepo,
+    IPlanoContasModeloRepository planoContasModeloRepo,
     ITenantContext tenantContext,
     IClock clock,
     ILogger<TenantProvisioner> logger) : ITenantProvisioner
@@ -54,11 +58,14 @@ public sealed partial class TenantProvisioner(
 
         await SeedParametroSistemaAsync(tenant, criados, ignorados, ct);
         await SeedParametroCotacaoAsync(tenant, criados, ignorados, ct);
-        SeedPlanoContas(criados, ignorados);
+        await SeedPlanoContasAsync(criados, ignorados, ct);
 
         await parametroSistemaRepo.SaveChangesAsync(ct);
 
-        LogProvisionamentoConcluido(logger, tenant.Slug, criados["parametrosSistema"], criados["parametrosCotacao"]);
+        LogProvisionamentoConcluido(logger, tenant.Slug,
+            criados["parametrosSistema"],
+            criados["parametrosCotacao"],
+            criados["planoContas"]);
 
         return new ResultadoProvisionamento(
             tenant.Id,
@@ -112,23 +119,42 @@ public sealed partial class TenantProvisioner(
         }
     }
 
-    // Seed de PlanoContas postergado para Task -1.10 — PlanoContasModelo não existe ainda.
-    private void SeedPlanoContas(Dictionary<string, int> criados, Dictionary<string, int> ignorados)
+    /// <summary>
+    /// Clona o modelo global de plano de contas para o tenant atual.
+    /// Idempotente: se já existir qualquer conta para o tenant, não re-insere.
+    /// </summary>
+    private async Task SeedPlanoContasAsync(
+        Dictionary<string, int> criados,
+        Dictionary<string, int> ignorados,
+        CancellationToken ct)
     {
-        criados["planoContas"] = 0;
+        IReadOnlyList<PlanoContasGerencial> existentes = await planoContasRepo.ListAllAsync(ct);
+
+        if (existentes.Count > 0)
+        {
+            criados["planoContas"] = 0;
+            ignorados["planoContas"] = existentes.Count;
+            return;
+        }
+
+        IReadOnlyList<PlanoContasModelo> modelo = await planoContasModeloRepo.ListAllAsync(ct);
+
+        foreach (PlanoContasModelo item in modelo)
+        {
+            PlanoContasGerencial conta = PlanoContasGerencial.ClonarDeModelo(item, clock);
+            planoContasRepo.Add(conta);
+        }
+
+        criados["planoContas"] = modelo.Count;
         ignorados["planoContas"] = 0;
-        LogSeedPlanoContasPendente(logger);
     }
 
     [LoggerMessage(Level = LogLevel.Information,
-        Message = "Tenant '{Slug}' provisionado — parametros_sistema: {ParametrosSistemaCriados}, parametros_cotacao: {ParametrosCotacaoCriados}")]
+        Message = "Tenant '{Slug}' provisionado — parametros_sistema: {ParametrosSistemaCriados}, parametros_cotacao: {ParametrosCotacaoCriados}, plano_contas: {PlanoContasCriados}")]
     private static partial void LogProvisionamentoConcluido(
         ILogger logger,
         string slug,
         int parametrosSistemaCriados,
-        int parametrosCotacaoCriados);
-
-    [LoggerMessage(Level = LogLevel.Warning,
-        Message = "Seed de PlanoContas pendente (Task -1.10 — PlanoContasModelo não existe ainda).")]
-    private static partial void LogSeedPlanoContasPendente(ILogger logger);
+        int parametrosCotacaoCriados,
+        int planoContasCriados);
 }

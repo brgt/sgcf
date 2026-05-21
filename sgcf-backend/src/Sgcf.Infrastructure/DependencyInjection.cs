@@ -106,6 +106,7 @@ public static class DependencyInjection
         services.AddScoped<IContratoRepository, ContratoRepository>();
         services.AddScoped<IGarantiaRepository, GarantiaRepository>();
         services.AddScoped<IPlanoContasRepository, PlanoContasRepository>();
+        services.AddScoped<IPlanoContasModeloRepository, PlanoContasModeloRepository>();
         services.AddScoped<IParametroCotacaoRepository, ParametroCotacaoRepository>();
         services.AddScoped<IEventoCronogramaRepository, EventoCronogramaRepository>();
         services.AddScoped<ICotacaoFxRepository, CotacaoFxRepository>();

@@ -3,10 +3,12 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Contabilidade;
 using Sgcf.Application.Sistema;
 using Sgcf.Application.Tenancy;
 using Sgcf.Application.Tenancy.Services;
 using Sgcf.Domain.Cambio;
+using Sgcf.Domain.Contabilidade;
 using Sgcf.Domain.Sistema;
 using Sgcf.Domain.Tenancy;
 using Xunit;
@@ -25,6 +27,9 @@ public sealed class TenantProvisionerTests
     private readonly ITenantRepository _tenantRepo = Substitute.For<ITenantRepository>();
     private readonly IParametroSistemaRepository _parametroSistemaRepo = Substitute.For<IParametroSistemaRepository>();
     private readonly IParametroCotacaoRepository _parametroCotacaoRepo = Substitute.For<IParametroCotacaoRepository>();
+    private readonly IPlanoContasRepository _planoContasRepo = Substitute.For<IPlanoContasRepository>();
+    private readonly IPlanoContasModeloRepository _planoContasModeloRepo = Substitute.For<IPlanoContasModeloRepository>();
+    private readonly ITenantContext _tenantContext = Substitute.For<ITenantContext>();
     private readonly IClock _clock = Substitute.For<IClock>();
 
     private readonly TenantProvisioner _sut;
@@ -33,10 +38,19 @@ public sealed class TenantProvisionerTests
     {
         _clock.GetCurrentInstant().Returns(InstanteFixo);
 
+        // Por padrão, PlanoContas vazio (tenant não provisionado) e modelo com 3 entradas.
+        IReadOnlyList<PlanoContasGerencial> contasVazias = [];
+        IReadOnlyList<PlanoContasModelo> modeloPadrao = CriarModeloPadrao();
+        _planoContasRepo.ListAllAsync(Arg.Any<CancellationToken>()).Returns(contasVazias);
+        _planoContasModeloRepo.ListAllAsync(Arg.Any<CancellationToken>()).Returns(modeloPadrao);
+
         _sut = new TenantProvisioner(
             _tenantRepo,
             _parametroSistemaRepo,
             _parametroCotacaoRepo,
+            _planoContasRepo,
+            _planoContasModeloRepo,
+            _tenantContext,
             _clock,
             NullLogger<TenantProvisioner>.Instance);
     }
@@ -62,14 +76,17 @@ public sealed class TenantProvisionerTests
         // Assert
         resultado.TenantId.Should().Be(TenantIdFixo);
         resultado.TenantSlug.Should().Be("tenant-teste");
-        resultado.Criados["parametros_sistema"].Should().Be(1);
-        resultado.Criados["parametros_cotacao"].Should().Be(1);
-        resultado.Ignorados["parametros_sistema"].Should().Be(0);
-        resultado.Ignorados["parametros_cotacao"].Should().Be(0);
+        resultado.Criados["parametrosSistema"].Should().Be(1);
+        resultado.Criados["parametrosCotacao"].Should().Be(1);
+        resultado.Criados["planoContas"].Should().Be(3, because: "o modelo padrão tem 3 entradas");
+        resultado.Ignorados["parametrosSistema"].Should().Be(0);
+        resultado.Ignorados["parametrosCotacao"].Should().Be(0);
+        resultado.Ignorados["planoContas"].Should().Be(0);
         resultado.ProvisionadoEm.Should().Be(InstanteFixo);
 
         _parametroSistemaRepo.Received(1).Add(Arg.Any<ParametroSistema>());
         _parametroCotacaoRepo.Received(1).Add(Arg.Any<ParametroCotacao>());
+        _planoContasRepo.Received(3).Add(Arg.Any<PlanoContasGerencial>());
         await _parametroSistemaRepo.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
@@ -88,17 +105,23 @@ public sealed class TenantProvisionerTests
         _parametroSistemaRepo.ExisteParaTenantAsync(TenantIdFixo, Arg.Any<CancellationToken>()).Returns(true);
         _parametroCotacaoRepo.ExisteParaTenantAsync(TenantIdFixo, Arg.Any<CancellationToken>()).Returns(true);
 
+        // PlanoContas já existe para este tenant.
+        IReadOnlyList<PlanoContasGerencial> contasExistentes = CriarContasExistentes();
+        _planoContasRepo.ListAllAsync(Arg.Any<CancellationToken>()).Returns(contasExistentes);
+
         // Act
         ResultadoProvisionamento resultado = await _sut.ProvisionarAsync(TenantIdFixo, CancellationToken.None);
 
         // Assert
-        resultado.Criados["parametros_sistema"].Should().Be(0);
-        resultado.Criados["parametros_cotacao"].Should().Be(0);
-        resultado.Ignorados["parametros_sistema"].Should().Be(1);
-        resultado.Ignorados["parametros_cotacao"].Should().Be(1);
+        resultado.Criados["parametrosSistema"].Should().Be(0);
+        resultado.Criados["parametrosCotacao"].Should().Be(0);
+        resultado.Criados["planoContas"].Should().Be(0);
+        resultado.Ignorados["parametrosSistema"].Should().Be(1);
+        resultado.Ignorados["parametrosCotacao"].Should().Be(1);
 
         _parametroSistemaRepo.DidNotReceive().Add(Arg.Any<ParametroSistema>());
         _parametroCotacaoRepo.DidNotReceive().Add(Arg.Any<ParametroCotacao>());
+        _planoContasRepo.DidNotReceive().Add(Arg.Any<PlanoContasGerencial>());
         // SaveChanges ainda é chamado — flush de qualquer mudança pendente no contexto.
         await _parametroSistemaRepo.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
@@ -119,7 +142,7 @@ public sealed class TenantProvisionerTests
             .WithMessage($"*{TenantIdFixo}*");
     }
 
-    // ── Cenário 4: tenant arquivado → InvalidOperationException ──────────────
+    // ── Cenário 4: tenant arquivado → TenantArquivadoException ───────────────
 
     [Fact]
     public async Task ProvisionarAsync_TenantArquivado_LancaInvalidOperationException()
@@ -136,7 +159,7 @@ public sealed class TenantProvisionerTests
             .WithMessage("*arquivado*");
     }
 
-    // ── Cenário 5: tenant suspenso → InvalidOperationException ───────────────
+    // ── Cenário 5: tenant suspenso → TenantSuspendoException ─────────────────
 
     [Fact]
     public async Task ProvisionarAsync_TenantSuspenso_LancaInvalidOperationException()
@@ -153,26 +176,49 @@ public sealed class TenantProvisionerTests
             .WithMessage("*suspenso*");
     }
 
-    // ── Cenário 6: plano_contas sempre zero (postergado Task -1.10) ──────────
+    // ── Cenário 6: plano_contas clonado do modelo ─────────────────────────────
 
     [Fact]
-    public async Task ProvisionarAsync_PlanoContas_SempreRetornaZero()
+    public async Task ProvisionarAsync_PlanoContas_ClonaModeloParaTenant()
     {
         // Arrange
         Tenant tenant = CriarTenantAtivo();
         _tenantRepo.GetAsync(TenantIdFixo, Arg.Any<CancellationToken>()).Returns(tenant);
         _parametroSistemaRepo.ExisteParaTenantAsync(TenantIdFixo, Arg.Any<CancellationToken>()).Returns(false);
         _parametroCotacaoRepo.ExisteParaTenantAsync(TenantIdFixo, Arg.Any<CancellationToken>()).Returns(false);
+        // _planoContasRepo.ListAllAsync retorna vazio por padrão (configurado no construtor)
 
         // Act
         ResultadoProvisionamento resultado = await _sut.ProvisionarAsync(TenantIdFixo, CancellationToken.None);
 
-        // Assert — PlanoContas sempre 0/0 até Task -1.10 ser implementada
-        resultado.Criados["plano_contas"].Should().Be(0);
-        resultado.Ignorados["plano_contas"].Should().Be(0);
+        // Assert — 3 entradas do modelo são clonadas
+        resultado.Criados["planoContas"].Should().Be(3,
+            because: "cada entrada do modelo gera uma conta no tenant");
+        _planoContasRepo.Received(3).Add(Arg.Any<PlanoContasGerencial>());
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static PlanoContasModelo[] CriarModeloPadrao()
+    {
+        IClock clock = Substitute.For<IClock>();
+        clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 5, 20, 10, 0));
+
+        return
+        [
+            PlanoContasModelo.Criar("1.1.1", "Conta Corrente em BRL",       NaturezaConta.Ativo,     null, clock),
+            PlanoContasModelo.Criar("2.1.1", "FINIMP em Moeda Estrangeira", NaturezaConta.Passivo,   null, clock),
+            PlanoContasModelo.Criar("3.1.1", "Rendimento de CDB Cativo",    NaturezaConta.Resultado, null, clock)
+        ];
+    }
+
+    private static PlanoContasGerencial[] CriarContasExistentes()
+    {
+        IClock clock = Substitute.For<IClock>();
+        clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 5, 20, 10, 0));
+
+        return [PlanoContasGerencial.Criar("1.1.1", "Conta Corrente em BRL", NaturezaConta.Ativo, clock)];
+    }
 
     private static Tenant CriarTenantAtivo()
     {

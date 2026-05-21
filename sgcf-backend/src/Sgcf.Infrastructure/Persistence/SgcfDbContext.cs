@@ -51,6 +51,7 @@ public class SgcfDbContext(
     public DbSet<CapitalDeGiroDetail> CapitalDeGiroDetails => Set<CapitalDeGiroDetail>();
     public DbSet<FgiDetail> FgiDetails => Set<FgiDetail>();
     public DbSet<PlanoContasGerencial> PlanoContas => Set<PlanoContasGerencial>();
+    public DbSet<PlanoContasModelo> PlanoContasModelo => Set<PlanoContasModelo>();
     public DbSet<InstrumentoHedge> InstrumentosHedge => Set<InstrumentoHedge>();
     public DbSet<PosicaoSnapshot> PosicoesSnapshot => Set<PosicaoSnapshot>();
     public DbSet<CotacaoFx> CotacoesFx => Set<CotacaoFx>();
@@ -101,13 +102,15 @@ public class SgcfDbContext(
     /// coexistam. <see cref="ITenantContext.TenantIdOrDefault"/> é usado em vez de
     /// <see cref="ITenantContext.TenantId"/> para evitar <c>MissingTenantContextException</c>
     /// quando o EF Core avalia os parâmetros de closure antes de aplicar curto-circuito.
-    /// Quando não resolvido, o filtro retorna <c>true</c> — sem restrição de tenant.
+    /// Quando não resolvido, o filtro retorna <c>false</c> — zero linhas visíveis.
+    /// Operações cross-tenant (provisioner, seeds) devem resolver o contexto explicitamente
+    /// via <see cref="ITenantContext.Resolve"/> antes de emitir queries.
     /// </summary>
     private void AplicarFiltroDeTenant<T>(ModelBuilder modelBuilder)
         where T : class, ITenantScoped
     {
         Expression<Func<T, bool>> tenantFilter =
-            e => !tenantContext.IsResolved || e.TenantId == tenantContext.TenantIdOrDefault;
+            e => tenantContext.IsResolved && e.TenantId == tenantContext.TenantIdOrDefault;
 
         LambdaExpression? existingFilter =
             modelBuilder.Entity<T>().Metadata.GetQueryFilter();
