@@ -117,6 +117,7 @@ public static class DependencyInjection
         services.AddScoped<IEbitdaMensalRepository, EbitdaMensalRepository>();
         services.AddScoped<IExportacaoAuditLog, ExportacaoAuditLog>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IAuditLogWriter, AuditLogWriter>();
         services.AddScoped<IAlertaVencimentoRepository, AlertaVencimentoRepository>();
         services.AddScoped<IAlertaExposicaoBancoRepository, AlertaExposicaoBancoRepository>();
         services.AddScoped<ISnapshotMensalPosicaoRepository, SnapshotMensalPosicaoRepository>();

@@ -386,11 +386,11 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpGet("{id:guid}/auditoria")]
     [Authorize(Policy = Policies.Auditoria)]
-    [ProducesResponseType<IReadOnlyList<Sgcf.Application.Auditoria.AuditEventoDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<IReadOnlyList<Sgcf.Application.Auditoria.AuditLogDto>>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Auditoria(Guid id, CancellationToken cancellationToken)
     {
-        IReadOnlyList<Sgcf.Application.Auditoria.AuditEventoDto> result =
+        IReadOnlyList<Sgcf.Application.Auditoria.AuditLogDto> result =
             await mediator.Send(new GetCotacaoAuditTrailQuery(id), cancellationToken);
 
         return Ok(result);

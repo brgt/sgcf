@@ -5,9 +5,11 @@ using Sgcf.Application.Common;
 namespace Sgcf.Application.Auditoria.Queries;
 
 /// <summary>
-/// Query paginada de eventos de auditoria do tenant corrente. Todos os filtros são opcionais.
+/// Query admin para listar eventos de auditoria de um tenant específico.
+/// Ignora o global filter de tenant — uso exclusivo de super-admin.
 /// </summary>
-public sealed record ListAuditEventosQuery(
+public sealed record ListAdminAuditEventosQuery(
+    Guid TenantId,
     string? Entity = null,
     Guid? EntityId = null,
     string? ActorSub = null,
@@ -20,10 +22,14 @@ public sealed record ListAuditEventosQuery(
     int PageSize = 50)
     : IRequest<PagedResult<AuditLogDto>>;
 
-public sealed class ListAuditEventosQueryValidator : AbstractValidator<ListAuditEventosQuery>
+public sealed class ListAdminAuditEventosQueryValidator : AbstractValidator<ListAdminAuditEventosQuery>
 {
-    public ListAuditEventosQueryValidator()
+    public ListAdminAuditEventosQueryValidator()
     {
+        RuleFor(q => q.TenantId)
+            .NotEmpty()
+            .WithMessage("tenantId é obrigatório.");
+
         RuleFor(q => q.Page)
             .GreaterThanOrEqualTo(1)
             .WithMessage("Page deve ser maior ou igual a 1.");
@@ -39,28 +45,28 @@ public sealed class ListAuditEventosQueryValidator : AbstractValidator<ListAudit
     }
 }
 
-public sealed class ListAuditEventosQueryHandler(IAuditLogRepository repo)
-    : IRequestHandler<ListAuditEventosQuery, PagedResult<AuditLogDto>>
+public sealed class ListAdminAuditEventosQueryHandler(IAuditLogRepository repo)
+    : IRequestHandler<ListAdminAuditEventosQuery, PagedResult<AuditLogDto>>
 {
     public async Task<PagedResult<AuditLogDto>> Handle(
-        ListAuditEventosQuery query,
+        ListAdminAuditEventosQuery query,
         CancellationToken cancellationToken)
     {
         int page = Math.Max(1, query.Page);
         int pageSize = Math.Clamp(query.PageSize, 1, 200);
 
         AuditFilter filter = new(
-            Entity: query.Entity,
-            EntityId: query.EntityId,
-            ActorSub: query.ActorSub,
-            Source: query.Source,
-            Operation: query.Operation,
-            De: query.De,
-            Ate: query.Ate,
-            Impersonating: query.Impersonating,
-            Page: page,
-            PageSize: pageSize);
+            Entity:         query.Entity,
+            EntityId:       query.EntityId,
+            ActorSub:       query.ActorSub,
+            Source:         query.Source,
+            Operation:      query.Operation,
+            De:             query.De,
+            Ate:            query.Ate,
+            Impersonating:  query.Impersonating,
+            Page:           page,
+            PageSize:       pageSize);
 
-        return await repo.ListAsync(filter, cancellationToken);
+        return await repo.ListForTenantAsync(query.TenantId, filter, cancellationToken);
     }
 }

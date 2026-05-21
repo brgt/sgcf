@@ -7,12 +7,12 @@ namespace Sgcf.Application.Cotacoes.Queries;
 /// Trilha de auditoria de uma cotação específica.
 /// Delega ao serviço de auditoria existente. SPEC §4.2, §6.2.
 /// </summary>
-public sealed record GetCotacaoAuditTrailQuery(Guid CotacaoId) : IRequest<IReadOnlyList<AuditEventoDto>>;
+public sealed record GetCotacaoAuditTrailQuery(Guid CotacaoId) : IRequest<IReadOnlyList<AuditLogDto>>;
 
 public sealed class GetCotacaoAuditTrailQueryHandler(IAuditLogRepository auditRepo)
-    : IRequestHandler<GetCotacaoAuditTrailQuery, IReadOnlyList<AuditEventoDto>>
+    : IRequestHandler<GetCotacaoAuditTrailQuery, IReadOnlyList<AuditLogDto>>
 {
-    public async Task<IReadOnlyList<AuditEventoDto>> Handle(
+    public async Task<IReadOnlyList<AuditLogDto>> Handle(
         GetCotacaoAuditTrailQuery query,
         CancellationToken cancellationToken)
     {
@@ -21,7 +21,7 @@ public sealed class GetCotacaoAuditTrailQueryHandler(IAuditLogRepository auditRe
             EntityId: query.CotacaoId,
             PageSize: 200);
 
-        Application.Common.PagedResult<AuditEventoDto> resultado = await auditRepo.ListAsync(filter, cancellationToken);
+        Application.Common.PagedResult<AuditLogDto> resultado = await auditRepo.ListAsync(filter, cancellationToken);
 
         return resultado.Items;
     }

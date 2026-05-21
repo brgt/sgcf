@@ -12,5 +12,7 @@ public sealed record AuditFilter(
     string? Operation = null,
     DateTimeOffset? De = null,
     DateTimeOffset? Ate = null,
+    /// <summary>Quando true, retorna apenas eventos de impersonação. Null = sem filtro.</summary>
+    bool? Impersonating = null,
     int Page = 1,
     int PageSize = 50);

@@ -8,10 +8,33 @@ namespace Sgcf.Infrastructure.Persistence.Repositories;
 
 internal sealed class AuditLogRepository(SgcfDbContext context) : IAuditLogRepository
 {
-    public async Task<PagedResult<AuditEventoDto>> ListAsync(AuditFilter filter, CancellationToken ct)
+    public async Task<PagedResult<AuditLogDto>> ListAsync(AuditFilter filter, CancellationToken ct)
     {
+        // EF global query filter automatically applies tenant_id restriction.
         IQueryable<AuditLog> q = context.AuditLogs.AsNoTracking();
 
+        return await BuildPagedResultAsync(q, filter, ct);
+    }
+
+    public async Task<PagedResult<AuditLogDto>> ListForTenantAsync(
+        Guid tenantId,
+        AuditFilter filter,
+        CancellationToken ct)
+    {
+        // IgnoreQueryFilters bypasses tenant isolation so super-admin can query any tenant.
+        IQueryable<AuditLog> q = context.AuditLogs
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(a => a.TenantId == tenantId);
+
+        return await BuildPagedResultAsync(q, filter, ct);
+    }
+
+    private static async Task<PagedResult<AuditLogDto>> BuildPagedResultAsync(
+        IQueryable<AuditLog> q,
+        AuditFilter filter,
+        CancellationToken ct)
+    {
         if (!string.IsNullOrWhiteSpace(filter.Entity))
         {
             q = q.Where(a => a.Entity == filter.Entity);
@@ -49,6 +72,11 @@ internal sealed class AuditLogRepository(SgcfDbContext context) : IAuditLogRepos
             q = q.Where(a => a.OccurredAt <= ate);
         }
 
+        if (filter.Impersonating.HasValue)
+        {
+            q = q.Where(a => a.Impersonating == filter.Impersonating.Value);
+        }
+
         int total = await q.CountAsync(ct);
 
         int page = Math.Max(1, filter.Page);
@@ -60,22 +88,24 @@ internal sealed class AuditLogRepository(SgcfDbContext context) : IAuditLogRepos
             .Take(pageSize)
             .ToListAsync(ct);
 
-        List<AuditEventoDto> dtos = new(items.Count);
+        List<AuditLogDto> dtos = new(items.Count);
         foreach (AuditLog a in items)
         {
-            dtos.Add(new AuditEventoDto(
-                Id: a.Id,
-                OccurredAt: a.OccurredAt.ToDateTimeOffset(),
-                ActorSub: a.ActorSub,
-                ActorRole: a.ActorRole,
-                Source: a.Source,
-                Entity: a.Entity,
-                EntityId: a.EntityId,
-                Operation: a.Operation,
-                DiffJson: a.DiffJson,
-                RequestId: a.RequestId));
+            dtos.Add(new AuditLogDto(
+                Id:              a.Id,
+                OccurredAt:      a.OccurredAt.ToDateTimeOffset(),
+                ActorSub:        a.ActorSub,
+                ActorRole:       a.ActorRole,
+                Source:          a.Source,
+                Entity:          a.Entity,
+                EntityId:        a.EntityId,
+                Operation:       a.Operation,
+                DiffJson:        a.DiffJson,
+                RequestId:       a.RequestId,
+                Impersonating:   a.Impersonating,
+                ImpersonatedBy:  a.ImpersonatedBy));
         }
 
-        return new PagedResult<AuditEventoDto>(dtos.AsReadOnly(), total, page, pageSize);
+        return new PagedResult<AuditLogDto>(dtos.AsReadOnly(), total, page, pageSize);
     }
 }

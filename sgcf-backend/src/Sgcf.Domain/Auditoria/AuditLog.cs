@@ -3,6 +3,13 @@ using Sgcf.Domain.Tenancy;
 
 namespace Sgcf.Domain.Auditoria;
 
+/// <summary>
+/// Evento de auditoria imutável — registra toda ação com impacto no sistema.
+///
+/// Task −1.11: adicionados <see cref="Impersonating"/> e <see cref="ImpersonatedBy"/>
+/// para registrar quando super-admin atua em nome de um tenant.
+/// Conforme decisão sponsor 2026-05-20, impersonação é sempre visível ao admin do tenant (LGPD).
+/// </summary>
 public sealed class AuditLog : ITenantScoped
 {
     private AuditLog() { }
@@ -20,6 +27,15 @@ public sealed class AuditLog : ITenantScoped
     public Guid RequestId { get; private set; }
     public byte[]? IpHash { get; private set; }
 
+    /// <summary>Indica que a ação foi realizada por super-admin em nome do tenant.</summary>
+    public bool Impersonating { get; private set; }
+
+    /// <summary>
+    /// Sub do super-admin que realizou a impersonação.
+    /// Null quando <see cref="Impersonating"/> é false.
+    /// </summary>
+    public string? ImpersonatedBy { get; private set; }
+
     public static AuditLog Create(
         Instant occurredAt,
         string actorSub,
@@ -30,20 +46,24 @@ public sealed class AuditLog : ITenantScoped
         string operation,
         string? diffJson,
         Guid requestId,
-        byte[]? ipHash = null)
+        byte[]? ipHash = null,
+        bool impersonating = false,
+        string? impersonatedBy = null)
     {
         return new AuditLog
         {
-            OccurredAt = occurredAt,
-            ActorSub   = actorSub,
-            ActorRole  = actorRole,
-            Source     = source,
-            Entity     = entity,
-            EntityId   = entityId,
-            Operation  = operation,
-            DiffJson   = diffJson,
-            RequestId  = requestId,
-            IpHash     = ipHash,
+            OccurredAt      = occurredAt,
+            ActorSub        = actorSub,
+            ActorRole       = actorRole,
+            Source          = source,
+            Entity          = entity,
+            EntityId        = entityId,
+            Operation       = operation,
+            DiffJson        = diffJson,
+            RequestId       = requestId,
+            IpHash          = ipHash,
+            Impersonating   = impersonating,
+            ImpersonatedBy  = impersonatedBy,
         };
     }
 }

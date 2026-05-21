@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using Sgcf.Application.Common;
+using Sgcf.Application.Tenancy;
 using Sgcf.Domain.Auditoria;
 using Sgcf.Domain.Common;
 
@@ -12,6 +13,7 @@ namespace Sgcf.Infrastructure.Auditoria;
 public sealed class AuditInterceptor(
     ICurrentUserService currentUser,
     IRequestContextService requestContext,
+    ITenantContext tenantContext,
     IClock clock)
     : SaveChangesInterceptor
 {
@@ -25,12 +27,14 @@ public sealed class AuditInterceptor(
             return base.SavingChangesAsync(eventData, result, cancellationToken);
         }
 
-        Instant now       = clock.GetCurrentInstant();
-        string actorSub   = currentUser.ActorSub;
-        string actorRole  = currentUser.ActorRole;
-        string source     = requestContext.Source;
-        Guid requestId    = requestContext.RequestId;
-        byte[]? ipHash    = requestContext.IpHash;
+        Instant now              = clock.GetCurrentInstant();
+        string actorSub          = currentUser.ActorSub;
+        string actorRole         = currentUser.ActorRole;
+        string source            = requestContext.Source;
+        Guid requestId           = requestContext.RequestId;
+        byte[]? ipHash           = requestContext.IpHash;
+        bool impersonating       = tenantContext.IsResolved && tenantContext.IsImpersonating;
+        string? impersonatedBy   = impersonating ? actorSub : null;
 
         List<AuditLog> logs = new();
 
@@ -46,14 +50,15 @@ public sealed class AuditInterceptor(
                 _                    => "UPDATE",
             };
 
-            Guid? entityId   = (entry.Entity as Entity)?.Id;
+            Guid? entityId    = (entry.Entity as Entity)?.Id;
             string entityName = entry.Entity.GetType().Name;
             string? diffJson  = BuildDiff(entry);
 
             logs.Add(AuditLog.Create(
                 now, actorSub, actorRole, source,
                 entityName, entityId, operation,
-                diffJson, requestId, ipHash));
+                diffJson, requestId, ipHash,
+                impersonating, impersonatedBy));
         }
 
         if (logs.Count > 0)

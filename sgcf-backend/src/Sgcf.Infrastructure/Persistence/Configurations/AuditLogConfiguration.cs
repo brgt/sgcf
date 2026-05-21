@@ -67,6 +67,17 @@ internal sealed class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
             .HasColumnType("bytea")
             .IsRequired(false);
 
+        builder.Property(a => a.Impersonating)
+            .HasColumnName("impersonating")
+            .HasColumnType("boolean")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(a => a.ImpersonatedBy)
+            .HasColumnName("impersonated_by")
+            .HasColumnType("text")
+            .IsRequired(false);
+
         builder.HasIndex(a => new { a.Entity, a.EntityId, a.OccurredAt })
             .HasDatabaseName("ix_audit_entity")
             .IsDescending(false, false, true);
