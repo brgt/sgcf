@@ -33,8 +33,8 @@
 
 ## Fase 2 — Cockpit Gerente Financeiro (Sprint 4)
 
-- [ ] **2.1** GAP-CKP-07 — `GET /painel/inadimplencia`.
-- [ ] **2.2** Guia FE para Não-Gaps (`12_BACKEND_API_COCKPIT_FE_GUIDE.md`) cobrindo GAP-05, GAP-06, GAP-19, GAP-20, GAP-14-CDI.
+- [x] **2.1** GAP-CKP-07 — `GET /painel/inadimplencia`.
+- [x] **2.2** Guia FE para Não-Gaps (`12_BACKEND_API_COCKPIT_FE_GUIDE.md`) cobrindo GAP-05, GAP-06, GAP-19, GAP-20, GAP-14-CDI.
 
 ---
 
