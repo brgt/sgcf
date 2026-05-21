@@ -55,4 +55,12 @@ public interface IEventoCronogramaRepository
         LocalDate dataFim,
         IReadOnlyCollection<Guid> contratoIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retorna todos os eventos com <c>Status == Atrasado</c> e <c>DataPrevista</c> estritamente
+    /// anterior a <paramref name="hoje"/>. Usado pelo painel de inadimplência.
+    /// </summary>
+    public Task<IReadOnlyList<EventoCronograma>> ListAtrasadosAntesDeAsync(
+        LocalDate hoje,
+        CancellationToken cancellationToken = default);
 }

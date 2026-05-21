@@ -94,4 +94,15 @@ internal sealed class EventoCronogramaRepository(SgcfDbContext context) : IEvent
             .ToListAsync(cancellationToken);
         return list.AsReadOnly();
     }
+
+    public async Task<IReadOnlyList<EventoCronograma>> ListAtrasadosAntesDeAsync(
+        LocalDate hoje,
+        CancellationToken cancellationToken)
+    {
+        List<EventoCronograma> list = await context.EventosCronograma
+            .Where(e => e.Status == StatusEventoCronograma.Atrasado
+                     && e.DataPrevista < hoje)
+            .ToListAsync(cancellationToken);
+        return list.AsReadOnly();
+    }
 }

@@ -265,4 +265,21 @@ public sealed class PainelController(IMediator mediator, IClock clock) : Control
 
         return Ok(resultado);
     }
+
+    /// <summary>
+    /// Retorna os contratos inadimplentes com dias de atraso médio e exposição total em BRL.
+    /// Considera apenas eventos de cronograma com <c>Status == Atrasado</c> e vencidos antes de hoje.
+    /// </summary>
+    [HttpGet("inadimplencia")]
+    [ProducesEnvelope]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<EnvelopeResponse<InadimplenciaDto>>(StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetInadimplencia(CancellationToken ct)
+    {
+        EnvelopeResponse<InadimplenciaDto> resultado = await mediator.Send(
+            new GetInadimplenciaQuery(),
+            ct);
+
+        return Ok(resultado);
+    }
 }
