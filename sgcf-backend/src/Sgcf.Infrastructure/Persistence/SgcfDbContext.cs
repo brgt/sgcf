@@ -24,6 +24,7 @@ using Sgcf.Domain.Tenancy;
 using Sgcf.Domain.Covenants;
 using Sgcf.Domain.Conformidade;
 using Sgcf.Domain.Documentos;
+using Sgcf.Domain.Exportacao;
 using Sgcf.Domain.OrcamentosEncargo;
 using Sgcf.Domain.Tesouraria;
 
@@ -93,6 +94,7 @@ public class SgcfDbContext(
     public DbSet<Covenant> Covenants => Set<Covenant>();
     public DbSet<DocumentoContratual> DocumentosContratuais => Set<DocumentoContratual>();
     public DbSet<RegistroRegulatorio> RegistrosRegulatorios => Set<RegistroRegulatorio>();
+    public DbSet<ExportacaoJob> ExportacaoJobs => Set<ExportacaoJob>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
