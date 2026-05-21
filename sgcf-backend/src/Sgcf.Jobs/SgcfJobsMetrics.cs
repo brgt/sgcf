@@ -35,4 +35,10 @@ internal static class SgcfJobsMetrics
         Meter.CreateCounter<int>(
             "sgcf_provisao_juros_criada_total",
             description: "Número total de lançamentos de provisão de juros criados pelo job diário.");
+
+    /// <summary>Incremented each time an alert rule is evaluated (regardless of whether an alert was generated).</summary>
+    internal static readonly Counter<int> AlertaRuleAvaliada =
+        Meter.CreateCounter<int>(
+            "sgcf_alerta_rule_avaliada_total",
+            description: "Número total de avaliações de regras de alerta executadas pelo AlertasHostedService.");
 }

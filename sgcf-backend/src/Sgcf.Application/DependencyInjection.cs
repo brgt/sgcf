@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Sgcf.Application.Alertas.Rules;
 using Sgcf.Application.Common.Behaviors;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Conversores;
@@ -14,6 +15,13 @@ public static class DependencyInjection
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+
+        // Rules engine — cada regra é scoped porque depende de repositórios scoped.
+        // Registradas como IAlertaRule para que AlertasHostedService possa resolver
+        // todas via GetServices<IAlertaRule>().
+        services.AddScoped<IAlertaRule, RegraVencimentoIminente>();
+        services.AddScoped<IAlertaRule, RegraContratoSemHedge>();
+        services.AddScoped<IAlertaRule, RegraLimiteBancoUtilizacao>();
 
         // Registrar todos os conversores de modalidade — inclusive os stubs.
         // A ordem de registro não importa: o handler indexa por ModalidadeContrato.

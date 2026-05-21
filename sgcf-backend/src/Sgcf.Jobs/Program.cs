@@ -20,6 +20,7 @@ builder.Services.AddHostedService<RecalcularMtmJob>();
 builder.Services.AddHostedService<LiquidarNdfJob>();
 builder.Services.AddHostedService<AlertaVencimentoJob>();
 builder.Services.AddHostedService<AlertaExposicaoBancoJob>();
+builder.Services.AddHostedService<AlertasHostedService>();
 builder.Services.AddHostedService<SnapshotMensalJob>();
 builder.Services.AddHostedService<ProvisaoJurosDiariaJob>();
 
