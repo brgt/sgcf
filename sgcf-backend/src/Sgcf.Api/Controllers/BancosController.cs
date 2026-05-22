@@ -82,13 +82,7 @@ public sealed class BancosController(IMediator mediator) : ControllerBase
                 request.AceitaLiquidacaoParcial,
                 request.ExigeAnuenciaExpressa,
                 request.ExigeParcelaInteira,
-                request.AvisoPrevioMinDiasUteis,
-                request.PadraoAntecipacao,
-                request.ValorMinimoParcialPct,
-                request.BreakFundingFeePct,
-                request.TlaPctSobreSaldo,
-                request.TlaPctPorMesRemanescente,
-                request.ObservacoesAntecipacao);
+                request.AvisoPrevioMinDiasUteis);
 
             BancoDto result = await mediator.Send(command, ct);
             return Ok(result);
@@ -105,10 +99,4 @@ public sealed record UpdateBancoConfigRequest(
     bool AceitaLiquidacaoParcial,
     bool ExigeAnuenciaExpressa,
     bool ExigeParcelaInteira,
-    int AvisoPrevioMinDiasUteis,
-    string PadraoAntecipacao,
-    decimal? ValorMinimoParcialPct,
-    decimal? BreakFundingFeePct,
-    decimal? TlaPctSobreSaldo,
-    decimal? TlaPctPorMesRemanescente,
-    string? ObservacoesAntecipacao);
+    int AvisoPrevioMinDiasUteis);

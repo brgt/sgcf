@@ -4,10 +4,12 @@ using NodaTime;
 using NodaTime.TimeZones;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Domain.Antecipacao;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Cotacoes;
 
 namespace Sgcf.Application.Antecipacao.Commands;
 
@@ -18,6 +20,7 @@ namespace Sgcf.Application.Antecipacao.Commands;
 public sealed class SimularAntecipacaoCommandHandler(
     IContratoRepository contratoRepo,
     IBancoRepository bancoRepo,
+    ILimiteBancoRepository limiteBancoRepo,
     ISimulacaoAntecipacaoRepository simulacaoRepo,
     IClock clock)
     : IRequestHandler<SimularAntecipacaoCommand, ResultadoSimulacaoDto>
@@ -32,6 +35,12 @@ public sealed class SimularAntecipacaoCommandHandler(
         Banco banco = await bancoRepo.GetByIdAsync(contrato.BancoId, cancellationToken)
             ?? throw new KeyNotFoundException($"Banco com Id '{contrato.BancoId}' não encontrado.");
 
+        LimiteBanco limiteBanco = await limiteBancoRepo.GetByBancoModalidadeAsync(
+            contrato.BancoId, contrato.Modalidade, cancellationToken)
+            ?? throw new InvalidOperationException(
+                $"Limite bancário não configurado para banco '{contrato.BancoId}' na modalidade '{contrato.Modalidade}'. " +
+                "Configure o LimiteBanco com PadraoAntecipacao antes de simular.");
+
         EntradaSimulacaoAntecipacao entrada = MontarEntrada(cmd, contrato);
 
         // Datas de calendário brasileiro derivam do fuso BRT, não UTC.
@@ -39,11 +48,11 @@ public sealed class SimularAntecipacaoCommandHandler(
             .InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
         (bool restricoesPermitem, IReadOnlyList<string> alertasRestricao) =
-            AntecipacaoValidador.Validar(banco, entrada, cmd.DataEfetiva, hoje);
+            AntecipacaoValidador.Validar(banco, limiteBanco, entrada, cmd.DataEfetiva, hoje);
 
         ResultadoSimulacaoAntecipacao resultado = AntecipacaoStrategyDispatcher.Calcular(
-            banco.PadraoAntecipacao,
             entrada,
+            limiteBanco,
             banco);
 
         // Merge restriction alerts (prepended) with strategy alerts

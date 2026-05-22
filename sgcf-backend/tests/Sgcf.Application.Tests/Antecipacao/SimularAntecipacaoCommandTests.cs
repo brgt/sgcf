@@ -5,10 +5,12 @@ using Sgcf.Application.Antecipacao;
 using Sgcf.Application.Antecipacao.Commands;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Domain.Antecipacao;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Cotacoes;
 using Xunit;
 
 namespace Sgcf.Application.Tests.Antecipacao;
@@ -16,6 +18,7 @@ namespace Sgcf.Application.Tests.Antecipacao;
 /// <summary>
 /// Testes unitários do handler de simulação de antecipação usando mocks.
 /// Verifica persistência, alertas e regras de isenção sem depender de banco de dados.
+/// Após S32: PadraoAntecipacao e parâmetros de cálculo residem em LimiteBanco.
 /// </summary>
 [Trait("Category", "Domain")]
 public sealed class SimularAntecipacaoCommandTests
@@ -44,61 +47,79 @@ public sealed class SimularAntecipacaoCommandTests
             clock: clock);
     }
 
-    private static Banco CriarBancoPadraoA(IClock clock)
+    private static Banco CriarBanco(string codigoCompe, IClock clock)
     {
-        Banco banco = Banco.Criar("036", "Banco Bradesco S.A.", "Bradesco", PadraoAntecipacao.A, clock);
+        Banco banco = Banco.Criar(codigoCompe, "Banco Teste S.A.", "Teste", clock);
         banco.AtualizarConfigAntecipacao(
             aceitaLiquidacaoTotal: true,
             aceitaLiquidacaoParcial: true,
             exigeAnuenciaExpressa: false,
             exigeParcelaInteira: false,
             avisoPrevioMinDiasUteis: 2,
-            valorMinimoParcialPct: null,
+            clock: clock);
+        return banco;
+    }
+
+    /// <summary>
+    /// Cria um LimiteBanco com PadraoAntecipacao A (BreakFundingFee) configurado.
+    /// Os parâmetros são passados em fração (0.01 = 1%).
+    /// </summary>
+    private static LimiteBanco CriarLimitePadraoA(Guid bancoId, IClock clock)
+    {
+        LimiteBanco limite = LimiteBanco.Criar(
+            bancoId: bancoId,
+            modalidade: ModalidadeContrato.Finimp,
+            valorLimiteBrl: new Money(10_000_000m, Moeda.Brl),
+            dataVigenciaInicio: new LocalDate(2025, 1, 1),
+            clock: clock,
+            padraoAntecipacao: PadraoAntecipacao.A);
+
+        // BreakFundingFeePct = 1% → fração 0.01
+        limite.ConfigurarAntecipacao(
             padraoAntecipacao: PadraoAntecipacao.A,
-            breakFundingFeePct: 0.01m,
+            breakFundingFeePct: Percentual.De(1m).AsDecimal,
             tlaPctSobreSaldo: null,
             tlaPctPorMesRemanescente: null,
+            valorMinimoParcialPct: null,
             observacoesAntecipacao: null,
             clock: clock);
-        return banco;
+
+        return limite;
     }
 
-    private static Banco CriarBancoPadraoB(IClock clock)
+    private static LimiteBanco CriarLimitePadraoB(Guid bancoId, IClock clock)
     {
-        Banco banco = Banco.Criar("748", "Sicredi", "Sicredi", PadraoAntecipacao.B, clock);
-        banco.AtualizarConfigAntecipacao(
-            aceitaLiquidacaoTotal: true,
-            aceitaLiquidacaoParcial: false,
-            exigeAnuenciaExpressa: true,
-            exigeParcelaInteira: false,
-            avisoPrevioMinDiasUteis: 5,
-            valorMinimoParcialPct: null,
-            padraoAntecipacao: PadraoAntecipacao.B,
-            breakFundingFeePct: null,
-            tlaPctSobreSaldo: null,
-            tlaPctPorMesRemanescente: null,
-            observacoesAntecipacao: "Cobra juros período total",
-            clock: clock);
-        return banco;
+        LimiteBanco limite = LimiteBanco.Criar(
+            bancoId: bancoId,
+            modalidade: ModalidadeContrato.Finimp,
+            valorLimiteBrl: new Money(5_000_000m, Moeda.Brl),
+            dataVigenciaInicio: new LocalDate(2025, 1, 1),
+            clock: clock,
+            padraoAntecipacao: PadraoAntecipacao.B);
+
+        return limite;
     }
 
-    private static Banco CriarBancoPadraoD(IClock clock)
+    private static LimiteBanco CriarLimitePadraoD(Guid bancoId, IClock clock)
     {
-        Banco banco = Banco.Criar("104", "Caixa Econômica Federal", "Caixa", PadraoAntecipacao.D, clock);
-        banco.AtualizarConfigAntecipacao(
-            aceitaLiquidacaoTotal: true,
-            aceitaLiquidacaoParcial: true,
-            exigeAnuenciaExpressa: false,
-            exigeParcelaInteira: false,
-            avisoPrevioMinDiasUteis: 2,
-            valorMinimoParcialPct: null,
+        LimiteBanco limite = LimiteBanco.Criar(
+            bancoId: bancoId,
+            modalidade: ModalidadeContrato.Finimp,
+            valorLimiteBrl: new Money(10_000_000m, Moeda.Brl),
+            dataVigenciaInicio: new LocalDate(2025, 1, 1),
+            clock: clock,
+            padraoAntecipacao: PadraoAntecipacao.D);
+
+        limite.ConfigurarAntecipacao(
             padraoAntecipacao: PadraoAntecipacao.D,
             breakFundingFeePct: null,
-            tlaPctSobreSaldo: 0.02m,
-            tlaPctPorMesRemanescente: 0.001m,
+            tlaPctSobreSaldo: Percentual.De(2m).AsDecimal,       // 2%
+            tlaPctPorMesRemanescente: Percentual.De(0.1m).AsDecimal, // 0.1%
+            valorMinimoParcialPct: null,
             observacoesAntecipacao: null,
             clock: clock);
-        return banco;
+
+        return limite;
     }
 
     // ── Teste 1: SalvarSimulacao=true → AddAsync chamado uma vez ──────────────
@@ -110,16 +131,20 @@ public sealed class SimularAntecipacaoCommandTests
         IClock clock = CriarClock();
         Guid bancoId = Guid.NewGuid();
         Contrato contrato = CriarContrato(bancoId);
-        Banco banco = CriarBancoPadraoA(clock);
+        Banco banco = CriarBanco("036", clock);
+        LimiteBanco limiteBanco = CriarLimitePadraoA(bancoId, clock);
 
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        ILimiteBancoRepository limiteBancoRepo = Substitute.For<ILimiteBancoRepository>();
         ISimulacaoAntecipacaoRepository simulacaoRepo = Substitute.For<ISimulacaoAntecipacaoRepository>();
 
         contratoRepo.GetByIdAsync(contrato.Id, Arg.Any<CancellationToken>()).Returns(contrato);
         bancoRepo.GetByIdAsync(bancoId, Arg.Any<CancellationToken>()).Returns(banco);
+        limiteBancoRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, Arg.Any<CancellationToken>())
+            .Returns(limiteBanco);
 
-        SimularAntecipacaoCommandHandler handler = new(contratoRepo, bancoRepo, simulacaoRepo, clock);
+        SimularAntecipacaoCommandHandler handler = new(contratoRepo, bancoRepo, limiteBancoRepo, simulacaoRepo, clock);
 
         SimularAntecipacaoCommand cmd = new(
             ContratoId: contrato.Id,
@@ -150,16 +175,30 @@ public sealed class SimularAntecipacaoCommandTests
         IClock clock = CriarClock();
         Guid bancoId = Guid.NewGuid();
         Contrato contrato = CriarContrato(bancoId, Moeda.Usd);
-        Banco banco = CriarBancoPadraoB(clock);
+
+        // Banco com ExigeAnuenciaExpressa = true (política institucional)
+        Banco banco = Banco.Criar("748", "Sicredi", "Sicredi", clock);
+        banco.AtualizarConfigAntecipacao(
+            aceitaLiquidacaoTotal: true,
+            aceitaLiquidacaoParcial: false,
+            exigeAnuenciaExpressa: true,
+            exigeParcelaInteira: false,
+            avisoPrevioMinDiasUteis: 5,
+            clock: clock);
+
+        LimiteBanco limiteBanco = CriarLimitePadraoB(bancoId, clock);
 
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        ILimiteBancoRepository limiteBancoRepo = Substitute.For<ILimiteBancoRepository>();
         ISimulacaoAntecipacaoRepository simulacaoRepo = Substitute.For<ISimulacaoAntecipacaoRepository>();
 
         contratoRepo.GetByIdAsync(contrato.Id, Arg.Any<CancellationToken>()).Returns(contrato);
         bancoRepo.GetByIdAsync(bancoId, Arg.Any<CancellationToken>()).Returns(banco);
+        limiteBancoRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, Arg.Any<CancellationToken>())
+            .Returns(limiteBanco);
 
-        SimularAntecipacaoCommandHandler handler = new(contratoRepo, bancoRepo, simulacaoRepo, clock);
+        SimularAntecipacaoCommandHandler handler = new(contratoRepo, bancoRepo, limiteBancoRepo, simulacaoRepo, clock);
 
         SimularAntecipacaoCommand cmd = new(
             ContratoId: contrato.Id,
@@ -190,16 +229,20 @@ public sealed class SimularAntecipacaoCommandTests
         IClock clock = CriarClock();
         Guid bancoId = Guid.NewGuid();
         Contrato contrato = CriarContrato(bancoId, Moeda.Brl);
-        Banco banco = CriarBancoPadraoD(clock);
+        Banco banco = CriarBanco("104", clock);
+        LimiteBanco limiteBanco = CriarLimitePadraoD(bancoId, clock);
 
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        ILimiteBancoRepository limiteBancoRepo = Substitute.For<ILimiteBancoRepository>();
         ISimulacaoAntecipacaoRepository simulacaoRepo = Substitute.For<ISimulacaoAntecipacaoRepository>();
 
         contratoRepo.GetByIdAsync(contrato.Id, Arg.Any<CancellationToken>()).Returns(contrato);
         bancoRepo.GetByIdAsync(bancoId, Arg.Any<CancellationToken>()).Returns(banco);
+        limiteBancoRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, Arg.Any<CancellationToken>())
+            .Returns(limiteBanco);
 
-        SimularAntecipacaoCommandHandler handler = new(contratoRepo, bancoRepo, simulacaoRepo, clock);
+        SimularAntecipacaoCommandHandler handler = new(contratoRepo, bancoRepo, limiteBancoRepo, simulacaoRepo, clock);
 
         SimularAntecipacaoCommand cmd = new(
             ContratoId: contrato.Id,

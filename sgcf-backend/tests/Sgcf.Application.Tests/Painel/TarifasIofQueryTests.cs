@@ -121,8 +121,7 @@ public sealed class TarifasIofQueryTests
         IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(InstanteFixo);
-        Banco banco = Banco.Criar("001", "Banco Teste S.A.", "BancoTeste",
-            PadraoAntecipacao.A, clock);
+        Banco banco = Banco.Criar("001", "Banco Teste S.A.", "BancoTeste", clock);
         bancoRepo.GetByIdAsync(bancoId, Arg.Any<CancellationToken>())
                  .Returns(banco);
 

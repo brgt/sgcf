@@ -65,7 +65,7 @@ public sealed class GetCalendarioVencimentosQueryHandlerTests
     {
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(InstanteFixo);
-        return Banco.Criar(codigoCompe, $"Banco {apelido} S.A.", apelido, PadraoAntecipacao.A, clock);
+        return Banco.Criar(codigoCompe, $"Banco {apelido} S.A.", apelido, clock);
     }
 
     private static Contrato CriarContratoCarencia(Guid bancoId)

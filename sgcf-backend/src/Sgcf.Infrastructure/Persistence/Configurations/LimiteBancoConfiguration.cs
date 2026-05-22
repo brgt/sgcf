@@ -99,9 +99,44 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
         builder.Metadata.FindNavigation(nameof(LimiteBanco.Historico))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
 
+        // ── Configuração de antecipação por modalidade (S32) ─────────────────────
+        builder.Property(l => l.PadraoAntecipacao)
+            .HasColumnName("padrao_antecipacao")
+            .HasColumnType("integer")
+            .IsRequired(false);
+
+        builder.Property(l => l.BreakFundingFeePctDecimal)
+            .HasColumnName("break_funding_fee_pct")
+            .HasColumnType("numeric(18,6)")
+            .IsRequired(false);
+
+        builder.Property(l => l.TlaPctSobreSaldoDecimal)
+            .HasColumnName("tla_pct_sobre_saldo")
+            .HasColumnType("numeric(18,6)")
+            .IsRequired(false);
+
+        builder.Property(l => l.TlaPctPorMesRemanescenteDecimal)
+            .HasColumnName("tla_pct_por_mes_remanescente")
+            .HasColumnType("numeric(18,6)")
+            .IsRequired(false);
+
+        builder.Property(l => l.ValorMinimoParcialPctDecimal)
+            .HasColumnName("valor_minimo_parcial_pct")
+            .HasColumnType("numeric(18,6)")
+            .IsRequired(false);
+
+        builder.Property(l => l.ObservacoesAntecipacao)
+            .HasColumnName("observacoes_antecipacao")
+            .HasColumnType("text")
+            .IsRequired(false);
+
         // Propriedades computadas não são persistidas.
         builder.Ignore(l => l.ValorLimiteBrl);
         builder.Ignore(l => l.ValorUtilizadoBrl);
         builder.Ignore(l => l.ValorDisponivelBrl);
+        builder.Ignore(l => l.BreakFundingFeePct);
+        builder.Ignore(l => l.TlaPctSobreSaldo);
+        builder.Ignore(l => l.TlaPctPorMesRemanescente);
+        builder.Ignore(l => l.ValorMinimoParcialPct);
     }
 }

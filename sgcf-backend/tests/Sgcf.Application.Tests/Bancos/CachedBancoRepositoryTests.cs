@@ -79,7 +79,7 @@ public sealed class CachedBancoRepositoryTests
     }
 
     private static Banco CriarBanco() =>
-        Banco.Criar("001", "Banco Teste S.A.", "BancoTeste", PadraoAntecipacao.A,
+        Banco.Criar("001", "Banco Teste S.A.", "BancoTeste",
             NSubstitute.Substitute.For<NodaTime.IClock>());
 
     // ── Testes ────────────────────────────────────────────────────────────────

@@ -122,7 +122,6 @@ public sealed class GetQuadroDividaQueryHandlerTests
             codigoCompe: compe,
             razaoSocial: $"Banco {apelido} S.A.",
             apelido: apelido,
-            padraoAntecipacao: PadraoAntecipacao.A,
             clock: c);
     }
 

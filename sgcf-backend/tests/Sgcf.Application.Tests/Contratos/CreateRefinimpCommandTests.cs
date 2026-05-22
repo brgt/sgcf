@@ -34,7 +34,7 @@ public sealed class CreateRefinimpCommandTests
     private static Banco CriarBancoComRefinimp(string codigoCompe)
     {
         IClock clock = CriarClock();
-        Banco banco = Banco.Criar(codigoCompe, "Banco Teste S.A.", "Teste", PadraoAntecipacao.A, clock);
+        Banco banco = Banco.Criar(codigoCompe, "Banco Teste S.A.", "Teste", clock);
         banco.AtualizarAceitaRefinimp(aceitaRefinimp: true, clock);
         return banco;
     }

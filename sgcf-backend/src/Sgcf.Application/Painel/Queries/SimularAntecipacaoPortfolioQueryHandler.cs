@@ -4,11 +4,13 @@ using NodaTime.TimeZones;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Domain.Antecipacao;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cambio;
+using Sgcf.Domain.Cotacoes;
 
 namespace Sgcf.Application.Painel.Queries;
 
@@ -19,6 +21,7 @@ namespace Sgcf.Application.Painel.Queries;
 public sealed class SimularAntecipacaoPortfolioQueryHandler(
     IContratoRepository contratoRepo,
     IBancoRepository bancoRepo,
+    ILimiteBancoRepository limiteBancoRepo,
     ICotacaoSpotCache spotCache,
     ICotacaoFxRepository cotacaoFxRepo,
     IClock clock)
@@ -39,6 +42,7 @@ public sealed class SimularAntecipacaoPortfolioQueryHandler(
 
         IReadOnlyList<Contrato> contratos = await contratoRepo.ListAsync(cancellationToken);
         IReadOnlyList<Banco> bancos = await bancoRepo.ListAllAsync(cancellationToken);
+        IReadOnlyList<LimiteBanco> limites = await limiteBancoRepo.ListAsync(null, null, cancellationToken);
 
         IReadOnlyList<Contrato> contratosAtivos = contratos
             .Where(c => c.Status == StatusContrato.Ativo)
@@ -46,6 +50,13 @@ public sealed class SimularAntecipacaoPortfolioQueryHandler(
             .AsReadOnly();
 
         Dictionary<Guid, Banco> bancosPorId = bancos.ToDictionary(b => b.Id);
+
+        // Índice (BancoId, Modalidade) → LimiteBanco para evitar N+1 na iteração de contratos.
+        Dictionary<(Guid BancoId, ModalidadeContrato Modalidade), LimiteBanco> limitesPorChave =
+            limites
+                .Where(l => l.DataVigenciaFim == null) // apenas limites vigentes
+                .GroupBy(l => (l.BancoId, l.Modalidade))
+                .ToDictionary(g => g.Key, g => g.First());
 
         // Resolve cotações para conversão de saldo
         IReadOnlySet<Moeda> moedasEstrangeiras = contratosAtivos
@@ -68,10 +79,25 @@ public sealed class SimularAntecipacaoPortfolioQueryHandler(
                 continue;
             }
 
+            if (!limitesPorChave.TryGetValue((contrato.BancoId, contrato.Modalidade), out LimiteBanco? limiteBanco))
+            {
+                contratosExcluidos.Add(
+                    $"{contrato.NumeroExterno}: limite bancário não configurado para modalidade '{contrato.Modalidade}'");
+                continue;
+            }
+
             // Exclui Padrão B — cobra juros totais, nunca gera economia
-            if (banco.PadraoAntecipacao == PadraoAntecipacao.B)
+            if (limiteBanco.PadraoAntecipacao == PadraoAntecipacao.B)
             {
                 contratosExcluidos.Add($"{contrato.NumeroExterno}: {MotivoExclusaoPadraoB}");
+                continue;
+            }
+
+            // Exclui contratos sem padrão de antecipação configurado no limite
+            if (limiteBanco.PadraoAntecipacao is null)
+            {
+                contratosExcluidos.Add(
+                    $"{contrato.NumeroExterno}: PadraoAntecipacao não configurado no LimiteBanco da modalidade '{contrato.Modalidade}'");
                 continue;
             }
 
@@ -97,10 +123,10 @@ public sealed class SimularAntecipacaoPortfolioQueryHandler(
 
             // Valida restrições do banco
             (bool restricoesPermitem, IReadOnlyList<string> alertasRestricao) =
-                AntecipacaoValidador.Validar(banco, entrada, hoje, hoje);
+                AntecipacaoValidador.Validar(banco, limiteBanco, entrada, hoje, hoje);
 
             ResultadoSimulacaoAntecipacao resultado =
-                AntecipacaoStrategyDispatcher.Calcular(banco.PadraoAntecipacao, entrada, banco);
+                AntecipacaoStrategyDispatcher.Calcular(entrada, limiteBanco, banco);
 
             bool permitido = restricoesPermitem && resultado.Permitido;
 

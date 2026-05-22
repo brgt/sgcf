@@ -1,27 +1,38 @@
 using Sgcf.Domain.Antecipacao.Strategies;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Cotacoes;
 
 namespace Sgcf.Domain.Antecipacao;
 
 /// <summary>
-/// Despacha o cálculo de simulação de antecipação para a estratégia correta com base no padrão do banco.
+/// Despacha o cálculo de simulação de antecipação para a estratégia correta com base no padrão
+/// configurado no <see cref="LimiteBanco"/> (banco + modalidade).
 /// </summary>
 public static class AntecipacaoStrategyDispatcher
 {
     /// <summary>
-    /// Seleciona e executa a estratégia de antecipação correspondente ao padrão configurado no banco.
+    /// Seleciona e executa a estratégia de antecipação correspondente ao padrão configurado
+    /// no limite operacional da modalidade.
+    /// Parâmetros institucionais que não variam por modalidade (ExigeAnuenciaExpressa,
+    /// ExigeParcelaInteira) ainda são lidos de <paramref name="banco"/>.
     /// </summary>
     public static ResultadoSimulacaoAntecipacao Calcular(
-        PadraoAntecipacao padrao,
         EntradaSimulacaoAntecipacao entrada,
+        LimiteBanco limiteBanco,
         Banco banco)
     {
+        PadraoAntecipacao padrao = limiteBanco.PadraoAntecipacao
+            ?? throw new InvalidOperationException(
+                $"LimiteBanco '{limiteBanco.Id}' não tem PadraoAntecipacao configurado. " +
+                "Configure via ConfigurarAntecipacao antes de simular.");
+
         return padrao switch
         {
             PadraoAntecipacao.A => PadraoAStrategy.Calcular(
                 entrada,
-                banco.BreakFundingFeePct ?? throw new InvalidOperationException("BreakFundingFeePct não configurado para Padrão A"),
+                limiteBanco.BreakFundingFeePct ?? throw new InvalidOperationException(
+                    $"BreakFundingFeePct não configurado no LimiteBanco '{limiteBanco.Id}' para Padrão A."),
                 banco.ExigeAnuenciaExpressa),
 
             PadraoAntecipacao.B => PadraoBStrategy.Calcular(entrada, banco.ExigeAnuenciaExpressa),
@@ -30,12 +41,14 @@ public static class AntecipacaoStrategyDispatcher
 
             PadraoAntecipacao.D => PadraoDStrategy.Calcular(
                 entrada,
-                banco.TlaPctSobreSaldo ?? throw new InvalidOperationException("TlaPctSobreSaldo não configurado para Padrão D"),
-                banco.TlaPctPorMesRemanescente ?? throw new InvalidOperationException("TlaPctPorMesRemanescente não configurado para Padrão D")),
+                limiteBanco.TlaPctSobreSaldo ?? throw new InvalidOperationException(
+                    $"TlaPctSobreSaldo não configurado no LimiteBanco '{limiteBanco.Id}' para Padrão D."),
+                limiteBanco.TlaPctPorMesRemanescente ?? throw new InvalidOperationException(
+                    $"TlaPctPorMesRemanescente não configurado no LimiteBanco '{limiteBanco.Id}' para Padrão D.")),
 
             PadraoAntecipacao.E => PadraoEStrategy.Calcular(entrada, null),
 
-            _ => throw new ArgumentOutOfRangeException(nameof(padrao), padrao, "Padrão de antecipação não suportado.")
+            _ => throw new ArgumentOutOfRangeException(nameof(limiteBanco), padrao, "Padrão de antecipação não suportado.")
         };
     }
 }

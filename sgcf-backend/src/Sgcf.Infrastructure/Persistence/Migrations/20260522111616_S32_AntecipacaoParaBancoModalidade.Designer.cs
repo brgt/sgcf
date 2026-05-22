@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NodaTime;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -10,12 +11,14 @@ using Sgcf.Infrastructure.Persistence;
 
 #nullable disable
 
-namespace Sgcf.Infrastructure.Migrations
+namespace Sgcf.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SgcfDbContext))]
-    partial class SgcfDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260522111616_S32_AntecipacaoParaBancoModalidade")]
+    partial class S32_AntecipacaoParaBancoModalidade
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

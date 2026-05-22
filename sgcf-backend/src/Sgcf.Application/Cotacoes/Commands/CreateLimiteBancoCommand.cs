@@ -15,6 +15,12 @@ public sealed record CreateLimiteBancoCommand(
     DateOnly DataVigenciaInicio,
     DateOnly? DataVigenciaFim = null,
     string? Observacoes = null,
+    string? PadraoAntecipacao = null,
+    decimal? BreakFundingFeePct = null,
+    decimal? TlaPctSobreSaldo = null,
+    decimal? TlaPctPorMesRemanescente = null,
+    decimal? ValorMinimoParcialPct = null,
+    string? ObservacoesAntecipacao = null,
     IReadOnlyList<CriarGarantiaExigidaLimiteRequest>? GarantiasExigidas = null) : IRequest<LimiteBancoDto>;
 
 public sealed class CreateLimiteBancoCommandValidator : AbstractValidator<CreateLimiteBancoCommand>
@@ -31,6 +37,16 @@ public sealed class CreateLimiteBancoCommandValidator : AbstractValidator<Create
         RuleFor(c => c.ValorLimiteBrl)
             .GreaterThan(0m)
             .WithMessage("ValorLimiteBrl deve ser maior que zero.");
+
+        RuleFor(c => c.PadraoAntecipacao)
+            .Must(v => Enum.TryParse<PadraoAntecipacao>(v!, true, out _))
+            .WithMessage($"PadraoAntecipacao deve ser um dos valores: {string.Join(", ", Enum.GetNames<PadraoAntecipacao>())}.")
+            .When(c => c.PadraoAntecipacao is not null);
+
+        RuleFor(c => c.BreakFundingFeePct).GreaterThanOrEqualTo(0).When(c => c.BreakFundingFeePct.HasValue);
+        RuleFor(c => c.TlaPctSobreSaldo).GreaterThanOrEqualTo(0).When(c => c.TlaPctSobreSaldo.HasValue);
+        RuleFor(c => c.TlaPctPorMesRemanescente).GreaterThanOrEqualTo(0).When(c => c.TlaPctPorMesRemanescente.HasValue);
+        RuleFor(c => c.ValorMinimoParcialPct).GreaterThanOrEqualTo(0).When(c => c.ValorMinimoParcialPct.HasValue);
 
         // Validate that each Tipo string maps to a known enum value.
         // XOR (percentual×valorFixo) is NOT validated here — domain handles it and
@@ -74,6 +90,10 @@ public sealed class CreateLimiteBancoCommandHandler(ILimiteBancoRepository repo,
 
         Money valorLimite = new(cmd.ValorLimiteBrl, Moeda.Brl);
 
+        PadraoAntecipacao? padrao = cmd.PadraoAntecipacao is not null
+            ? Enum.Parse<PadraoAntecipacao>(cmd.PadraoAntecipacao, true)
+            : (PadraoAntecipacao?)null;
+
         IEnumerable<GarantiaExigidaLimiteSpec>? specs = cmd.GarantiasExigidas?
             .Select(r => r.ParaSpec());
 
@@ -85,7 +105,41 @@ public sealed class CreateLimiteBancoCommandHandler(ILimiteBancoRepository repo,
             clock,
             fim,
             cmd.Observacoes,
+            padrao,
             garantiasExigidas: specs);
+
+        // Configura parâmetros de cálculo quando fornecidos no request de criação.
+        if (cmd.BreakFundingFeePct.HasValue
+            || cmd.TlaPctSobreSaldo.HasValue
+            || cmd.TlaPctPorMesRemanescente.HasValue
+            || cmd.ValorMinimoParcialPct.HasValue
+            || cmd.ObservacoesAntecipacao is not null)
+        {
+            decimal? breakFrac = cmd.BreakFundingFeePct.HasValue
+                ? Percentual.De(cmd.BreakFundingFeePct.Value).AsDecimal
+                : (decimal?)null;
+
+            decimal? tlaSaldoFrac = cmd.TlaPctSobreSaldo.HasValue
+                ? Percentual.De(cmd.TlaPctSobreSaldo.Value).AsDecimal
+                : (decimal?)null;
+
+            decimal? tlaMesFrac = cmd.TlaPctPorMesRemanescente.HasValue
+                ? Percentual.De(cmd.TlaPctPorMesRemanescente.Value).AsDecimal
+                : (decimal?)null;
+
+            decimal? minParcialFrac = cmd.ValorMinimoParcialPct.HasValue
+                ? Percentual.De(cmd.ValorMinimoParcialPct.Value).AsDecimal
+                : (decimal?)null;
+
+            limite.ConfigurarAntecipacao(
+                padrao,
+                breakFrac,
+                tlaSaldoFrac,
+                tlaMesFrac,
+                minParcialFrac,
+                cmd.ObservacoesAntecipacao,
+                clock);
+        }
 
         repo.Add(limite);
         await repo.SaveChangesAsync(cancellationToken);

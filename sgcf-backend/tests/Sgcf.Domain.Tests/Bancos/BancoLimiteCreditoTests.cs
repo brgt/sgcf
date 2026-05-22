@@ -23,7 +23,7 @@ public sealed class BancoLimiteCreditoTests
 
     private static Banco CriarBancoValido(Instant instant)
     {
-        return Banco.Criar("001", "Banco do Brasil SA", "BB", PadraoAntecipacao.A, CriarClock(instant));
+        return Banco.Criar("001", "Banco do Brasil SA", "BB", CriarClock(instant));
     }
 
     private static readonly Instant InstantCriacao = Instant.FromUtc(2026, 5, 1, 10, 0);

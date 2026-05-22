@@ -4,6 +4,7 @@ using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Tenancy;
 
+
 namespace Sgcf.Domain.Cotacoes;
 
 /// <summary>
@@ -30,6 +31,31 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
     public LocalDate DataVigenciaInicio { get; private set; }
     public LocalDate? DataVigenciaFim { get; private set; }
     public string? Observacoes { get; private set; }
+
+    // ── Configuração de antecipação por modalidade ───────────────────────────
+    // Movido de Banco para cá (S32): o padrão e os parâmetros de cálculo variam
+    // por banco E modalidade — o mesmo banco pode ter fórmulas distintas (ex: D vs E).
+
+    /// <summary>Padrão de antecipação configurado para este limite (banco+modalidade).</summary>
+    public PadraoAntecipacao? PadraoAntecipacao { get; private set; }
+
+    internal decimal? BreakFundingFeePctDecimal { get; private set; }
+    public Percentual? BreakFundingFeePct =>
+        BreakFundingFeePctDecimal.HasValue ? Percentual.DeFracao(BreakFundingFeePctDecimal.Value) : null;
+
+    internal decimal? TlaPctSobreSaldoDecimal { get; private set; }
+    public Percentual? TlaPctSobreSaldo =>
+        TlaPctSobreSaldoDecimal.HasValue ? Percentual.DeFracao(TlaPctSobreSaldoDecimal.Value) : null;
+
+    internal decimal? TlaPctPorMesRemanescenteDecimal { get; private set; }
+    public Percentual? TlaPctPorMesRemanescente =>
+        TlaPctPorMesRemanescenteDecimal.HasValue ? Percentual.DeFracao(TlaPctPorMesRemanescenteDecimal.Value) : null;
+
+    internal decimal? ValorMinimoParcialPctDecimal { get; private set; }
+    public Percentual? ValorMinimoParcialPct =>
+        ValorMinimoParcialPctDecimal.HasValue ? Percentual.DeFracao(ValorMinimoParcialPctDecimal.Value) : null;
+
+    public string? ObservacoesAntecipacao { get; private set; }
 
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
@@ -64,6 +90,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
         IClock clock,
         LocalDate? dataVigenciaFim = null,
         string? observacoes = null,
+        PadraoAntecipacao? padraoAntecipacao = null,
         IEnumerable<GarantiaExigidaLimiteSpec>? garantiasExigidas = null)
     {
         if (valorLimiteBrl.Moeda != Moeda.Brl)
@@ -93,6 +120,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
             DataVigenciaInicio = dataVigenciaInicio,
             DataVigenciaFim = dataVigenciaFim,
             Observacoes = observacoes,
+            PadraoAntecipacao = padraoAntecipacao,
             CreatedAt = now,
             UpdatedAt = now,
         };
@@ -113,6 +141,29 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
         }
 
         return limite;
+    }
+
+    /// <summary>
+    /// Configura os parâmetros de antecipação específicos desta modalidade.
+    /// Substitui os valores anteriores integralmente (semântica replace).
+    /// Passe <c>null</c> em qualquer parâmetro para deixá-lo sem valor.
+    /// </summary>
+    public void ConfigurarAntecipacao(
+        PadraoAntecipacao? padraoAntecipacao,
+        decimal? breakFundingFeePct,
+        decimal? tlaPctSobreSaldo,
+        decimal? tlaPctPorMesRemanescente,
+        decimal? valorMinimoParcialPct,
+        string? observacoesAntecipacao,
+        IClock clock)
+    {
+        PadraoAntecipacao = padraoAntecipacao;
+        BreakFundingFeePctDecimal = breakFundingFeePct;
+        TlaPctSobreSaldoDecimal = tlaPctSobreSaldo;
+        TlaPctPorMesRemanescenteDecimal = tlaPctPorMesRemanescente;
+        ValorMinimoParcialPctDecimal = valorMinimoParcialPct;
+        ObservacoesAntecipacao = observacoesAntecipacao;
+        UpdatedAt = clock.GetCurrentInstant();
     }
 
     /// <summary>

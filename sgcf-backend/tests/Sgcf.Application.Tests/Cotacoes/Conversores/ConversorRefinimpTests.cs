@@ -32,10 +32,10 @@ public sealed class ConversorRefinimpTests
     }
 
     private static Banco CriarBancoBB(IClock clock) =>
-        Banco.Criar("001", "Banco do Brasil S.A.", "BB", PadraoAntecipacao.A, clock);
+        Banco.Criar("001", "Banco do Brasil S.A.", "BB", clock);
 
     private static Banco CriarBancoItau(IClock clock) =>
-        Banco.Criar("341", "Itaú Unibanco S.A.", "Itaú", PadraoAntecipacao.A, clock);
+        Banco.Criar("341", "Itaú Unibanco S.A.", "Itaú", clock);
 
     private static Contrato CriarContratoAncestralUsd(IClock clock, decimal valorUsd = 1_000_000m) =>
         Contrato.Criar(

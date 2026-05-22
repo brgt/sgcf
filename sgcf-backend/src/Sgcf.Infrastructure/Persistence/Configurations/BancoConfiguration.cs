@@ -48,37 +48,6 @@ internal sealed class BancoConfiguration : IEntityTypeConfiguration<Banco>
             .HasColumnType("smallint")
             .HasDefaultValue(0);
 
-        builder.Property(b => b.PadraoAntecipacao)
-            .HasColumnName("padrao_antecipacao")
-            .HasConversion(SgcfConverters.PadraoAntecipacao)
-            .HasColumnType("smallint")
-            .IsRequired();
-
-        builder.Property(b => b.ValorMinimoParcialPctDecimal)
-            .HasColumnName("valor_minimo_parcial_pct")
-            .HasColumnType("numeric(7,4)")
-            .IsRequired(false);
-
-        builder.Property(b => b.BreakFundingFeePctDecimal)
-            .HasColumnName("break_funding_fee_pct")
-            .HasColumnType("numeric(7,4)")
-            .IsRequired(false);
-
-        builder.Property(b => b.TlaPctSobreSaldoDecimal)
-            .HasColumnName("tla_pct_sobre_saldo")
-            .HasColumnType("numeric(7,4)")
-            .IsRequired(false);
-
-        builder.Property(b => b.TlaPctPorMesRemanescenteDecimal)
-            .HasColumnName("tla_pct_por_mes_remanescente")
-            .HasColumnType("numeric(7,4)")
-            .IsRequired(false);
-
-        builder.Property(b => b.ObservacoesAntecipacao)
-            .HasColumnName("observacoes_antecipacao")
-            .HasColumnType("text")
-            .IsRequired(false);
-
         builder.Property(b => b.LimiteCreditoBrlDecimal)
             .HasColumnName("limite_credito_brl")
             .HasColumnType("numeric(20,6)")
@@ -87,10 +56,6 @@ internal sealed class BancoConfiguration : IEntityTypeConfiguration<Banco>
         builder.Property(b => b.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(b => b.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 
-        builder.Ignore(b => b.ValorMinimoParcialPct);
-        builder.Ignore(b => b.BreakFundingFeePct);
-        builder.Ignore(b => b.TlaPctSobreSaldo);
-        builder.Ignore(b => b.TlaPctPorMesRemanescente);
         builder.Ignore(b => b.LimiteCreditoBrl);
     }
 }

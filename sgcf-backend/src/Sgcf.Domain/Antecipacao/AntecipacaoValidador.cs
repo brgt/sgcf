@@ -1,6 +1,7 @@
 using NodaTime;
 using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
+using Sgcf.Domain.Cotacoes;
 
 namespace Sgcf.Domain.Antecipacao;
 
@@ -13,9 +14,13 @@ public static class AntecipacaoValidador
     /// <summary>
     /// Verifica as regras de negócio do banco e retorna se a antecipação é permitida
     /// e a lista de alertas (restrições bloqueantes e avisos informativos).
+    /// Políticas institucionais (ExigeAnuenciaExpressa, ExigeParcelaInteira, AvisoPrevio)
+    /// vêm de <paramref name="banco"/>.
+    /// Parâmetros por modalidade (ValorMinimoParcialPct) vêm de <paramref name="limiteBanco"/>.
     /// </summary>
     public static (bool Permitido, IReadOnlyList<string> Alertas) Validar(
         Banco banco,
+        LimiteBanco limiteBanco,
         EntradaSimulacaoAntecipacao entrada,
         LocalDate dataEfetiva,
         LocalDate hoje)
@@ -41,14 +46,15 @@ public static class AntecipacaoValidador
                       or TipoAntecipacao.AmortizacaoExtraordinariaAvulsa;
 
         // Valor mínimo parcial (informacional — não bloqueia pois não conhecemos o saldo total aqui)
-        if (banco.ValorMinimoParcialPct.HasValue && ehParcial)
+        // Este parâmetro varia por modalidade, portanto lido do LimiteBanco.
+        if (limiteBanco.ValorMinimoParcialPct.HasValue && ehParcial)
         {
             alertas.Add(
-                $"Atenção: Este banco exige mínimo de {banco.ValorMinimoParcialPct.Value.AsHumano:F1}% do saldo principal " +
+                $"Atenção: Este banco/modalidade exige mínimo de {limiteBanco.ValorMinimoParcialPct.Value.AsHumano:F1}% do saldo principal " +
                 "para liquidação parcial. Verifique se o valor solicitado atende este critério.");
         }
 
-        // Exige parcela inteira (bloqueante para liquidações parciais)
+        // Exige parcela inteira (bloqueante para liquidações parciais) — política institucional
         if (banco.ExigeParcelaInteira && ehParcial)
         {
             alertas.Add(
@@ -57,7 +63,7 @@ public static class AntecipacaoValidador
             permitido = false;
         }
 
-        // Anuência expressa (informacional — não bloqueia a simulação, mas deve ser obtida antes da execução)
+        // Anuência expressa (informacional — não bloqueia a simulação) — política institucional
         if (banco.ExigeAnuenciaExpressa)
         {
             alertas.Add(

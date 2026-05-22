@@ -54,7 +54,6 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
             codigoCompe: compe,
             razaoSocial: $"Banco {apelido} S.A.",
             apelido: apelido,
-            padraoAntecipacao: PadraoAntecipacao.A,
             clock: clock);
 
         bancoRepo.GetByIdAsync(banco.Id, Arg.Any<CancellationToken>()).Returns(banco);

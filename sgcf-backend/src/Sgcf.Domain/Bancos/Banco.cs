@@ -17,26 +17,6 @@ public sealed class Banco : Entity, IAuditable
     public bool AceitaRefinimp { get; private set; }
     public int AvisoPrevioMinDiasUteis { get; private set; }
 
-    internal decimal? ValorMinimoParcialPctDecimal { get; private set; }
-    public Percentual? ValorMinimoParcialPct =>
-        ValorMinimoParcialPctDecimal.HasValue ? Percentual.DeFracao(ValorMinimoParcialPctDecimal.Value) : null;
-
-    public PadraoAntecipacao PadraoAntecipacao { get; private set; }
-
-    internal decimal? BreakFundingFeePctDecimal { get; private set; }
-    public Percentual? BreakFundingFeePct =>
-        BreakFundingFeePctDecimal.HasValue ? Percentual.DeFracao(BreakFundingFeePctDecimal.Value) : null;
-
-    internal decimal? TlaPctSobreSaldoDecimal { get; private set; }
-    public Percentual? TlaPctSobreSaldo =>
-        TlaPctSobreSaldoDecimal.HasValue ? Percentual.DeFracao(TlaPctSobreSaldoDecimal.Value) : null;
-
-    internal decimal? TlaPctPorMesRemanescenteDecimal { get; private set; }
-    public Percentual? TlaPctPorMesRemanescente =>
-        TlaPctPorMesRemanescenteDecimal.HasValue ? Percentual.DeFracao(TlaPctPorMesRemanescenteDecimal.Value) : null;
-
-    public string? ObservacoesAntecipacao { get; private set; }
-
     internal decimal? LimiteCreditoBrlDecimal { get; private set; }
 
     /// <summary>
@@ -55,7 +35,6 @@ public sealed class Banco : Entity, IAuditable
         string codigoCompe,
         string razaoSocial,
         string apelido,
-        PadraoAntecipacao padraoAntecipacao,
         IClock clock)
     {
         if (string.IsNullOrWhiteSpace(codigoCompe) || codigoCompe.Length != 3)
@@ -79,7 +58,6 @@ public sealed class Banco : Entity, IAuditable
             CodigoCompe = codigoCompe.ToUpperInvariant(),
             RazaoSocial = razaoSocial,
             Apelido = apelido,
-            PadraoAntecipacao = padraoAntecipacao,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -111,18 +89,17 @@ public sealed class Banco : Entity, IAuditable
         UpdatedAt = clock.GetCurrentInstant();
     }
 
+    /// <summary>
+    /// Atualiza as políticas institucionais de antecipação do banco.
+    /// Parâmetros específicos por modalidade (PadraoAntecipacao, TLA, BreakFundingFee, etc.)
+    /// residem em <see cref="Sgcf.Domain.Cotacoes.LimiteBanco"/>.
+    /// </summary>
     public void AtualizarConfigAntecipacao(
         bool aceitaLiquidacaoTotal,
         bool aceitaLiquidacaoParcial,
         bool exigeAnuenciaExpressa,
         bool exigeParcelaInteira,
         int avisoPrevioMinDiasUteis,
-        decimal? valorMinimoParcialPct,
-        PadraoAntecipacao padraoAntecipacao,
-        decimal? breakFundingFeePct,
-        decimal? tlaPctSobreSaldo,
-        decimal? tlaPctPorMesRemanescente,
-        string? observacoesAntecipacao,
         IClock clock)
     {
         AceitaLiquidacaoTotal = aceitaLiquidacaoTotal;
@@ -130,12 +107,6 @@ public sealed class Banco : Entity, IAuditable
         ExigeAnuenciaExpressa = exigeAnuenciaExpressa;
         ExigeParcelaInteira = exigeParcelaInteira;
         AvisoPrevioMinDiasUteis = avisoPrevioMinDiasUteis;
-        ValorMinimoParcialPctDecimal = valorMinimoParcialPct;
-        PadraoAntecipacao = padraoAntecipacao;
-        BreakFundingFeePctDecimal = breakFundingFeePct;
-        TlaPctSobreSaldoDecimal = tlaPctSobreSaldo;
-        TlaPctPorMesRemanescenteDecimal = tlaPctPorMesRemanescente;
-        ObservacoesAntecipacao = observacoesAntecipacao;
         UpdatedAt = clock.GetCurrentInstant();
     }
 }

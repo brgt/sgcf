@@ -12,12 +12,6 @@ public sealed record BancoDto(
     bool ExigeAnuenciaExpressa,
     bool ExigeParcelaInteira,
     int AvisoPrevioMinDiasUteis,
-    string PadraoAntecipacao,
-    decimal? ValorMinimoParcialPct,
-    decimal? BreakFundingFeePct,
-    decimal? TlaPctSobreSaldo,
-    decimal? TlaPctPorMesRemanescente,
-    string? ObservacoesAntecipacao,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt)
 {
@@ -32,12 +26,6 @@ public sealed record BancoDto(
             banco.ExigeAnuenciaExpressa,
             banco.ExigeParcelaInteira,
             banco.AvisoPrevioMinDiasUteis,
-            banco.PadraoAntecipacao.ToString(),
-            banco.ValorMinimoParcialPct.HasValue ? banco.ValorMinimoParcialPct.Value.AsHumano : (decimal?)null,
-            banco.BreakFundingFeePct.HasValue ? banco.BreakFundingFeePct.Value.AsHumano : (decimal?)null,
-            banco.TlaPctSobreSaldo.HasValue ? banco.TlaPctSobreSaldo.Value.AsHumano : (decimal?)null,
-            banco.TlaPctPorMesRemanescente.HasValue ? banco.TlaPctPorMesRemanescente.Value.AsHumano : (decimal?)null,
-            banco.ObservacoesAntecipacao,
             banco.CreatedAt.ToDateTimeOffset(),
             banco.UpdatedAt.ToDateTimeOffset());
 }
