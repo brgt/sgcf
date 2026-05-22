@@ -220,6 +220,90 @@ public sealed class SimularAntecipacaoCommandTests
         alertaUnido.Should().ContainAny("período total", "Sicredi");
     }
 
+    // ── Teste: LimiteBanco não encontrado → InvalidOperationException ────────
+
+    [Fact]
+    public async Task LimiteBancoNaoEncontrado_LancaInvalidOperationException()
+    {
+        IClock clock = CriarClock();
+        Guid bancoId = Guid.NewGuid();
+        Contrato contrato = CriarContrato(bancoId);
+        Banco banco = CriarBanco("036", clock);
+
+        IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        ILimiteBancoRepository limiteBancoRepo = Substitute.For<ILimiteBancoRepository>();
+        ISimulacaoAntecipacaoRepository simulacaoRepo = Substitute.For<ISimulacaoAntecipacaoRepository>();
+
+        contratoRepo.GetByIdAsync(contrato.Id, Arg.Any<CancellationToken>()).Returns(contrato);
+        bancoRepo.GetByIdAsync(bancoId, Arg.Any<CancellationToken>()).Returns(banco);
+        limiteBancoRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, Arg.Any<CancellationToken>())
+            .Returns((LimiteBanco?)null);
+
+        SimularAntecipacaoCommandHandler handler = new(contratoRepo, bancoRepo, limiteBancoRepo, simulacaoRepo, clock);
+
+        SimularAntecipacaoCommand cmd = new(
+            ContratoId: contrato.Id,
+            TipoAntecipacao: TipoAntecipacao.LiquidacaoTotalAntecipada,
+            DataEfetiva: new LocalDate(2026, 6, 1),
+            ValorPrincipalAQuitarMoedaOriginal: null,
+            TaxaMercadoAtualAa: null,
+            IndenizacaoBancoMoedaOriginal: null,
+            SalvarSimulacao: false,
+            CreatedBy: "test@proxysgroup.com",
+            Source: "API");
+
+        Func<Task> act = () => handler.Handle(cmd, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Limite bancário não configurado*");
+    }
+
+    // ── Teste: LimiteBanco sem PadraoAntecipacao → InvalidOperationException ─
+
+    [Fact]
+    public async Task LimiteBanco_PadraoAntecipacaoNulo_LancaInvalidOperationException()
+    {
+        IClock clock = CriarClock();
+        Guid bancoId = Guid.NewGuid();
+        Contrato contrato = CriarContrato(bancoId);
+        Banco banco = CriarBanco("036", clock);
+
+        LimiteBanco limiteSemPadrao = LimiteBanco.Criar(
+            bancoId: bancoId,
+            modalidade: ModalidadeContrato.Finimp,
+            valorLimiteBrl: new Money(10_000_000m, Moeda.Brl),
+            dataVigenciaInicio: new LocalDate(2025, 1, 1),
+            clock: clock);
+
+        IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
+        IBancoRepository bancoRepo = Substitute.For<IBancoRepository>();
+        ILimiteBancoRepository limiteBancoRepo = Substitute.For<ILimiteBancoRepository>();
+        ISimulacaoAntecipacaoRepository simulacaoRepo = Substitute.For<ISimulacaoAntecipacaoRepository>();
+
+        contratoRepo.GetByIdAsync(contrato.Id, Arg.Any<CancellationToken>()).Returns(contrato);
+        bancoRepo.GetByIdAsync(bancoId, Arg.Any<CancellationToken>()).Returns(banco);
+        limiteBancoRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, Arg.Any<CancellationToken>())
+            .Returns(limiteSemPadrao);
+
+        SimularAntecipacaoCommandHandler handler = new(contratoRepo, bancoRepo, limiteBancoRepo, simulacaoRepo, clock);
+
+        SimularAntecipacaoCommand cmd = new(
+            ContratoId: contrato.Id,
+            TipoAntecipacao: TipoAntecipacao.LiquidacaoTotalAntecipada,
+            DataEfetiva: new LocalDate(2026, 6, 1),
+            ValorPrincipalAQuitarMoedaOriginal: null,
+            TaxaMercadoAtualAa: null,
+            IndenizacaoBancoMoedaOriginal: null,
+            SalvarSimulacao: false,
+            CreatedBy: "test@proxysgroup.com",
+            Source: "API");
+
+        Func<Task> act = () => handler.Handle(cmd, CancellationToken.None);
+
+        await act.Should().ThrowAsync<InvalidOperationException>();
+    }
+
     // ── Teste 3: Padrão D com RefinanciamentoInterno → TLA = 0 ───────────────
 
     [Fact]

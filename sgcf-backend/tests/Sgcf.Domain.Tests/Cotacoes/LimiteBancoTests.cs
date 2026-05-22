@@ -183,4 +183,121 @@ public sealed class LimiteBancoTests
         var limite = CriarLimite(valorLimite: 5_000_000m);
         limite.ValorDisponivelBrl.Valor.Should().BeGreaterThanOrEqualTo(0m);
     }
+
+    // ─── ConfigurarAntecipacao ───────────────────────────────────────────────
+
+    [Fact]
+    [Trait("Category", "Domain")]
+    public void ConfigurarAntecipacao_PadraoA_ArmazenaBreakFundingFee()
+    {
+        var limite = CriarLimite();
+
+        limite.ConfigurarAntecipacao(
+            padraoAntecipacao: PadraoAntecipacao.A,
+            breakFundingFeePct: Percentual.De(1m).AsDecimal,
+            tlaPctSobreSaldo: null,
+            tlaPctPorMesRemanescente: null,
+            valorMinimoParcialPct: null,
+            observacoesAntecipacao: null,
+            clock: Clock);
+
+        limite.PadraoAntecipacao.Should().Be(PadraoAntecipacao.A);
+        limite.BreakFundingFeePct.Should().NotBeNull();
+        limite.BreakFundingFeePct!.Value.AsHumano.Should().Be(1m);
+    }
+
+    [Fact]
+    [Trait("Category", "Domain")]
+    public void ConfigurarAntecipacao_PadraoD_ArmazenaTla()
+    {
+        var limite = CriarLimite();
+
+        limite.ConfigurarAntecipacao(
+            padraoAntecipacao: PadraoAntecipacao.D,
+            breakFundingFeePct: null,
+            tlaPctSobreSaldo: Percentual.De(2m).AsDecimal,
+            tlaPctPorMesRemanescente: Percentual.De(0.1m).AsDecimal,
+            valorMinimoParcialPct: null,
+            observacoesAntecipacao: null,
+            clock: Clock);
+
+        limite.PadraoAntecipacao.Should().Be(PadraoAntecipacao.D);
+        limite.TlaPctSobreSaldo.Should().NotBeNull();
+        limite.TlaPctSobreSaldo!.Value.AsHumano.Should().Be(2m);
+        limite.TlaPctPorMesRemanescente.Should().NotBeNull();
+        limite.TlaPctPorMesRemanescente!.Value.AsHumano.Should().Be(0.1m);
+    }
+
+    [Fact]
+    [Trait("Category", "Domain")]
+    public void ConfigurarAntecipacao_ObservacoesNulas_PermanecemNulas()
+    {
+        var limite = CriarLimite();
+
+        limite.ConfigurarAntecipacao(
+            padraoAntecipacao: PadraoAntecipacao.A,
+            breakFundingFeePct: Percentual.De(1m).AsDecimal,
+            tlaPctSobreSaldo: null,
+            tlaPctPorMesRemanescente: null,
+            valorMinimoParcialPct: null,
+            observacoesAntecipacao: null,
+            clock: Clock);
+
+        limite.ObservacoesAntecipacao.Should().BeNull();
+    }
+
+    [Fact]
+    [Trait("Category", "Domain")]
+    public void ConfigurarAntecipacao_AtualizaUpdatedAt()
+    {
+        var clockCriacao = PropostaFactory.CriarClockFixo(2026, 1, 1);
+        var clockConfiguracao = PropostaFactory.CriarClockFixo(2026, 6, 15);
+
+        var limite = LimiteBanco.Criar(
+            bancoId: BancoId,
+            modalidade: ModalidadeContrato.Finimp,
+            valorLimiteBrl: new Money(10_000_000m, Moeda.Brl),
+            dataVigenciaInicio: new LocalDate(2026, 1, 1),
+            clock: clockCriacao);
+
+        limite.ConfigurarAntecipacao(
+            padraoAntecipacao: PadraoAntecipacao.A,
+            breakFundingFeePct: Percentual.De(1m).AsDecimal,
+            tlaPctSobreSaldo: null,
+            tlaPctPorMesRemanescente: null,
+            valorMinimoParcialPct: null,
+            observacoesAntecipacao: null,
+            clock: clockConfiguracao);
+
+        var instanteEsperado = clockConfiguracao.GetCurrentInstant();
+        limite.UpdatedAt.Should().Be(instanteEsperado);
+    }
+
+    [Fact]
+    [Trait("Category", "Domain")]
+    public void ConfigurarAntecipacao_Sobrescreve_ValorAnterior()
+    {
+        var limite = CriarLimite();
+
+        limite.ConfigurarAntecipacao(
+            padraoAntecipacao: PadraoAntecipacao.A,
+            breakFundingFeePct: Percentual.De(1m).AsDecimal,
+            tlaPctSobreSaldo: null,
+            tlaPctPorMesRemanescente: null,
+            valorMinimoParcialPct: null,
+            observacoesAntecipacao: null,
+            clock: Clock);
+
+        limite.ConfigurarAntecipacao(
+            padraoAntecipacao: PadraoAntecipacao.B,
+            breakFundingFeePct: null,
+            tlaPctSobreSaldo: null,
+            tlaPctPorMesRemanescente: null,
+            valorMinimoParcialPct: null,
+            observacoesAntecipacao: null,
+            clock: Clock);
+
+        limite.PadraoAntecipacao.Should().Be(PadraoAntecipacao.B);
+        limite.BreakFundingFeePct.Should().BeNull();
+    }
 }
