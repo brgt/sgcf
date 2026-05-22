@@ -223,6 +223,7 @@ public sealed class SimularAntecipacaoCommandTests
     // ── Teste: LimiteBanco não encontrado → InvalidOperationException ────────
 
     [Fact]
+    [Trait("Category", "Application")]
     public async Task LimiteBancoNaoEncontrado_LancaInvalidOperationException()
     {
         IClock clock = CriarClock();
@@ -262,6 +263,7 @@ public sealed class SimularAntecipacaoCommandTests
     // ── Teste: LimiteBanco sem PadraoAntecipacao → InvalidOperationException ─
 
     [Fact]
+    [Trait("Category", "Application")]
     public async Task LimiteBanco_PadraoAntecipacaoNulo_LancaInvalidOperationException()
     {
         IClock clock = CriarClock();

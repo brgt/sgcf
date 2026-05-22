@@ -54,7 +54,7 @@ public sealed class SimularAntecipacaoPortfolioQueryHandler(
         // Índice (BancoId, Modalidade) → LimiteBanco para evitar N+1 na iteração de contratos.
         Dictionary<(Guid BancoId, ModalidadeContrato Modalidade), LimiteBanco> limitesPorChave =
             limites
-                .Where(l => l.DataVigenciaFim == null) // apenas limites vigentes
+                .Where(l => l.DataVigenciaFim == null || l.DataVigenciaFim.Value >= hoje) // apenas limites vigentes
                 .GroupBy(l => (l.BancoId, l.Modalidade))
                 .ToDictionary(g => g.Key, g => g.First());
 

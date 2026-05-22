@@ -108,8 +108,9 @@ public sealed class CreateLimiteBancoCommandHandler(ILimiteBancoRepository repo,
             padrao,
             garantiasExigidas: specs);
 
-        // Configura parâmetros de cálculo quando fornecidos no request de criação.
-        if (cmd.BreakFundingFeePct.HasValue
+        // Configura parâmetros de antecipação quando qualquer campo for fornecido.
+        if (padrao.HasValue
+            || cmd.BreakFundingFeePct.HasValue
             || cmd.TlaPctSobreSaldo.HasValue
             || cmd.TlaPctPorMesRemanescente.HasValue
             || cmd.ValorMinimoParcialPct.HasValue

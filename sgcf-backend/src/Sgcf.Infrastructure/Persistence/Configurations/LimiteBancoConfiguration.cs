@@ -102,7 +102,8 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
         // ── Configuração de antecipação por modalidade (S32) ─────────────────────
         builder.Property(l => l.PadraoAntecipacao)
             .HasColumnName("padrao_antecipacao")
-            .HasColumnType("integer")
+            .HasColumnType("smallint")
+            .HasConversion(SgcfConverters.PadraoAntecipacao)
             .IsRequired(false);
 
         builder.Property(l => l.BreakFundingFeePctDecimal)

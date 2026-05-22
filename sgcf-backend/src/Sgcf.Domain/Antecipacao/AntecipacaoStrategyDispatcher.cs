@@ -48,7 +48,7 @@ public static class AntecipacaoStrategyDispatcher
 
             PadraoAntecipacao.E => PadraoEStrategy.Calcular(entrada, null),
 
-            _ => throw new ArgumentOutOfRangeException(nameof(limiteBanco), padrao, "Padrão de antecipação não suportado.")
+            _ => throw new InvalidOperationException($"Padrão de antecipação '{padrao}' não suportado.")
         };
     }
 }
