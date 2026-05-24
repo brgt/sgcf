@@ -61,7 +61,10 @@ public sealed class CreateLimiteBancoCommandValidator : AbstractValidator<Create
     }
 }
 
-public sealed class CreateLimiteBancoCommandHandler(ILimiteBancoRepository repo, IClock clock)
+public sealed class CreateLimiteBancoCommandHandler(
+    ILimiteBancoRepository repo,
+    ILimiteGlobalBancoRepository limiteGlobalRepo,
+    IClock clock)
     : IRequestHandler<CreateLimiteBancoCommand, LimiteBancoDto>
 {
     public async Task<LimiteBancoDto> Handle(CreateLimiteBancoCommand cmd, CancellationToken cancellationToken)
@@ -86,6 +89,18 @@ public sealed class CreateLimiteBancoCommandHandler(ILimiteBancoRepository repo,
                 $"Já existe o limite '{conflito.Id}' para banco '{cmd.BancoId}' / modalidade '{modalidade}' " +
                 $"com vigência de {conflito.DataVigenciaInicio:uuuu-MM-dd} até {fimConflito}, " +
                 $"que se sobrepõe ao período solicitado.");
+        }
+
+        // LG-09: o valor do limite por modalidade não pode superar o limite global vigente do banco.
+        LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(cmd.BancoId, cancellationToken);
+        if (limiteGlobal is not null)
+        {
+            Money valorProposto = new(cmd.ValorLimiteBrl, Moeda.Brl);
+            if (valorProposto.MaiorQue(limiteGlobal.ValorLimiteBrl))
+            {
+                throw new InvalidOperationException(
+                    $"O valor do limite por modalidade ({valorProposto}) não pode superar o limite global vigente do banco ({limiteGlobal.ValorLimiteBrl}). [LG-09]");
+            }
         }
 
         Money valorLimite = new(cmd.ValorLimiteBrl, Moeda.Brl);

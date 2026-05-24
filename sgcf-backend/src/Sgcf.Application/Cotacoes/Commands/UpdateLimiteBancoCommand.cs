@@ -58,7 +58,10 @@ public sealed class UpdateLimiteBancoCommandValidator : AbstractValidator<Update
     }
 }
 
-public sealed class UpdateLimiteBancoCommandHandler(ILimiteBancoRepository repo, IClock clock)
+public sealed class UpdateLimiteBancoCommandHandler(
+    ILimiteBancoRepository repo,
+    ILimiteGlobalBancoRepository limiteGlobalRepo,
+    IClock clock)
     : IRequestHandler<UpdateLimiteBancoCommand, LimiteBancoDto>
 {
     public async Task<LimiteBancoDto> Handle(UpdateLimiteBancoCommand cmd, CancellationToken cancellationToken)
@@ -70,6 +73,18 @@ public sealed class UpdateLimiteBancoCommandHandler(ILimiteBancoRepository repo,
 
         if (cmd.NovoValorLimiteBrl.HasValue)
         {
+            // LG-09: o novo valor do limite por modalidade não pode superar o limite global vigente do banco.
+            LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(limite.BancoId, cancellationToken);
+            if (limiteGlobal is not null)
+            {
+                Money novoValorVerificacao = new(cmd.NovoValorLimiteBrl.Value, Moeda.Brl);
+                if (novoValorVerificacao.MaiorQue(limiteGlobal.ValorLimiteBrl))
+                {
+                    throw new InvalidOperationException(
+                        $"O valor do limite por modalidade ({novoValorVerificacao}) não pode superar o limite global vigente do banco ({limiteGlobal.ValorLimiteBrl}). [LG-09]");
+                }
+            }
+
             Money novoValor = new(cmd.NovoValorLimiteBrl.Value, Moeda.Brl);
             limite.Atualizar(clock, novoLimiteBrl: novoValor);
         }
