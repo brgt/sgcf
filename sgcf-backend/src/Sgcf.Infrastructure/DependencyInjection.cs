@@ -13,6 +13,7 @@ using Sgcf.Application.Contabilidade;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cambio;
 using Sgcf.Application.Cotacoes;
+using Sgcf.Domain.Cotacoes;
 using Sgcf.Application.Hedge;
 using Sgcf.Application.Painel;
 using Sgcf.Application.Preferencias;
@@ -145,6 +146,8 @@ public static class DependencyInjection
         services.AddScoped<IBusinessDayCalendar, BusinessDayCalendar>();
         services.AddScoped<ICotacaoRepository, CotacaoRepository>();
         services.AddScoped<ILimiteBancoRepository, LimiteBancoRepository>();
+        services.AddScoped<ILimiteGlobalBancoRepository, LimiteGlobalBancoRepository>();
+        services.AddScoped<IConsultaSaldoBanco, ConsultaSaldoBancoService>();
         services.AddScoped<IEconomiaRepository, EconomiaRepository>();
         services.AddScoped<ICdiSnapshotRepository, CdiSnapshotRepository>();
         services.AddScoped<ICenarioSimulacaoRepository, CenarioSimulacaoRepository>();
