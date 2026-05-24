@@ -5,6 +5,8 @@ using Sgcf.Application.Authorization;
 using Sgcf.Application.Bancos;
 using Sgcf.Application.Bancos.Commands;
 using Sgcf.Application.Bancos.Queries;
+using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cotacoes.Queries;
 
 namespace Sgcf.Api.Controllers;
 
@@ -65,6 +67,24 @@ public sealed class BancosController(IMediator mediator) : ControllerBase
     {
         BancoDto result = await mediator.Send(command, ct);
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+    }
+
+    [HttpGet("{bancoId:guid}/limite-global-vigente")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<LimiteGlobalBancoVigenteDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetLimiteGlobalVigente(Guid bancoId, CancellationToken ct)
+    {
+        try
+        {
+            LimiteGlobalBancoVigenteDto result = await mediator.Send(
+                new GetLimiteGlobalVigenteBancoQuery(bancoId), ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
     }
 
     [HttpPut("{id:guid}/config-antecipacao")]
