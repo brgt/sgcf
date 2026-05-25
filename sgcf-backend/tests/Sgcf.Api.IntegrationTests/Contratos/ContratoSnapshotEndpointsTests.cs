@@ -102,9 +102,11 @@ public sealed class ContratoSnapshotEndpointsTests(ContratoSnapshotApiFixture fi
         Guid cotacaoId = (await criarRes.Content.ReadFromJsonAsync<JsonElement>(JsonOpts))
             .GetProperty("id").GetGuid();
 
-        // Adicionar banco
-        (await client.PostAsJsonAsync($"/api/v1/cotacoes/{cotacaoId}/bancos", new { bancoId }))
-            .StatusCode.Should().Be(HttpStatusCode.NoContent);
+        // Adicionar banco — retorna 200 OK (com proposta pré-preenchida) ou 204 NoContent.
+        HttpResponseMessage addBancoRes = await client.PostAsJsonAsync(
+            $"/api/v1/cotacoes/{cotacaoId}/bancos", new { bancoId });
+        addBancoRes.IsSuccessStatusCode.Should().BeTrue(
+            $"adicionar banco falhou: {await addBancoRes.Content.ReadAsStringAsync()}");
 
         // Enviar
         (await client.PostAsync($"/api/v1/cotacoes/{cotacaoId}/enviar", null))
@@ -144,7 +146,8 @@ public sealed class ContratoSnapshotEndpointsTests(ContratoSnapshotApiFixture fi
         (await client.PostAsync($"/api/v1/cotacoes/{cotacaoId}/propostas/{propostaId}/aceitar", null))
             .StatusCode.Should().Be(HttpStatusCode.NoContent);
 
-        // Converter em contrato
+        // Converter em contrato — inclui garantia Aval para satisfazer o enforcement SC-04
+        // (LimiteBanco tem Aval obrigatório na revisão vigente).
         HttpResponseMessage convRes = await client.PostAsJsonAsync(
             $"/api/v1/cotacoes/{cotacaoId}/converter-em-contrato",
             new
@@ -154,7 +157,11 @@ public sealed class ContratoSnapshotEndpointsTests(ContratoSnapshotApiFixture fi
                 dataContratacao = "2026-05-20",
                 dataVencimento = "2026-11-16",
                 taxaAa = 5.25m,
-                observacoes = "Teste snapshot T2.3"
+                observacoes = "Teste snapshot T2.3",
+                garantiasContrato = new[]
+                {
+                    new { tipo = "Aval", valorBrl = 2_000_000m }
+                }
             });
         convRes.StatusCode.Should().Be(HttpStatusCode.Created,
             $"converter falhou: {await convRes.Content.ReadAsStringAsync()}");

@@ -37,9 +37,9 @@ public sealed class ConsultaSaldoBancoServiceTests(CotacoesDbFixture fixture)
              INSERT INTO sgcf.banco_config (id, codigo_compe, razao_social, apelido,
                aceita_liquidacao_total, aceita_liquidacao_parcial, exige_anuencia_expressa,
                exige_parcela_inteira, aceita_refinimp, aviso_previo_min_dias_uteis,
-               padrao_antecipacao, created_at, updated_at)
+               created_at, updated_at)
              VALUES ({bancoId}, {codigoCompe}, {razaoSocial}, {apelido},
-               true, true, false, false, true, 0, 0,
+               true, true, false, false, true, 0,
                '2026-01-01 00:00:00+00', '2026-01-01 00:00:00+00')
              ON CONFLICT DO NOTHING
              """);

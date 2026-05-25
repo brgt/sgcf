@@ -52,7 +52,11 @@ public sealed class CotacoesApiFixture : IAsyncLifetime
                 services.AddDbContext<SgcfDbContext>(opts =>
                     opts.UseNpgsql(
                         _db.GetConnectionString(),
-                        npgsql => npgsql.UseNodaTime()));
+                        npgsql =>
+                        {
+                            npgsql.UseNodaTime();
+                            npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "public");
+                        }));
 
                 // Substitui IClock por relógio fixo determinístico
                 services.RemoveAll<IClock>();

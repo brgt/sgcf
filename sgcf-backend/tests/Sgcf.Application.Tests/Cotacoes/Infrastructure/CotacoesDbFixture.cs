@@ -43,7 +43,11 @@ public sealed class CotacoesDbFixture : IAsyncLifetime
         services.AddDbContext<SgcfDbContext>((sp, opts) =>
             opts.UseNpgsql(
                 _container.GetConnectionString(),
-                npgsql => npgsql.UseNodaTime())
+                npgsql =>
+                {
+                    npgsql.UseNodaTime();
+                    npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "public");
+                })
             .AddInterceptors(
                 new TenantSaveInterceptor(
                     sp.GetRequiredService<ITenantContext>(),
@@ -64,7 +68,11 @@ public sealed class CotacoesDbFixture : IAsyncLifetime
     public SgcfDbContext CreateFreshContext()
     {
         DbContextOptions<SgcfDbContext> opts = new DbContextOptionsBuilder<SgcfDbContext>()
-            .UseNpgsql(_container.GetConnectionString(), npgsql => npgsql.UseNodaTime())
+            .UseNpgsql(_container.GetConnectionString(), npgsql =>
+            {
+                npgsql.UseNodaTime();
+                npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "public");
+            })
             .AddInterceptors(new TenantSaveInterceptor(
                 _tenantCtx, NullLogger<TenantSaveInterceptor>.Instance))
             .Options;

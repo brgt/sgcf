@@ -49,7 +49,11 @@ public sealed class ContratoSnapshotApiFixture : IAsyncLifetime
                 services.AddDbContext<SgcfDbContext>(opts =>
                     opts.UseNpgsql(
                         _db.GetConnectionString(),
-                        npgsql => npgsql.UseNodaTime()));
+                        npgsql =>
+                        {
+                            npgsql.UseNodaTime();
+                            npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "public");
+                        }));
 
                 services.RemoveAll<IClock>();
                 services.AddSingleton(clockFake);

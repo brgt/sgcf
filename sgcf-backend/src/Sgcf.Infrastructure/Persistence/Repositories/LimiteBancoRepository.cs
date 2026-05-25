@@ -17,7 +17,8 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
 
     public Task<LimiteBanco?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.LimitesBanco
-            .Include(l => l.GarantiasExigidas)
+            .Include(l => l.RevisoesGarantiasExigidas)
+                .ThenInclude(r => r.Itens)
             .Include(l => l.Historico)
             .AsNoTracking()
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
@@ -25,22 +26,24 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
     /// <inheritdoc/>
     public Task<LimiteBanco?> GetByIdTrackingAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.LimitesBanco
-            .Include(l => l.GarantiasExigidas)
+            .Include(l => l.RevisoesGarantiasExigidas)
+                .ThenInclude(r => r.Itens)
             .Include(l => l.Historico)
             .FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
 
     /// <summary>
     /// Retorna o limite vigente (sem data_vigencia_fim) para a combinação banco+modalidade.
     /// "Vigente" é definido como DataVigenciaFim == null (sem encerramento programado).
-    /// GarantiasExigidas é carregado eagerly para que o pré-preenchimento automático
-    /// de garantia (Task 4.1) funcione sem lazy-loading.
+    /// RevisoesGarantiasExigidas é carregado eagerly para que o pré-preenchimento automático
+    /// de garantia funcione sem lazy-loading.
     /// </summary>
     public Task<LimiteBanco?> GetByBancoModalidadeAsync(
         Guid bancoId,
         ModalidadeContrato modalidade,
         CancellationToken cancellationToken = default) =>
         context.LimitesBanco
-            .Include(l => l.GarantiasExigidas)
+            .Include(l => l.RevisoesGarantiasExigidas)
+                .ThenInclude(r => r.Itens)
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 l => l.BancoId == bancoId
@@ -98,7 +101,8 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
         CancellationToken cancellationToken = default)
     {
         IQueryable<LimiteBanco> q = context.LimitesBanco
-            .Include(l => l.GarantiasExigidas)
+            .Include(l => l.RevisoesGarantiasExigidas)
+                .ThenInclude(r => r.Itens)
             .Include(l => l.Historico)
             .AsNoTracking();
 

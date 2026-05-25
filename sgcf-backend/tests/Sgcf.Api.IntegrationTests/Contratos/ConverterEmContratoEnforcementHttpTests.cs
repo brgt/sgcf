@@ -102,10 +102,13 @@ public sealed class ConverterEmContratoEnforcementHttpTests(CotacoesApiFixture f
             $"criar cotação falhou: {await criarRes.Content.ReadAsStringAsync()}");
         Guid cotacaoId = (await criarRes.Content.ReadFromJsonAsync<JsonElement>(JsonOpts)).GetProperty("id").GetGuid();
 
-        // 2. Adicionar banco
+        // 2. Adicionar banco — desabilita pré-preenchimento para evitar requisito de
+        //    rendimentoCdbAaPercentual quando o limite tem CdbCativo como garantia exigida.
+        //    O enforcement de garantias é testado na conversão, não no add-banco.
         HttpResponseMessage addRes = await client.PostAsJsonAsync(
-            $"/api/v1/cotacoes/{cotacaoId}/bancos", new { bancoId });
-        addRes.StatusCode.Should().Be(HttpStatusCode.NoContent,
+            $"/api/v1/cotacoes/{cotacaoId}/bancos",
+            new { bancoId, preencherGarantiaAutomaticamente = false });
+        addRes.IsSuccessStatusCode.Should().BeTrue(
             $"adicionar banco falhou: {await addRes.Content.ReadAsStringAsync()}");
 
         // 3. Enviar
