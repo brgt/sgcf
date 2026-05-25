@@ -54,7 +54,11 @@ public sealed class ContratoToolsTests
             RefinimpDetail: null,
             NceDetail: null,
             CapitalDeGiroDetail: null,
-            FgiDetail: null);
+            FgiDetail: null,
+            LimiteBancoId: null,
+            LimiteGlobalBancoId: null,
+            GarantiasExigidasRevisaoId: null,
+            GarantiasExigidasSnapshot: null);
 
     // ── ListContratos ──────────────────────────────────────────────────────
 
@@ -216,6 +220,92 @@ public sealed class ContratoToolsTests
             Arg.Any<CancellationToken>());
         using JsonDocument doc = JsonDocument.Parse(resultado);
         doc.RootElement.TryGetProperty("error", out _).Should().BeFalse();
+    }
+
+    // ── Schema dos novos campos de rastreabilidade (T2.4) ─────────────────
+
+    [Fact]
+    public async Task GetContrato_RetornaJsonComCamposRastreabilidade()
+    {
+        // Arrange — DTO com as 3 FKs preenchidas e snapshot de garantias.
+        Guid contratoId = Guid.NewGuid();
+        Guid limiteBancoId = Guid.NewGuid();
+        Guid limiteGlobalBancoId = Guid.NewGuid();
+        Guid garantiasRevisaoId = Guid.NewGuid();
+
+        ContratoDto dtoComFks = CriarContratoDto(contratoId) with
+        {
+            LimiteBancoId = limiteBancoId,
+            LimiteGlobalBancoId = limiteGlobalBancoId,
+            GarantiasExigidasRevisaoId = garantiasRevisaoId,
+            GarantiasExigidasSnapshot = new List<GarantiaExigidaSnapshotItemDto>
+            {
+                new("AlienacaoFiduciaria", 80m, null, true, null),
+                new("Aval", null, null, true, "Aval dos sócios")
+            }.AsReadOnly()
+        };
+
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<GetContratoQuery>(), Arg.Any<CancellationToken>())
+            .Returns(dtoComFks);
+        ContratoTools tools = CriarTools(mediator);
+
+        // Act
+        string resultado = await tools.GetContratoAsync(contratoId.ToString(), CancellationToken.None);
+
+        // Assert — os 4 novos campos aparecem no JSON serializado.
+        using JsonDocument doc = JsonDocument.Parse(resultado);
+        JsonElement root = doc.RootElement;
+
+        root.GetProperty("limiteBancoId").GetGuid().Should().Be(limiteBancoId);
+        root.GetProperty("limiteGlobalBancoId").GetGuid().Should().Be(limiteGlobalBancoId);
+        root.GetProperty("garantiasExigidasRevisaoId").GetGuid().Should().Be(garantiasRevisaoId);
+        root.GetProperty("garantiasExigidasSnapshot").GetArrayLength().Should().Be(2);
+
+        // Valida estrutura do primeiro item do snapshot.
+        JsonElement primeiroItem = root.GetProperty("garantiasExigidasSnapshot")[0];
+        primeiroItem.GetProperty("tipo").GetString().Should().Be("AlienacaoFiduciaria");
+        primeiroItem.GetProperty("percentualSobreLimite").GetDecimal().Should().Be(80m);
+        primeiroItem.GetProperty("obrigatoria").GetBoolean().Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task GetContrato_SemPolitica_RetornaFKsComoNull()
+    {
+        // Arrange — DTO legado: sem política do banco (pré-feature ou banco sem limite).
+        Guid contratoId = Guid.NewGuid();
+        IMediator mediator = Substitute.For<IMediator>();
+        mediator.Send(Arg.Any<GetContratoQuery>(), Arg.Any<CancellationToken>())
+            .Returns(CriarContratoDto(contratoId)); // todas as FKs já são null no helper padrão
+
+        ContratoTools tools = CriarTools(mediator);
+
+        // Act
+        string resultado = await tools.GetContratoAsync(contratoId.ToString(), CancellationToken.None);
+
+        // Assert — McpJsonOptions usa WhenWritingNull: campos null são omitidos do JSON.
+        // O contrato é válido no output MCP sem as FKs quando não há política do banco.
+        using JsonDocument doc = JsonDocument.Parse(resultado);
+        JsonElement root = doc.RootElement;
+
+        // Verifica que o JSON é válido e contém os campos obrigatórios do contrato.
+        root.TryGetProperty("id", out _).Should().BeTrue("id deve estar presente");
+        root.TryGetProperty("numeroExterno", out _).Should().BeTrue("numeroExterno deve estar presente");
+
+        // FK fields são omitidos quando null (WhenWritingNull) — não lançam KeyNotFoundException.
+        root.TryGetProperty("limiteBancoId", out JsonElement limEl);
+        if (limEl.ValueKind != JsonValueKind.Undefined)
+        {
+            limEl.ValueKind.Should().Be(JsonValueKind.Null,
+                "se presente, limiteBancoId deve ser null para contrato sem política");
+        }
+
+        root.TryGetProperty("garantiasExigidasSnapshot", out JsonElement snapEl);
+        if (snapEl.ValueKind != JsonValueKind.Undefined)
+        {
+            snapEl.ValueKind.Should().Be(JsonValueKind.Null,
+                "se presente, garantiasExigidasSnapshot deve ser null para contrato sem política");
+        }
     }
 
     // ── Helper privado ─────────────────────────────────────────────────────
