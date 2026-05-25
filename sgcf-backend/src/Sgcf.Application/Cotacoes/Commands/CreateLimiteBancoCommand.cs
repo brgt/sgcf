@@ -21,7 +21,7 @@ public sealed record CreateLimiteBancoCommand(
     decimal? TlaPctPorMesRemanescente = null,
     decimal? ValorMinimoParcialPct = null,
     string? ObservacoesAntecipacao = null,
-    IReadOnlyList<CriarGarantiaExigidaLimiteRequest>? GarantiasExigidas = null) : IRequest<LimiteBancoDto>;
+    IReadOnlyList<CriarGarantiaExigidaItemRequest>? GarantiasExigidas = null) : IRequest<LimiteBancoDto>;
 
 public sealed class CreateLimiteBancoCommandValidator : AbstractValidator<CreateLimiteBancoCommand>
 {
@@ -109,7 +109,7 @@ public sealed class CreateLimiteBancoCommandHandler(
             ? Enum.Parse<PadraoAntecipacao>(cmd.PadraoAntecipacao, true)
             : (PadraoAntecipacao?)null;
 
-        IEnumerable<GarantiaExigidaLimiteSpec>? specs = cmd.GarantiasExigidas?
+        IEnumerable<GarantiaExigidaItemSpec>? specs = cmd.GarantiasExigidas?
             .Select(r => r.ParaSpec());
 
         LimiteBanco limite = LimiteBanco.Criar(

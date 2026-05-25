@@ -14,7 +14,7 @@ namespace Sgcf.Domain.Cotacoes;
 /// Para Aval, ambos podem ser nulos (representa exigência implícita de aval pelos sócios
 /// cobrindo 100% da exposição da linha).
 /// </summary>
-public sealed class GarantiaExigidaLimite : Entity, IAuditable
+public sealed class GarantiaExigidaItem : Entity, IAuditable
 {
     public Guid LimiteBancoId { get; private set; }
     public TipoGarantia Tipo { get; private set; }
@@ -35,9 +35,9 @@ public sealed class GarantiaExigidaLimite : Entity, IAuditable
     public Instant UpdatedAt { get; private set; }
 
     /// <summary>Construtor privado para EF Core.</summary>
-    private GarantiaExigidaLimite() { }
+    private GarantiaExigidaItem() { }
 
-    public static GarantiaExigidaLimite Criar(
+    public static GarantiaExigidaItem Criar(
         Guid limiteBancoId,
         TipoGarantia tipo,
         decimal? percentualSobreLimite,
@@ -54,7 +54,7 @@ public sealed class GarantiaExigidaLimite : Entity, IAuditable
         ValidarCamposExclusivos(tipo, percentualSobreLimite, valorFixoBrl);
 
         var now = clock.GetCurrentInstant();
-        return new GarantiaExigidaLimite
+        return new GarantiaExigidaItem
         {
             LimiteBancoId = limiteBancoId,
             Tipo = tipo,

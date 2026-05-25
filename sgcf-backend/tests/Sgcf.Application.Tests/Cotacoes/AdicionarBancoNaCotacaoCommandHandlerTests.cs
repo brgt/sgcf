@@ -117,7 +117,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
             clock: TestHelpers.CriarClock(),
             garantiasExigidas:
             [
-                new GarantiaExigidaLimiteSpec(
+                new GarantiaExigidaItemSpec(
                     Tipo: TipoGarantia.CdbCativo,
                     PercentualSobreLimite: 20m,
                     ValorFixoBrl: null,
@@ -162,7 +162,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
             clock: TestHelpers.CriarClock(),
             garantiasExigidas:
             [
-                new GarantiaExigidaLimiteSpec(
+                new GarantiaExigidaItemSpec(
                     Tipo: TipoGarantia.CdbCativo,
                     PercentualSobreLimite: 20m,
                     ValorFixoBrl: null,
@@ -223,7 +223,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
             clock: TestHelpers.CriarClock(),
             garantiasExigidas:
             [
-                new GarantiaExigidaLimiteSpec(
+                new GarantiaExigidaItemSpec(
                     Tipo: TipoGarantia.Aval,
                     PercentualSobreLimite: null,
                     ValorFixoBrl: null,
@@ -264,7 +264,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
             clock: TestHelpers.CriarClock(),
             garantiasExigidas:
             [
-                new GarantiaExigidaLimiteSpec(
+                new GarantiaExigidaItemSpec(
                     Tipo: TipoGarantia.Aval,
                     PercentualSobreLimite: null,
                     ValorFixoBrl: null,

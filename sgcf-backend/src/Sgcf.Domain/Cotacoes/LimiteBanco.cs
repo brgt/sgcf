@@ -60,14 +60,14 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
 
-    private readonly List<GarantiaExigidaLimite> _garantiasExigidas = new();
+    private readonly List<GarantiaExigidaItem> _garantiasExigidas = new();
     private readonly List<LimiteBancoHistorico> _historico = new();
 
     /// <summary>
     /// Coleção de garantias exigidas pelo banco para liberar esta linha.
     /// Vazia = linha "no aval" implícito / sem requisitos formais de garantia.
     /// </summary>
-    public IReadOnlyCollection<GarantiaExigidaLimite> GarantiasExigidas => _garantiasExigidas.AsReadOnly();
+    public IReadOnlyCollection<GarantiaExigidaItem> GarantiasExigidas => _garantiasExigidas.AsReadOnly();
 
     /// <summary>
     /// Histórico de alterações do valor do limite concedido pelo banco.
@@ -91,7 +91,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
         LocalDate? dataVigenciaFim = null,
         string? observacoes = null,
         PadraoAntecipacao? padraoAntecipacao = null,
-        IEnumerable<GarantiaExigidaLimiteSpec>? garantiasExigidas = null)
+        IEnumerable<GarantiaExigidaItemSpec>? garantiasExigidas = null)
     {
         if (valorLimiteBrl.Moeda != Moeda.Brl)
         {
@@ -169,7 +169,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
     /// <summary>
     /// Adiciona uma garantia exigida. Invariante: não pode haver duas garantias do mesmo Tipo.
     /// </summary>
-    public void AdicionarGarantiaExigida(GarantiaExigidaLimiteSpec spec, IClock clock)
+    public void AdicionarGarantiaExigida(GarantiaExigidaItemSpec spec, IClock clock)
     {
         AdicionarInterno(spec, clock);
         UpdatedAt = clock.GetCurrentInstant();
@@ -191,7 +191,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
     /// <summary>
     /// Substitui a coleção inteira de garantias exigidas (semântica replace-all).
     /// </summary>
-    public void SubstituirGarantiasExigidas(IEnumerable<GarantiaExigidaLimiteSpec> novas, IClock clock)
+    public void SubstituirGarantiasExigidas(IEnumerable<GarantiaExigidaItemSpec> novas, IClock clock)
     {
         ArgumentNullException.ThrowIfNull(novas);
 
@@ -207,7 +207,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
         UpdatedAt = clock.GetCurrentInstant();
     }
 
-    private void AdicionarInterno(GarantiaExigidaLimiteSpec spec, IClock clock)
+    private void AdicionarInterno(GarantiaExigidaItemSpec spec, IClock clock)
     {
         ArgumentNullException.ThrowIfNull(spec);
 
@@ -217,7 +217,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
                 $"Garantia exigida do tipo {spec.Tipo} já está cadastrada (duplicada) no limite {Id}.");
         }
 
-        var garantia = GarantiaExigidaLimite.Criar(
+        var garantia = GarantiaExigidaItem.Criar(
             limiteBancoId: Id,
             tipo: spec.Tipo,
             percentualSobreLimite: spec.PercentualSobreLimite,
@@ -229,7 +229,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
         _garantiasExigidas.Add(garantia);
     }
 
-    private static void ValidarSemDuplicadosPorTipo(IEnumerable<GarantiaExigidaLimiteSpec> specs)
+    private static void ValidarSemDuplicadosPorTipo(IEnumerable<GarantiaExigidaItemSpec> specs)
     {
         var tiposDuplicados = specs
             .GroupBy(s => s.Tipo)

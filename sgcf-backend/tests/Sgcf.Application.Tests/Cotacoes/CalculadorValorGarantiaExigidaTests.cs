@@ -28,12 +28,12 @@ public sealed class CalculadorValorGarantiaExigidaTests
         return clock;
     }
 
-    private static GarantiaExigidaLimite CriarGarantia(
+    private static GarantiaExigidaItem CriarGarantia(
         TipoGarantia tipo,
         decimal? percentual = null,
         decimal? valorFixo = null,
         bool obrigatoria = true) =>
-        GarantiaExigidaLimite.Criar(
+        GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: tipo,
             percentualSobreLimite: percentual,
@@ -48,7 +48,7 @@ public sealed class CalculadorValorGarantiaExigidaTests
     public void Calcular_ColecaoVazia_RetornaZero()
     {
         Money resultado = CalculadorValorGarantiaExigida.Calcular(
-            Array.Empty<GarantiaExigidaLimite>(), ValorAlvo);
+            Array.Empty<GarantiaExigidaItem>(), ValorAlvo);
 
         resultado.Valor.Should().Be(0m);
         resultado.Moeda.Should().Be(Moeda.Brl);
@@ -59,7 +59,7 @@ public sealed class CalculadorValorGarantiaExigidaTests
     [Fact]
     public void Calcular_GarantiaComPercentual20PctSobreUmMilhao_Retorna200k()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m);
 
         Money resultado = CalculadorValorGarantiaExigida.Calcular([garantia], ValorAlvo);
 
@@ -72,7 +72,7 @@ public sealed class CalculadorValorGarantiaExigidaTests
     [Fact]
     public void Calcular_GarantiaComValorFixo50k_Retorna50k()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.Sblc, valorFixo: 50_000m);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.Sblc, valorFixo: 50_000m);
 
         Money resultado = CalculadorValorGarantiaExigida.Calcular([garantia], ValorAlvo);
 
@@ -86,7 +86,7 @@ public sealed class CalculadorValorGarantiaExigidaTests
     public void Calcular_CdbCativo20PctMaisSblc50k_RetornaSoma()
     {
         // 20% de 1.000.000 = 200.000 + 50.000 = 250.000
-        IReadOnlyCollection<GarantiaExigidaLimite> garantias =
+        IReadOnlyCollection<GarantiaExigidaItem> garantias =
         [
             CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m),
             CriarGarantia(TipoGarantia.Sblc,      valorFixo:  50_000m)
@@ -102,7 +102,7 @@ public sealed class CalculadorValorGarantiaExigidaTests
     [Fact]
     public void Calcular_ApenasAval_RetornaZero()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.Aval);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.Aval);
 
         Money resultado = CalculadorValorGarantiaExigida.Calcular([garantia], ValorAlvo);
 
@@ -113,7 +113,7 @@ public sealed class CalculadorValorGarantiaExigidaTests
     public void Calcular_CdbCativo20PctMaisAval_IgnoraContribuicaoAval()
     {
         // Aval não adiciona valor; total deve ser apenas 20% do valorAlvo
-        IReadOnlyCollection<GarantiaExigidaLimite> garantias =
+        IReadOnlyCollection<GarantiaExigidaItem> garantias =
         [
             CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m),
             CriarGarantia(TipoGarantia.Aval)
@@ -129,7 +129,7 @@ public sealed class CalculadorValorGarantiaExigidaTests
     [Fact]
     public void Calcular_ValorAlvoNaoBrl_LancaArgumentException()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m);
         Money valorUsd = new(100_000m, Moeda.Usd);
 
         Action act = () => CalculadorValorGarantiaExigida.Calcular([garantia], valorUsd);

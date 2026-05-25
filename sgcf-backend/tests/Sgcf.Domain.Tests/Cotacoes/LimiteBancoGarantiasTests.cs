@@ -12,7 +12,7 @@ public sealed class LimiteBancoGarantiasTests
     private static readonly IClock Clock = PropostaFactory.CriarClockFixo();
     private static readonly Guid BancoId = Guid.NewGuid();
 
-    private static LimiteBanco CriarLimite(IEnumerable<GarantiaExigidaLimiteSpec>? specs = null) =>
+    private static LimiteBanco CriarLimite(IEnumerable<GarantiaExigidaItemSpec>? specs = null) =>
         LimiteBanco.Criar(
             bancoId: BancoId,
             modalidade: ModalidadeContrato.Finimp,
@@ -21,10 +21,10 @@ public sealed class LimiteBancoGarantiasTests
             clock: Clock,
             garantiasExigidas: specs);
 
-    private static GarantiaExigidaLimiteSpec SpecCdb(decimal percentual = 20m) =>
+    private static GarantiaExigidaItemSpec SpecCdb(decimal percentual = 20m) =>
         new(TipoGarantia.CdbCativo, percentual, null, true, null);
 
-    private static GarantiaExigidaLimiteSpec SpecAval() =>
+    private static GarantiaExigidaItemSpec SpecAval() =>
         new(TipoGarantia.Aval, null, null, true, null);
 
     // ─── Criar com garantias ─────────────────────────────────────────────────
@@ -138,8 +138,8 @@ public sealed class LimiteBancoGarantiasTests
 
         var novas = new[]
         {
-            new GarantiaExigidaLimiteSpec(TipoGarantia.Sblc, 50m, null, true, null),
-            new GarantiaExigidaLimiteSpec(TipoGarantia.Fgi, 30m, null, false, null),
+            new GarantiaExigidaItemSpec(TipoGarantia.Sblc, 50m, null, true, null),
+            new GarantiaExigidaItemSpec(TipoGarantia.Fgi, 30m, null, false, null),
         };
 
         limite.SubstituirGarantiasExigidas(novas, Clock);
@@ -154,7 +154,7 @@ public sealed class LimiteBancoGarantiasTests
     {
         var limite = CriarLimite(new[] { SpecCdb() });
 
-        limite.SubstituirGarantiasExigidas(Array.Empty<GarantiaExigidaLimiteSpec>(), Clock);
+        limite.SubstituirGarantiasExigidas(Array.Empty<GarantiaExigidaItemSpec>(), Clock);
 
         limite.GarantiasExigidas.Should().BeEmpty();
     }

@@ -10,7 +10,7 @@ namespace Sgcf.Domain.Contratos;
 /// <para>
 /// Campos removidos na Onda 3b (SPEC §3.3 e §3.4):
 /// - <c>TipoProduto</c>: particularidade interna do banco; sistema agnóstico ao produto.
-/// - <c>TemFgi</c>: FGI é modelado via <c>GarantiaExigidaLimite.Tipo=Fgi</c> no limite do banco,
+/// - <c>TemFgi</c>: FGI é modelado via <c>GarantiaExigidaItem.Tipo=Fgi</c> no limite do banco,
 ///   ou via modalidade própria <c>ModalidadeContrato.Fgi</c> quando o produto é BNDES-FGI direto.
 /// </para>
 /// </summary>

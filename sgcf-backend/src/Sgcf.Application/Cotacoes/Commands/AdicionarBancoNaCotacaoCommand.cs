@@ -18,7 +18,7 @@ public sealed record AdicionarBancoNaCotacaoCommand(
     Guid BancoId,
     /// <summary>
     /// Quando <c>true</c> (padrão), o handler deriva automaticamente os campos de garantia
-    /// das <see cref="GarantiaExigidaLimite"/> do limite e os inclui na resposta.
+    /// das <see cref="GarantiaExigidaItem"/> do limite e os inclui na resposta.
     /// Quando <c>false</c>, o caller deve informar os campos manualmente ao registrar a Proposta.
     /// </summary>
     bool PreencherGarantiaAutomaticamente = true,

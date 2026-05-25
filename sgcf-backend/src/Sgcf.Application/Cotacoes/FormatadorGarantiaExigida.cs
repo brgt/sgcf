@@ -28,7 +28,7 @@ public static class FormatadorGarantiaExigida
     /// Retorna <see cref="string.Empty"/> quando a coleção for vazia.
     /// </summary>
     /// <param name="garantias">Coleção de garantias do <see cref="LimiteBanco"/>.</param>
-    public static string Formatar(IReadOnlyCollection<GarantiaExigidaLimite> garantias)
+    public static string Formatar(IReadOnlyCollection<GarantiaExigidaItem> garantias)
     {
         ArgumentNullException.ThrowIfNull(garantias);
 
@@ -38,7 +38,7 @@ public static class FormatadorGarantiaExigida
         }
 
         var partes = new List<string>(garantias.Count);
-        foreach (GarantiaExigidaLimite garantia in garantias)
+        foreach (GarantiaExigidaItem garantia in garantias)
         {
             partes.Add(FormatarItem(garantia));
         }
@@ -46,7 +46,7 @@ public static class FormatadorGarantiaExigida
         return string.Join(" + ", partes);
     }
 
-    private static string FormatarItem(GarantiaExigidaLimite garantia)
+    private static string FormatarItem(GarantiaExigidaItem garantia)
     {
         string tipoLabel = TraduzirTipo(garantia.Tipo);
         string obrigatoriedade = garantia.Obrigatoria ? "obrigatório" : "opcional";
@@ -67,7 +67,7 @@ public static class FormatadorGarantiaExigida
         return sb.ToString();
     }
 
-    private static string FormatarDetalheValor(GarantiaExigidaLimite garantia)
+    private static string FormatarDetalheValor(GarantiaExigidaItem garantia)
     {
         if (garantia.PercentualSobreLimite.HasValue)
         {

@@ -17,7 +17,7 @@ namespace Sgcf.Application.Cotacoes.Commands;
 public sealed record UpdateLimiteBancoCommand(
     Guid LimiteId,
     decimal? NovoValorLimiteBrl = null,
-    IReadOnlyList<CriarGarantiaExigidaLimiteRequest>? GarantiasExigidas = null,
+    IReadOnlyList<CriarGarantiaExigidaItemRequest>? GarantiasExigidas = null,
     bool ConfigurarAntecipacao = false,
     string? PadraoAntecipacao = null,
     decimal? BreakFundingFeePct = null,
@@ -91,7 +91,7 @@ public sealed class UpdateLimiteBancoCommandHandler(
 
         if (cmd.GarantiasExigidas is not null)
         {
-            IEnumerable<GarantiaExigidaLimiteSpec> specs = cmd.GarantiasExigidas.Select(r => r.ParaSpec());
+            IEnumerable<GarantiaExigidaItemSpec> specs = cmd.GarantiasExigidas.Select(r => r.ParaSpec());
             limite.SubstituirGarantiasExigidas(specs, clock);
         }
 

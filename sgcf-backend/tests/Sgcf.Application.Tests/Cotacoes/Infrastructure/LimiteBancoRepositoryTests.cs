@@ -106,9 +106,9 @@ public sealed class LimiteBancoRepositoryTests(CotacoesDbFixture fixture)
             clock: fixture.Clock,
             garantiasExigidas: new[]
             {
-                new GarantiaExigidaLimiteSpec(
+                new GarantiaExigidaItemSpec(
                     TipoGarantia.CdbCativo, 20m, null, true, "20% do limite em CDB"),
-                new GarantiaExigidaLimiteSpec(
+                new GarantiaExigidaItemSpec(
                     TipoGarantia.Aval, null, null, true, "Aval dos sócios"),
             });
 
@@ -180,7 +180,7 @@ public sealed class LimiteBancoRepositoryTests(CotacoesDbFixture fixture)
             clock: fixture.Clock,
             garantiasExigidas: new[]
             {
-                new GarantiaExigidaLimiteSpec(TipoGarantia.Sblc, 50m, null, true, null),
+                new GarantiaExigidaItemSpec(TipoGarantia.Sblc, 50m, null, true, null),
             });
 
         repo.Add(limite);
@@ -197,7 +197,7 @@ public sealed class LimiteBancoRepositoryTests(CotacoesDbFixture fixture)
         await ctxDelete.SaveChangesAsync();
 
         await using SgcfDbContext ctxVerify = fixture.CreateFreshContext();
-        bool garantiasOrfas = await ctxVerify.Set<GarantiaExigidaLimite>()
+        bool garantiasOrfas = await ctxVerify.Set<GarantiaExigidaItem>()
             .AnyAsync(g => g.LimiteBancoId == limiteId);
         bool historicoOrfao = await ctxVerify.Set<LimiteBancoHistorico>()
             .AnyAsync(h => h.LimiteBancoId == limiteId);

@@ -5,10 +5,10 @@ namespace Sgcf.Domain.Cotacoes;
 
 /// <summary>
 /// Descritor de garantia exigida sem identidade. Usado para construir
-/// <see cref="GarantiaExigidaLimite"/> dentro do agregado <see cref="LimiteBanco"/>,
+/// <see cref="GarantiaExigidaItem"/> dentro do agregado <see cref="LimiteBanco"/>,
 /// onde o LimiteBancoId é definido pelo próprio agregado.
 /// </summary>
-public sealed record GarantiaExigidaLimiteSpec(
+public sealed record GarantiaExigidaItemSpec(
     TipoGarantia Tipo,
     decimal? PercentualSobreLimite,
     Money? ValorFixoBrl,

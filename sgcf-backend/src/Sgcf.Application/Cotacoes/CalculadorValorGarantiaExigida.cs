@@ -5,7 +5,7 @@ namespace Sgcf.Application.Cotacoes;
 
 /// <summary>
 /// Calcula o valor total de garantia exigida para um dado <c>valorAlvo</c>,
-/// somando contribuições de cada <see cref="GarantiaExigidaLimite"/>.
+/// somando contribuições de cada <see cref="GarantiaExigidaItem"/>.
 ///
 /// Regras de composição:
 /// <list type="bullet">
@@ -25,7 +25,7 @@ public static class CalculadorValorGarantiaExigida
     /// <param name="garantias">Coleção de garantias do <see cref="LimiteBanco"/>.</param>
     /// <param name="valorAlvo">Valor alvo da cotação em BRL, usado como base para os percentuais.</param>
     /// <exception cref="ArgumentException">Lançado se <paramref name="valorAlvo"/> não for em BRL.</exception>
-    public static Money Calcular(IReadOnlyCollection<GarantiaExigidaLimite> garantias, Money valorAlvo)
+    public static Money Calcular(IReadOnlyCollection<GarantiaExigidaItem> garantias, Money valorAlvo)
     {
         ArgumentNullException.ThrowIfNull(garantias);
 
@@ -43,7 +43,7 @@ public static class CalculadorValorGarantiaExigida
 
         decimal total = 0m;
 
-        foreach (GarantiaExigidaLimite garantia in garantias)
+        foreach (GarantiaExigidaItem garantia in garantias)
         {
             if (garantia.PercentualSobreLimite.HasValue)
             {

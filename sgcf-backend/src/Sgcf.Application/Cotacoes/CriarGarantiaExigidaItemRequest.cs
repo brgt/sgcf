@@ -8,7 +8,7 @@ namespace Sgcf.Application.Cotacoes;
 /// Estrutura de entrada para declarar uma garantia exigida ao criar ou atualizar um limite.
 /// Não carrega identidade — o agregado LimiteBanco é responsável por atribuir Id.
 /// </summary>
-public sealed record CriarGarantiaExigidaLimiteRequest(
+public sealed record CriarGarantiaExigidaItemRequest(
     /// <summary>Nome do enum TipoGarantia (ex: "CdbCativo", "Aval"). Case-insensitive.</summary>
     string Tipo,
     decimal? PercentualSobreLimite = null,
@@ -17,12 +17,12 @@ public sealed record CriarGarantiaExigidaLimiteRequest(
     string? Observacoes = null)
 {
     /// <summary>
-    /// Converte o request em <see cref="GarantiaExigidaLimiteSpec"/> para passar ao domínio.
+    /// Converte o request em <see cref="GarantiaExigidaItemSpec"/> para passar ao domínio.
     /// Lança <see cref="ArgumentException"/> se o Tipo não for um valor válido do enum.
     /// A validação XOR (percentual×valorFixo) é deliberadamente delegada ao domínio
     /// para que retorne 409 via InvalidOperationException ou 400 via ArgumentException.
     /// </summary>
-    public GarantiaExigidaLimiteSpec ParaSpec()
+    public GarantiaExigidaItemSpec ParaSpec()
     {
         if (!Enum.TryParse<TipoGarantia>(Tipo, ignoreCase: true, out TipoGarantia tipo))
         {
@@ -35,6 +35,6 @@ public sealed record CriarGarantiaExigidaLimiteRequest(
             ? new Money(ValorFixoBrl.Value, Moeda.Brl)
             : null;
 
-        return new GarantiaExigidaLimiteSpec(tipo, PercentualSobreLimite, valorFixo, Obrigatoria, Observacoes);
+        return new GarantiaExigidaItemSpec(tipo, PercentualSobreLimite, valorFixo, Obrigatoria, Observacoes);
     }
 }

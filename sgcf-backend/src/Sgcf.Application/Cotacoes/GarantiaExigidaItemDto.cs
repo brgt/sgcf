@@ -3,10 +3,10 @@ using Sgcf.Domain.Cotacoes;
 namespace Sgcf.Application.Cotacoes;
 
 /// <summary>
-/// Projeção de leitura de <see cref="GarantiaExigidaLimite"/> para a camada de API.
+/// Projeção de leitura de <see cref="GarantiaExigidaItem"/> para a camada de API.
 /// Valores monetários são expostos como <c>decimal</c> em BRL — conversão já feita aqui.
 /// </summary>
-public sealed record GarantiaExigidaLimiteDto(
+public sealed record GarantiaExigidaItemDto(
     Guid Id,
     /// <summary>Nome textual do enum <c>TipoGarantia</c> (ex: "CdbCativo", "Aval").</summary>
     string Tipo,
@@ -18,7 +18,7 @@ public sealed record GarantiaExigidaLimiteDto(
     DateTimeOffset UpdatedAt)
 {
     /// <summary>Constrói o DTO a partir da entidade de domínio.</summary>
-    public static GarantiaExigidaLimiteDto From(GarantiaExigidaLimite g) => new(
+    public static GarantiaExigidaItemDto From(GarantiaExigidaItem g) => new(
         g.Id,
         g.Tipo.ToString(),
         g.PercentualSobreLimite,

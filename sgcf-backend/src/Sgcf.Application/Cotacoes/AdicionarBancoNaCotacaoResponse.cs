@@ -23,7 +23,7 @@ public sealed record AdicionarBancoNaCotacaoResponse(
 
 /// <summary>
 /// Template de valores de garantia sugeridos para a <see cref="Domain.Cotacoes.Proposta"/>,
-/// derivado das <see cref="Domain.Cotacoes.GarantiaExigidaLimite"/> do <see cref="Domain.Cotacoes.LimiteBanco"/>.
+/// derivado das <see cref="Domain.Cotacoes.GarantiaExigidaItem"/> do <see cref="Domain.Cotacoes.LimiteBanco"/>.
 /// </summary>
 /// <param name="GarantiaExigida">String formatada para o campo GarantiaExigida da Proposta.</param>
 /// <param name="ValorGarantiaExigidaBrl">Valor total calculado das garantias em BRL.</param>

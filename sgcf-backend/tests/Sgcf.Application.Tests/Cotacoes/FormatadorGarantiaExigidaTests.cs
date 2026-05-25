@@ -26,12 +26,12 @@ public sealed class FormatadorGarantiaExigidaTests
         return clock;
     }
 
-    private static GarantiaExigidaLimite CriarGarantia(
+    private static GarantiaExigidaItem CriarGarantia(
         TipoGarantia tipo,
         decimal? percentual = null,
         decimal? valorFixo = null,
         bool obrigatoria = true) =>
-        GarantiaExigidaLimite.Criar(
+        GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: tipo,
             percentualSobreLimite: percentual,
@@ -46,7 +46,7 @@ public sealed class FormatadorGarantiaExigidaTests
     public void Formatar_ColecaoVazia_RetornaStringVazia()
     {
         string resultado = FormatadorGarantiaExigida.Formatar(
-            Array.Empty<GarantiaExigidaLimite>());
+            Array.Empty<GarantiaExigidaItem>());
 
         resultado.Should().BeEmpty();
     }
@@ -56,7 +56,7 @@ public sealed class FormatadorGarantiaExigidaTests
     [Fact]
     public void Formatar_CdbCativo20PctObrigatorio_RetornaStringCorreta()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m, obrigatoria: true);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m, obrigatoria: true);
 
         string resultado = FormatadorGarantiaExigida.Formatar([garantia]);
 
@@ -68,7 +68,7 @@ public sealed class FormatadorGarantiaExigidaTests
     [Fact]
     public void Formatar_AvalSemValoresObrigatorio_RetornaStringCorreta()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.Aval, obrigatoria: true);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.Aval, obrigatoria: true);
 
         string resultado = FormatadorGarantiaExigida.Formatar([garantia]);
 
@@ -80,7 +80,7 @@ public sealed class FormatadorGarantiaExigidaTests
     [Fact]
     public void Formatar_Fgi10PctOpcional_RetornaStringCorreta()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.Fgi, percentual: 10m, obrigatoria: false);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.Fgi, percentual: 10m, obrigatoria: false);
 
         string resultado = FormatadorGarantiaExigida.Formatar([garantia]);
 
@@ -92,7 +92,7 @@ public sealed class FormatadorGarantiaExigidaTests
     [Fact]
     public void Formatar_Sblc200kBrlObrigatorio_RetornaStringCorreta()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.Sblc, valorFixo: 200_000m, obrigatoria: true);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.Sblc, valorFixo: 200_000m, obrigatoria: true);
 
         string resultado = FormatadorGarantiaExigida.Formatar([garantia]);
 
@@ -104,7 +104,7 @@ public sealed class FormatadorGarantiaExigidaTests
     [Fact]
     public void Formatar_CdbCativo20PctMaisAval_RetornaStringComSeparador()
     {
-        IReadOnlyCollection<GarantiaExigidaLimite> garantias =
+        IReadOnlyCollection<GarantiaExigidaItem> garantias =
         [
             CriarGarantia(TipoGarantia.CdbCativo, percentual: 20m, obrigatoria: true),
             CriarGarantia(TipoGarantia.Aval, obrigatoria: true)
@@ -124,7 +124,7 @@ public sealed class FormatadorGarantiaExigidaTests
     [InlineData(TipoGarantia.BoletoBancario,      "Boleto bancário")]
     public void Formatar_TiposComPercentual_RetornaRotuloCorreto(TipoGarantia tipo, string rotuloEsperado)
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(tipo, percentual: 10m, obrigatoria: true);
+        GarantiaExigidaItem garantia = CriarGarantia(tipo, percentual: 10m, obrigatoria: true);
 
         string resultado = FormatadorGarantiaExigida.Formatar([garantia]);
 
@@ -136,7 +136,7 @@ public sealed class FormatadorGarantiaExigidaTests
     [Fact]
     public void Formatar_PercentualDecimal_ExibeComVirgulaPortuguesa()
     {
-        GarantiaExigidaLimite garantia = CriarGarantia(TipoGarantia.CdbCativo, percentual: 12.5m, obrigatoria: true);
+        GarantiaExigidaItem garantia = CriarGarantia(TipoGarantia.CdbCativo, percentual: 12.5m, obrigatoria: true);
 
         string resultado = FormatadorGarantiaExigida.Formatar([garantia]);
 

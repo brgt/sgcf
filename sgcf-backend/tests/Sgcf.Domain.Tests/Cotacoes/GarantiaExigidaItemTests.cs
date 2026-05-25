@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Sgcf.Domain.Tests.Cotacoes;
 
-public sealed class GarantiaExigidaLimiteTests
+public sealed class GarantiaExigidaItemTests
 {
     private static readonly IClock Clock = PropostaFactory.CriarClockFixo();
     private static readonly Guid LimiteId = Guid.NewGuid();
@@ -17,7 +17,7 @@ public sealed class GarantiaExigidaLimiteTests
     [Fact]
     public void Criar_com_percentual_valido_e_sem_valor_fixo_deve_ter_sucesso()
     {
-        var garantia = GarantiaExigidaLimite.Criar(
+        var garantia = GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m,
@@ -40,7 +40,7 @@ public sealed class GarantiaExigidaLimiteTests
     {
         var valor = new Money(200_000m, Moeda.Brl);
 
-        var garantia = GarantiaExigidaLimite.Criar(
+        var garantia = GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: null,
@@ -57,7 +57,7 @@ public sealed class GarantiaExigidaLimiteTests
     public void Criar_Aval_sem_percentual_e_sem_valor_fixo_deve_ter_sucesso()
     {
         // Para Aval, ambos campos podem ser nulos (representa 100% do empréstimo implicitamente).
-        var garantia = GarantiaExigidaLimite.Criar(
+        var garantia = GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.Aval,
             percentualSobreLimite: null,
@@ -75,7 +75,7 @@ public sealed class GarantiaExigidaLimiteTests
     [Fact]
     public void Criar_garantia_opcional_deve_persistir_flag_falsa()
     {
-        var garantia = GarantiaExigidaLimite.Criar(
+        var garantia = GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.Fgi,
             percentualSobreLimite: 10m,
@@ -92,7 +92,7 @@ public sealed class GarantiaExigidaLimiteTests
     [Fact]
     public void Criar_nao_Aval_com_ambos_campos_nulos_deve_lancar_excecao()
     {
-        var act = () => GarantiaExigidaLimite.Criar(
+        var act = () => GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: null,
@@ -108,7 +108,7 @@ public sealed class GarantiaExigidaLimiteTests
     [Fact]
     public void Criar_com_ambos_campos_preenchidos_deve_lancar_excecao()
     {
-        var act = () => GarantiaExigidaLimite.Criar(
+        var act = () => GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m,
@@ -125,7 +125,7 @@ public sealed class GarantiaExigidaLimiteTests
     public void Criar_Aval_com_ambos_campos_preenchidos_deve_lancar_excecao()
     {
         // A relaxação para Aval permite ambos nulos, mas não ambos preenchidos.
-        var act = () => GarantiaExigidaLimite.Criar(
+        var act = () => GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.Aval,
             percentualSobreLimite: 100m,
@@ -145,7 +145,7 @@ public sealed class GarantiaExigidaLimiteTests
     [InlineData(150)]
     public void Criar_com_percentual_fora_do_intervalo_deve_lancar_excecao(decimal percentual)
     {
-        var act = () => GarantiaExigidaLimite.Criar(
+        var act = () => GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: percentual,
@@ -163,7 +163,7 @@ public sealed class GarantiaExigidaLimiteTests
     [InlineData(-100)]
     public void Criar_com_valor_fixo_nao_positivo_deve_lancar_excecao(decimal valor)
     {
-        var act = () => GarantiaExigidaLimite.Criar(
+        var act = () => GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: null,
@@ -179,7 +179,7 @@ public sealed class GarantiaExigidaLimiteTests
     [Fact]
     public void Criar_com_valor_fixo_em_moeda_diferente_de_BRL_deve_lancar_excecao()
     {
-        var act = () => GarantiaExigidaLimite.Criar(
+        var act = () => GarantiaExigidaItem.Criar(
             limiteBancoId: LimiteId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: null,
@@ -195,7 +195,7 @@ public sealed class GarantiaExigidaLimiteTests
     [Fact]
     public void Criar_com_limiteBancoId_vazio_deve_lancar_excecao()
     {
-        var act = () => GarantiaExigidaLimite.Criar(
+        var act = () => GarantiaExigidaItem.Criar(
             limiteBancoId: Guid.Empty,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m,
@@ -213,7 +213,7 @@ public sealed class GarantiaExigidaLimiteTests
     [Fact]
     public void Atualizar_pode_trocar_percentual_por_valor_fixo()
     {
-        var garantia = GarantiaExigidaLimite.Criar(
+        var garantia = GarantiaExigidaItem.Criar(
             LimiteId, TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m, valorFixoBrl: null,
             obrigatoria: true, observacoes: null, clock: Clock);
@@ -235,7 +235,7 @@ public sealed class GarantiaExigidaLimiteTests
     [Fact]
     public void Atualizar_aplica_mesmas_validacoes_da_criacao()
     {
-        var garantia = GarantiaExigidaLimite.Criar(
+        var garantia = GarantiaExigidaItem.Criar(
             LimiteId, TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m, valorFixoBrl: null,
             obrigatoria: true, observacoes: null, clock: Clock);

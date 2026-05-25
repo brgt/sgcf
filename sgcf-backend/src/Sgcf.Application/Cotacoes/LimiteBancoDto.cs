@@ -20,15 +20,15 @@ public sealed record LimiteBancoDto(
     string? ObservacoesAntecipacao,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    IReadOnlyList<GarantiaExigidaLimiteDto> GarantiasExigidas,
+    IReadOnlyList<GarantiaExigidaItemDto> GarantiasExigidas,
     IReadOnlyList<LimiteBancoHistoricoDto> Historico)
 {
     public static LimiteBancoDto From(LimiteBanco l)
     {
-        List<GarantiaExigidaLimiteDto> garantias = new(l.GarantiasExigidas.Count);
-        foreach (GarantiaExigidaLimite g in l.GarantiasExigidas)
+        List<GarantiaExigidaItemDto> garantias = new(l.GarantiasExigidas.Count);
+        foreach (GarantiaExigidaItem g in l.GarantiasExigidas)
         {
-            garantias.Add(GarantiaExigidaLimiteDto.From(g));
+            garantias.Add(GarantiaExigidaItemDto.From(g));
         }
 
         List<LimiteBancoHistoricoDto> historico = new(l.Historico.Count);

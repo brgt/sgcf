@@ -5,7 +5,7 @@ using Sgcf.Domain.Cotacoes;
 namespace Sgcf.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// Mapeamento EF Core da entidade <see cref="GarantiaExigidaLimite"/> para a tabela
+/// Mapeamento EF Core da entidade <see cref="GarantiaExigidaItem"/> para a tabela
 /// <c>sgcf.limite_banco_garantia_exigida</c>.
 ///
 /// CHECK constraint XOR: (percentual IS NOT NULL) &lt;&gt; (valor_fixo IS NOT NULL),
@@ -14,9 +14,9 @@ namespace Sgcf.Infrastructure.Persistence.Configurations;
 /// UNIQUE(limite_banco_id, tipo): espelha o invariante de domínio de que não há
 /// duplicação por tipo dentro de um mesmo limite.
 /// </summary>
-internal sealed class GarantiaExigidaLimiteConfiguration : IEntityTypeConfiguration<GarantiaExigidaLimite>
+internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguration<GarantiaExigidaItem>
 {
-    public void Configure(EntityTypeBuilder<GarantiaExigidaLimite> builder)
+    public void Configure(EntityTypeBuilder<GarantiaExigidaItem> builder)
     {
         builder.ToTable("limite_banco_garantia_exigida", t =>
         {
