@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Cotacoes;
 
 namespace Sgcf.Infrastructure.Persistence.Configurations;
 
@@ -83,6 +84,24 @@ internal sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
             .HasColumnType("uuid")
             .IsRequired(false);
 
+        // S34 — FKs de rastreabilidade da política do banco no momento da contratação.
+        // Todas NULLABLE (legado e bancos sem LimiteBanco cadastrado).
+        // Colunas físicas serão criadas pela migration S34 (T0.6).
+        builder.Property(c => c.LimiteBancoId)
+            .HasColumnName("limite_banco_id")
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
+        builder.Property(c => c.LimiteGlobalBancoId)
+            .HasColumnName("limite_global_banco_id")
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
+        builder.Property(c => c.GarantiasExigidasRevisaoId)
+            .HasColumnName("garantias_exigidas_revisao_id")
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
         builder.Property(c => c.Observacoes)
             .HasColumnName("observacoes")
             .HasColumnType("text")
@@ -149,6 +168,11 @@ internal sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
         builder.HasIndex(c => c.Status).HasFilter("deleted_at IS NULL");
         builder.HasIndex(c => c.ContratoPaiId).HasFilter("contrato_pai_id IS NOT NULL");
 
+        // S34 — índices nas FKs de política do banco para queries forenses e rastreabilidade.
+        builder.HasIndex(c => c.LimiteBancoId).HasFilter("limite_banco_id IS NOT NULL");
+        builder.HasIndex(c => c.LimiteGlobalBancoId).HasFilter("limite_global_banco_id IS NOT NULL");
+        builder.HasIndex(c => c.GarantiasExigidasRevisaoId).HasFilter("garantias_exigidas_revisao_id IS NOT NULL");
+
         builder.HasQueryFilter(c => c.DeletedAt == null);
 
         builder.HasMany(c => c.Parcelas)
@@ -160,6 +184,23 @@ internal sealed class ContratoConfiguration : IEntityTypeConfiguration<Contrato>
             .WithOne()
             .HasForeignKey(g => g.ContratoId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // S34 — FKs com ON DELETE SET NULL: contrato preserva o registro mesmo se a entidade
+        // pai for soft-deleted (snapshot do contrato permanece auditável via outros caminhos).
+        builder.HasOne<LimiteBanco>()
+            .WithMany()
+            .HasForeignKey(c => c.LimiteBancoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<LimiteGlobalBanco>()
+            .WithMany()
+            .HasForeignKey(c => c.LimiteGlobalBancoId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        builder.HasOne<GarantiaExigidaRevisao>()
+            .WithMany()
+            .HasForeignKey(c => c.GarantiasExigidasRevisaoId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         builder.Navigation(c => c.Parcelas)
             .HasField("_parcelas")
