@@ -47,5 +47,14 @@ public interface ILimiteBancoRepository
     /// </summary>
     public Task<LimiteBanco?> GetByIdTrackingAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Retorna todas as revisões de garantias exigidas do limite especificado,
+    /// ordenadas por VigenciaInicio ascendente (SLB-05).
+    /// Inclui eager-load dos Itens de cada revisão.
+    /// </summary>
+    public Task<IReadOnlyList<GarantiaExigidaRevisao>> GetRevisoesGarantiasAsync(
+        Guid limiteBancoId,
+        CancellationToken cancellationToken = default);
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

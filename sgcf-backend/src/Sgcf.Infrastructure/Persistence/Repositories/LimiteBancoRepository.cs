@@ -99,6 +99,22 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
         return list.AsReadOnly();
     }
 
+    /// <inheritdoc/>
+    public async Task<IReadOnlyList<GarantiaExigidaRevisao>> GetRevisoesGarantiasAsync(
+        Guid limiteBancoId,
+        CancellationToken cancellationToken = default)
+    {
+        List<GarantiaExigidaRevisao> revisoes = await context
+            .GarantiasExigidasRevisoes
+            .Include(r => r.Itens)
+            .AsNoTracking()
+            .Where(r => r.LimiteBancoId == limiteBancoId)
+            .OrderBy(r => r.VigenciaInicio)
+            .ToListAsync(cancellationToken);
+
+        return revisoes.AsReadOnly();
+    }
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
         context.SaveChangesAsync(cancellationToken);
 }
