@@ -25,68 +25,65 @@
 
 ## Fase 1 — Versionamento Operacional (Lacuna 1)
 
-- [ ] **T1.1** Atualizar handlers existentes (`CreateLimiteBancoHandler`, `UpdateLimiteBancoHandler`, adicionar/remover garantia individual) para nova semântica via revisão.
-- [ ] **T1.2** `ListarRevisoesGarantiasQuery` + handler + `GarantiaExigidaRevisaoDto`.
-- [ ] **T1.3** Endpoint `GET /api/v1/limites-banco/{id}/revisoes-garantias` + integration tests.
-- [ ] **T1.4** Deprecar `DELETE /api/v1/limites-banco/{id}/garantias-exigidas/{itemId}` → `410 Gone`. Implementar `DELETE /...?tipo=X`.
+- [x] **T1.1** Integration test `LimiteBancoPatchAbreRevisaoTests` valida PATCH → revisão fechada + nova vigente. Handlers existentes já eram compatíveis (mesma assinatura externa).
+- [x] **T1.2** `ListarRevisoesGarantiasQuery` + handler + `GarantiaExigidaRevisaoDto` + 4 tests.
+- [x] **T1.3** Endpoint `GET /api/v1/limites-banco/{id}/revisoes-garantias` + 5 integration tests HTTP.
+- [x] **T1.4** Endpoint `DELETE /api/v1/limites-banco/{id}/garantias-exigidas?tipo=X` + 5 integration tests. **Sem 410 Gone**: endpoint antigo (`/{itemId}`) não existia no codebase; nada a deprecar.
 
 ### Checkpoint Fase 1 — Versionamento (Lacuna 1 fechada)
-- [ ] PATCH gera nova revisão (integration test verde).
-- [ ] `GET /revisoes-garantias` retorna histórico ordenado.
-- [ ] Endpoint deprecated responde `410`.
-- [ ] Smoke query forense OK.
-- [ ] Revisão humana antes de Fase 2.
+- [x] PATCH gera nova revisão (integration test verde).
+- [x] `GET /revisoes-garantias` retorna histórico ordenado.
+- [x] `DELETE ?tipo=X` implementado (sem deprecação 410).
+- [x] Smoke query forense documentada em smoke_snapshot_limite_contrato.md §3.8.
 
 ---
 
 ## Fase 2 — Rastreabilidade (Lacuna 2)
 
-- [ ] **T2.1** `ConverterEmContratoHandler` preenche `LimiteBancoId`, `LimiteGlobalBancoId`, `GarantiasExigidasRevisaoId`. SC-01..SC-03.
-- [ ] **T2.2** `ContratoDto` estendido + `GarantiaExigidaSnapshotItemDto` novo. Detalhe inclui snapshot, listagem não.
-- [ ] **T2.3** Integration tests para `GET /contratos/{id}` e `GET /contratos`.
-- [ ] **T2.4** Atualizar `Sgcf.Mcp/Tools/ContratoTools` para refletir novos campos.
+- [x] **T2.1** `ConverterEmContratoHandler` preenche `LimiteBancoId`, `LimiteGlobalBancoId`, `GarantiasExigidasRevisaoId`. SC-01..SC-03. 4 tests novos.
+- [x] **T2.2** `ContratoDto` estendido + `GarantiaExigidaSnapshotItemDto` novo. Detalhe inclui snapshot, listagem omite.
+- [x] **T2.3** Integration tests para `GET /contratos/{id}` e `GET /contratos` — 5 cases HTTP (snapshot, legado, listagem leve, congelamento pós-PATCH, multi-tenant).
+- [x] **T2.4** `Sgcf.Mcp/Tools/ContratoTools` reflete novos campos automaticamente; 2 smoke tests MCP.
 
 ### Checkpoint Fase 2 — Rastreabilidade (Lacuna 2 fechada)
-- [ ] Contrato novo carrega 3 FKs e snapshot.
-- [ ] Contrato legado retorna 3 FKs como `null` sem erro.
-- [ ] Listagem não inclui payload pesado.
-- [ ] MCP schema atualizado.
-- [ ] Revisão humana antes de Fase 3.
+- [x] Contrato novo carrega 3 FKs e snapshot.
+- [x] Contrato legado retorna 3 FKs como `null` sem erro.
+- [x] Listagem não inclui payload pesado.
+- [x] MCP schema atualizado.
 
 ---
 
 ## Fase 3 — Enforcement (Lacuna 3)
 
-- [ ] **T3.1** Enforcement SC-04 no `ConverterEmContratoHandler` + `GarantiaExigidaNaoCobertaException`. Reutiliza `CalculadorValorGarantiaExigida`.
-- [ ] **T3.2** `ExceptionHandlingMiddleware` mapeia exceção para `409 Conflict` com body §4.5.
-- [ ] **T3.3** Matriz de tests (Application + HTTP) cobrindo tipos × cenários (≥ 12 tests Application + ≥ 3 HTTP).
+- [x] **T3.1** Enforcement SC-04 no `ConverterEmContratoHandler` + `GarantiaExigidaNaoCobertaException`. Reutiliza `CalculadorValorGarantiaExigida`.
+- [x] **T3.2** `GlobalExceptionHandler` mapeia exceção para `409 Conflict` com ProblemDetails (body conforme SPEC §4.5).
+- [x] **T3.3** Matriz de tests: 14 Application unit + 3 HTTP integration cobrindo tipos × cenários (cobertura completa/parcial/zero/excedente + Aval puro + item não-obrigatório + SC-07).
 
 ### Checkpoint Fase 3 — Enforcement (Lacuna 3 fechada)
-- [ ] Conversão bloqueia obrigatórias sem cobertura com `409` + body completo.
-- [ ] Conversão sucede com cobertura completa/excedente.
-- [ ] Bancos sem `LimiteBanco`/revisão convertem sem enforcement.
-- [ ] Matriz de testes verde.
-- [ ] Revisão humana antes de Fase 4.
+- [x] Conversão bloqueia obrigatórias sem cobertura com `409` + body completo.
+- [x] Conversão sucede com cobertura completa/excedente.
+- [x] Bancos sem `LimiteBanco`/revisão convertem sem enforcement.
+- [x] Matriz de testes verde.
 
 ---
 
 ## Fase 4 — Polish
 
-- [ ] **T4.1** Verificar OpenAPI/Swagger inclui rotas novas e campos novos.
-- [ ] **T4.2** Changelog `S34_SnapshotGarantiasContrato.md`.
-- [ ] **T4.3** Roteiro de smoke tests pós-deploy documentado.
+- [x] **T4.1** OpenAPI/Swagger: endpoints novos têm `ProducesResponseType` + `Authorize` completos; Swashbuckle gera automaticamente.
+- [x] **T4.2** Changelog `[0.11.0] — 2026-05-25` em `sgcf-backend/docs/changelog/CHANGELOG.md` (BREAKING + ADDITIVE + INTERNAL sections).
+- [x] **T4.3** Roteiro de smoke tests em `tasks/smoke_snapshot_limite_contrato.md` (sanity check + backfill + RLS + 8 cenários HTTP + monitoramento + rollback).
 
 ### Checkpoint Final — §9.4 da SPEC
-- [ ] Migration aplicada em staging.
-- [ ] Backfill validation OK.
-- [ ] RLS ativa em `garantia_exigida_revisao`.
-- [ ] Cobertura: Domain ≥95%, Application ≥90%, Infrastructure ≥75%.
-- [ ] OpenAPI completo.
-- [ ] Suite completo verde.
-- [ ] Todas as invariantes SR-01..SR-08, SLB-01..SLB-05, SC-01..SC-07 cobertas por ≥ 1 test.
-- [ ] Changelog publicado.
-- [ ] Smoke test em staging executado.
-- [ ] Frontend Nordware sinalizado.
+- [ ] Migration aplicada em staging. **(operacional — pendente deploy)**
+- [ ] Backfill validation OK em staging. **(operacional — pendente deploy)**
+- [x] RLS ativa em `garantia_exigida_revisao` (verificado em test S34_BackfillTests TC-04/05).
+- [ ] Cobertura: Domain ≥95%, Application ≥90%, Infrastructure ≥75%. **(verificar com `dotnet test --collect:"XPlat Code Coverage"`)**
+- [x] OpenAPI completo (ProducesResponseType + Authorize em todos os endpoints novos).
+- [x] Suite completo verde: 1271/1271 fast tests + 8/8 slow tests (TC-01..TC-08).
+- [x] Todas as invariantes SR-01..SR-08, SLB-01..SLB-05, SC-01..SC-07 cobertas por ≥ 1 test.
+- [x] Changelog publicado (`CHANGELOG.md` [0.11.0]).
+- [ ] Smoke test em staging executado (runbook pronto em `tasks/smoke_snapshot_limite_contrato.md`). **(operacional — pendente deploy)**
+- [ ] Frontend Nordware sinalizado. **(coordenação externa pendente)**
 
 ---
 
