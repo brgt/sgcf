@@ -2197,6 +2197,97 @@ namespace Sgcf.Infrastructure.Migrations
                     b.ToTable("limite_banco_historico", "sgcf");
                 });
 
+            modelBuilder.Entity("Sgcf.Domain.Cotacoes.LimiteGlobalBanco", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BancoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("banco_id");
+
+                    b.Property<Instant>("CreatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("created_at");
+
+                    b.Property<LocalDate?>("DataVigenciaFim")
+                        .HasColumnType("date")
+                        .HasColumnName("data_vigencia_fim");
+
+                    b.Property<LocalDate>("DataVigenciaInicio")
+                        .HasColumnType("date")
+                        .HasColumnName("data_vigencia_inicio");
+
+                    b.Property<string>("Observacoes")
+                        .HasColumnType("text")
+                        .HasColumnName("observacoes");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("updated_at");
+
+                    b.Property<decimal>("ValorLimiteBrlDecimal")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor_limite_brl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BancoId")
+                        .HasDatabaseName("ix_limite_global_banco_banco_id");
+
+                    b.HasIndex("TenantId")
+                        .HasDatabaseName("ix_limite_global_banco_tenant_id");
+
+                    b.HasIndex("TenantId", "BancoId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_limite_global_banco_banco_vigente_uq")
+                        .HasFilter("data_vigencia_fim IS NULL");
+
+                    b.ToTable("limite_global_banco", "sgcf");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Cotacoes.LimiteGlobalBancoHistorico", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("LimiteGlobalBancoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("limite_global_banco_id");
+
+                    b.Property<string>("Observacoes")
+                        .HasColumnType("text")
+                        .HasColumnName("observacoes");
+
+                    b.Property<Instant>("RegistradoEm")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("registrado_em");
+
+                    b.Property<decimal?>("ValorAnteriorBrlDecimal")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor_anterior_brl");
+
+                    b.Property<decimal>("ValorNovoBrlDecimal")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("valor_novo_brl");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LimiteGlobalBancoId")
+                        .HasDatabaseName("ix_limite_global_banco_historico_limite_id");
+
+                    b.HasIndex("LimiteGlobalBancoId", "RegistradoEm")
+                        .HasDatabaseName("ix_limite_global_banco_historico_limite_registrado_em");
+
+                    b.ToTable("limite_global_banco_historico", "sgcf");
+                });
+
             modelBuilder.Entity("Sgcf.Domain.Cotacoes.Proposta", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3505,6 +3596,24 @@ namespace Sgcf.Infrastructure.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Sgcf.Domain.Cotacoes.LimiteGlobalBanco", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Bancos.Banco", null)
+                        .WithMany()
+                        .HasForeignKey("BancoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Cotacoes.LimiteGlobalBancoHistorico", b =>
+                {
+                    b.HasOne("Sgcf.Domain.Cotacoes.LimiteGlobalBanco", null)
+                        .WithMany("Historico")
+                        .HasForeignKey("LimiteGlobalBancoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Sgcf.Domain.Cotacoes.Proposta", b =>
                 {
                     b.HasOne("Sgcf.Domain.Bancos.Banco", null)
@@ -3570,6 +3679,11 @@ namespace Sgcf.Infrastructure.Migrations
                 {
                     b.Navigation("GarantiasExigidas");
 
+                    b.Navigation("Historico");
+                });
+
+            modelBuilder.Entity("Sgcf.Domain.Cotacoes.LimiteGlobalBanco", b =>
+                {
                     b.Navigation("Historico");
                 });
 

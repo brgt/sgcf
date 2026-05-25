@@ -53,25 +53,25 @@
 
 ## Fase 4 — P1 progressivo (Sprints 8+)
 
-- [ ] **4.1** GAP-CKP-11 — Resultado histórico de hedge.
+- [x] **4.1** GAP-CKP-11 — Resultado histórico de hedge.
 - [x] **4.2** GAP-CKP-12 — Sensibilidade a indexadores (consolidação server-side).
-- [ ] **4.3** GAP-CKP-13 — Covenants (domínio + endpoints + monitoramento).
-- [ ] **4.4** GAP-CKP-14 SOFR/Selic — saving vs benchmark além de CDI.
-- [ ] **4.5** GAP-CKP-15 — Orçamento de encargos financeiros.
-- [ ] **4.6** GAP-CKP-16 — Workflow de documentação.
-- [ ] **4.7** GAP-CKP-17 — Conformidade regulatória (DEF/RDE-ROF, SISCOSERV).
+- [x] **4.3** GAP-CKP-13 — Covenants (domínio + endpoints + monitoramento).
+- [x] **4.4** GAP-CKP-14 SOFR/Selic — saving vs benchmark além de CDI.
+- [x] **4.5** GAP-CKP-15 — Orçamento de encargos financeiros.
+- [x] **4.6** GAP-CKP-16 — Workflow de documentação.
+- [x] **4.7** GAP-CKP-17 — Conformidade regulatória (DEF/RDE-ROF, SISCOSERV).
 - [x] **4.8** GAP-CKP-18 — Tarifas e IOF agregados.
-- [ ] **4.9** GAP-CKP-24 — Preferências de usuário backend.
-- [ ] **4.10** GAP-CKP-19 — Adicionar `TaxaIndicativaAa` a `Cotacao`/`Proposta` + spread agregado.
+- [x] **4.9** GAP-CKP-24 — Preferências de usuário backend.
+- [x] **4.10** GAP-CKP-19 — Adicionar `TaxaIndicativaAa` a `Cotacao`/`Proposta` + spread agregado.
 
 ---
 
 ## Fase 5 — Backlog (P2)
 
-- [ ] **5.1** GAP-CKP-21 — Economia tributária acumulada.
-- [ ] **5.2** GAP-CKP-22 — Produtividade da equipe.
-- [ ] **5.3** GAP-CKP-23 — WebSocket/SSE de eventos em tempo real.
-- [ ] **5.4** GAP-CKP-25 — Exportação consolidada assíncrona.
+- [x] **5.1** GAP-CKP-21 — Economia tributária acumulada.
+- [x] **5.2** GAP-CKP-22 — Produtividade da equipe.
+- [x] **5.3** GAP-CKP-23 — WebSocket/SSE de eventos em tempo real.
+- [x] **5.4** GAP-CKP-25 — Exportação consolidada assíncrona.
 
 ---
 
