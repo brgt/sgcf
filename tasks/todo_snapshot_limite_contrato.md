@@ -6,16 +6,16 @@
 
 ## Fase 0 — Foundation
 
-- [ ] **T0.1** Renomear `GarantiaExigidaLimite` → `GarantiaExigidaItem` e Spec correspondente. Refator mecânico, sem mudança de comportamento.
-- [ ] **T0.2** Adicionar entidade `GarantiaExigidaRevisao` + tests SR-01..SR-08. Coexiste sem uso.
-- [ ] **T0.3** Refatorar `LimiteBanco` para operar com revisões. Métodos públicos com mesma assinatura passam a abrir nova revisão. Tests SLB-01..SLB-05.
-- [ ] **T0.4** `Contrato`: 3 campos (`LimiteBancoId`, `LimiteGlobalBancoId`, `GarantiasExigidasRevisaoId`) + `VincularPoliticaBanco` + tests SC-05.
-- [ ] **T0.5** EF Configurations: nova `GarantiaExigidaRevisaoConfiguration`, rename `GarantiaExigidaItemConfiguration`, ajustar `LimiteBancoConfiguration` e `ContratoConfiguration` (3 FKs, ON DELETE SET NULL).
-- [ ] **T0.6** Migration `S34_SnapshotGarantiasContrato` com backfill in-migration. Tests Testcontainers validam backfill.
+- [x] **T0.1** Renomear `GarantiaExigidaLimite` → `GarantiaExigidaItem` e Spec correspondente. Refator mecânico, sem mudança de comportamento.
+- [x] **T0.2** Adicionar entidade `GarantiaExigidaRevisao` + tests SR-01..SR-08. Coexiste sem uso.
+- [x] **T0.3** Refatorar `LimiteBanco` para operar com revisões. Métodos públicos com mesma assinatura passam a abrir nova revisão. Tests SLB-01..SLB-05.
+- [x] **T0.4** `Contrato`: 3 campos (`LimiteBancoId`, `LimiteGlobalBancoId`, `GarantiasExigidasRevisaoId`) + `VincularPoliticaBanco` + tests SC-05.
+- [x] **T0.5** EF Configurations: nova `GarantiaExigidaRevisaoConfiguration`, rename `GarantiaExigidaItemConfiguration`, ajustar `LimiteBancoConfiguration` e `ContratoConfiguration` (3 FKs, ON DELETE SET NULL).
+- [x] **T0.6** Migration `S34_SnapshotGarantiasContrato` com backfill in-migration. Tests Testcontainers validam backfill (TC-01..TC-08 verdes).
 
 ### Checkpoint Fase 0 — Foundation Pronta
-- [ ] `dotnet build` sucesso.
-- [ ] `dotnet test` (incluindo Slow) verde.
+- [x] `dotnet build` sucesso.
+- [x] `dotnet test` (incluindo Slow) verde — 1.247 fast + 8 slow = 0 falhas.
 - [ ] `dotnet ef database update` aplicado local sem erro.
 - [ ] `grep -r "GarantiaExigidaLimite" src/ tests/` = 0 ocorrências.
 - [ ] Backfill validation: `SELECT COUNT(*) FROM garantia_exigida_item WHERE revisao_id IS NULL` = 0.
@@ -101,6 +101,6 @@
 
 - [ ] Critério temporal de vigência do `LimiteBanco` na conversão (default: `cmd.DataContratacao`). Confirmar em T2.1.
 - [ ] PATCH com `garantiasExigidas: null` preserva revisão (default: sim). Confirmar em T1.1.
-- [ ] Texto padrão do `Motivo` no backfill (default: "Revisão inicial gerada pela migration S34"). Confirmar em T0.6.
-- [ ] Implementar `Down()` destrutivo ou bloqueá-lo (default: destrutivo + documentado). Confirmar em T0.6.
+- [x] Texto padrão do `Motivo` no backfill: "Revisão inicial gerada pela migration S34" — confirmado em T0.6.
+- [x] `Down()` destrutivo + documentado — confirmado em T0.6.
 - [ ] Frontend pode consumir sem feature-flag (default: sim, campos chegam optional). Confirmar pós-Fase 2.

@@ -6,20 +6,17 @@ namespace Sgcf.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// Mapeamento EF Core da entidade <see cref="GarantiaExigidaItem"/> para a tabela
-/// <c>sgcf.limite_banco_garantia_exigida</c>.
+/// <c>sgcf.garantia_exigida_item</c>.
 ///
-/// TRANSIÇÃO T0.2→T0.6: A propriedade de domínio foi renomeada de LimiteBancoId
-/// para RevisaoId (SPEC §3.4). A coluna física ainda se chama <c>limite_banco_id</c>
-/// pois o schema será atualizado na migration S34 (T0.6), que criará a tabela
-/// <c>garantia_exigida_revisao</c>, fará o backfill e renomeará a coluna.
-/// Até lá, mapeamos RevisaoId → limite_banco_id via HasColumnName.
-/// O índice único e FK estão marcados como TODO para atualização em T0.6.
+/// Tabela renomeada de <c>limite_banco_garantia_exigida</c> pela migration S34 (T0.6).
+/// A coluna <c>revisao_id</c> (FK → garantia_exigida_revisao) substitui a antiga
+/// <c>limite_banco_id</c> após o backfill e rename executados em Up().
 /// </summary>
 internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguration<GarantiaExigidaItem>
 {
     public void Configure(EntityTypeBuilder<GarantiaExigidaItem> builder)
     {
-        builder.ToTable("limite_banco_garantia_exigida", t =>
+        builder.ToTable("garantia_exigida_item", t =>
         {
             // XOR com relaxação para Aval (tipo = 3).
             t.HasCheckConstraint(
@@ -43,10 +40,8 @@ internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguratio
             .HasColumnType("uuid")
             .ValueGeneratedNever();
 
-        // TODO T0.6: renomear para "revisao_id" após migration S34 criar a coluna física.
-        // Por ora, RevisaoId aponta para a coluna "limite_banco_id" existente (transição semântica).
         builder.Property(g => g.RevisaoId)
-            .HasColumnName("limite_banco_id")
+            .HasColumnName("revisao_id")
             .HasColumnType("uuid")
             .IsRequired();
 
@@ -86,15 +81,12 @@ internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguratio
             .HasColumnType("timestamptz")
             .IsRequired();
 
-        // TODO T0.6: atualizar nome do índice para ix_garantia_exigida_revisao
-        // quando a coluna física for renomeada para revisao_id.
         builder.HasIndex(g => g.RevisaoId)
-            .HasDatabaseName("ix_garantia_exigida_limite_banco");
+            .HasDatabaseName("ix_garantia_exigida_item_revisao_id");
 
-        // TODO T0.6: índice unique passará a ser (revisao_id, tipo) após migration S34.
         builder.HasIndex(g => new { g.RevisaoId, g.Tipo })
             .IsUnique()
-            .HasDatabaseName("ux_garantia_exigida_limite_tipo");
+            .HasDatabaseName("ux_garantia_exigida_item_revisao_tipo");
 
         // Propriedade computada não persiste.
         builder.Ignore(g => g.ValorFixoBrl);

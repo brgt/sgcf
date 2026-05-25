@@ -87,7 +87,12 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
             .OnDelete(DeleteBehavior.Restrict);
 
         // Revisões de garantias exigidas (S34): cascade delete.
-        // Navegação via field privado _revisoesGarantias.
+        // Campo privado _revisoesGarantias não segue a convenção de nome da propriedade
+        // pública (RevisoesGarantiasExigidas), então é preciso informar o field explicitamente.
+        builder.Navigation(l => l.RevisoesGarantiasExigidas)
+            .HasField("_revisoesGarantias")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         builder.HasMany(l => l.RevisoesGarantiasExigidas)
             .WithOne()
             .HasForeignKey(r => r.LimiteBancoId)
@@ -99,8 +104,6 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
             .HasForeignKey(h => h.LimiteBancoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Metadata.FindNavigation(nameof(LimiteBanco.RevisoesGarantiasExigidas))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
         builder.Metadata.FindNavigation(nameof(LimiteBanco.Historico))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
 
