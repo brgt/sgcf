@@ -2,6 +2,7 @@ using FluentAssertions;
 using NodaTime;
 using NSubstitute;
 using Sgcf.Application.Contratos;
+using Sgcf.Application.Contratos.Commands;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Commands;
 using Sgcf.Domain.Calendario;
@@ -98,7 +99,9 @@ public sealed class ConverterEmContratoFKsTests
             clock: clock,
             garantiasExigidas:
             [
-                new GarantiaExigidaItemSpec(TipoGarantia.AlienacaoFiduciaria, 80m, null, true, null)
+                // Obrigatoria = false: o item cria a revisão (necessária para GarantiasExigidasRevisaoId)
+                // mas não aciona o enforcement SC-04, que é testado em ConverterEmContratoEnforcementTests.
+                new GarantiaExigidaItemSpec(TipoGarantia.AlienacaoFiduciaria, 80m, null, false, null)
             ]);
 
         return limite;
@@ -124,6 +127,7 @@ public sealed class ConverterEmContratoFKsTests
         ILimiteBancoRepository limiteBancoRepo = Substitute.For<ILimiteBancoRepository>();
         ILimiteGlobalBancoRepository limiteGlobalRepo = Substitute.For<ILimiteGlobalBancoRepository>();
         ICdiSnapshotRepository cdiRepo = Substitute.For<ICdiSnapshotRepository>();
+        IGarantiaRepository garantiaRepoMock = Substitute.For<IGarantiaRepository>();
 
         // Cotação retorna a cotação preparada com proposta aceita.
         cotacaoRepo
@@ -198,6 +202,7 @@ public sealed class ConverterEmContratoFKsTests
             limiteBancoRepo,
             limiteGlobalRepo,
             cdiRepo,
+            garantiaRepoMock,
             [conversorFinimp],
             clock);
     }
