@@ -60,14 +60,31 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
 
-    private readonly List<GarantiaExigidaItem> _garantiasExigidas = new();
+    private readonly List<GarantiaExigidaRevisao> _revisoesGarantias = new();
     private readonly List<LimiteBancoHistorico> _historico = new();
 
     /// <summary>
-    /// Coleção de garantias exigidas pelo banco para liberar esta linha.
-    /// Vazia = linha "no aval" implícito / sem requisitos formais de garantia.
+    /// Histórico de todas as revisões de garantias exigidas (vigentes e encerradas).
+    /// Append-only — nenhuma revisão é removida. SPEC §3.2.
     /// </summary>
-    public IReadOnlyCollection<GarantiaExigidaItem> GarantiasExigidas => _garantiasExigidas.AsReadOnly();
+    public IReadOnlyCollection<GarantiaExigidaRevisao> RevisoesGarantiasExigidas
+        => _revisoesGarantias.AsReadOnly();
+
+    /// <summary>
+    /// Revisão de garantias vigente (VigenciaFim IS NULL).
+    /// Null se nunca houve revisão cadastrada (banco sem política formal de garantia).
+    /// SLB-01: no máximo uma vigente por LimiteBanco.
+    /// </summary>
+    public GarantiaExigidaRevisao? RevisaoGarantiasVigente
+        => _revisoesGarantias.SingleOrDefault(r => r.VigenciaFim is null);
+
+    /// <summary>
+    /// Itens da revisão vigente. Coleção vazia se não houver revisão.
+    /// Mantém o nome <c>GarantiasExigidas</c> por compatibilidade da API existente.
+    /// SPEC §3.2.
+    /// </summary>
+    public IReadOnlyCollection<GarantiaExigidaItem> GarantiasExigidas
+        => RevisaoGarantiasVigente?.Itens ?? Array.Empty<GarantiaExigidaItem>();
 
     /// <summary>
     /// Histórico de alterações do valor do limite concedido pelo banco.
@@ -132,12 +149,16 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
             registradoEm: now,
             observacoes: "Criação do limite"));
 
-        if (garantiasExigidas is not null)
+        var specs = garantiasExigidas?.ToList();
+        if (specs is { Count: > 0 })
         {
-            foreach (var spec in garantiasExigidas)
-            {
-                limite.AdicionarInterno(spec, clock);
-            }
+            ValidarSemDuplicadosPorTipo(specs);
+            var revisaoInicial = GarantiaExigidaRevisao.CriarComInstant(
+                limiteBancoId: limite.Id,
+                itens: specs,
+                momento: now,
+                motivo: "Criação do limite");
+            limite._revisoesGarantias.Add(revisaoInicial);
         }
 
         return limite;
@@ -167,66 +188,162 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
     }
 
     /// <summary>
-    /// Adiciona uma garantia exigida. Invariante: não pode haver duas garantias do mesmo Tipo.
+    /// Substitui as garantias exigidas: fecha a revisão vigente (se houver)
+    /// e abre uma nova com os itens fornecidos. Append-only.
+    /// SLB-04: se a lista nova for equivalente à vigente, nenhuma revisão é criada.
+    /// SLB-02+SLB-03: fecha e abre com o mesmo Instant para garantir continuidade temporal.
     /// </summary>
-    public void AdicionarGarantiaExigida(GarantiaExigidaItemSpec spec, IClock clock)
-    {
-        AdicionarInterno(spec, clock);
-        UpdatedAt = clock.GetCurrentInstant();
-    }
-
-    /// <summary>
-    /// Remove uma garantia exigida pelo Id. Lança se não encontrada.
-    /// </summary>
-    public void RemoverGarantiaExigida(Guid garantiaId, IClock clock)
-    {
-        var existente = _garantiasExigidas.FirstOrDefault(g => g.Id == garantiaId)
-            ?? throw new InvalidOperationException(
-                $"Garantia exigida {garantiaId} não encontrada no limite {Id}.");
-
-        _garantiasExigidas.Remove(existente);
-        UpdatedAt = clock.GetCurrentInstant();
-    }
-
-    /// <summary>
-    /// Substitui a coleção inteira de garantias exigidas (semântica replace-all).
-    /// </summary>
-    public void SubstituirGarantiasExigidas(IEnumerable<GarantiaExigidaItemSpec> novas, IClock clock)
+    public void SubstituirGarantiasExigidas(
+        IEnumerable<GarantiaExigidaItemSpec> novas,
+        IClock clock,
+        string? motivo = null,
+        string? observacoes = null)
     {
         ArgumentNullException.ThrowIfNull(novas);
 
-        var lista = novas.ToList();
-        ValidarSemDuplicadosPorTipo(lista);
+        var listaNova = novas.ToList();
+        ValidarSemDuplicadosPorTipo(listaNova);
 
-        _garantiasExigidas.Clear();
-        foreach (var spec in lista)
+        // SLB-04: idempotência por valor — se a lista nova é equivalente à vigente, não cria revisão.
+        var vigente = RevisaoGarantiasVigente;
+        if (vigente is not null && PoliticasEquivalentes(vigente.Itens, listaNova))
         {
-            AdicionarInterno(spec, clock);
+            return;
         }
 
-        UpdatedAt = clock.GetCurrentInstant();
+        // SLB-02+SLB-03: captura o Instant uma única vez para garantir continuidade sem gap.
+        var now = clock.GetCurrentInstant();
+
+        vigente?.EncerrarVigencia(now);
+
+        var novaRevisao = GarantiaExigidaRevisao.CriarComInstant(
+            limiteBancoId: Id,
+            itens: listaNova,
+            momento: now,
+            motivo: motivo,
+            observacoes: observacoes);
+
+        _revisoesGarantias.Add(novaRevisao);
+        UpdatedAt = now;
     }
 
-    private void AdicionarInterno(GarantiaExigidaItemSpec spec, IClock clock)
+    /// <summary>
+    /// Adiciona uma garantia exigida. Se há revisão vigente, fecha e abre nova com
+    /// (itens da anterior + novo item). Se não há revisão, abre a primeira. SR-06.
+    /// </summary>
+    public void AdicionarGarantiaExigida(
+        GarantiaExigidaItemSpec spec,
+        IClock clock,
+        string? motivo = null)
     {
         ArgumentNullException.ThrowIfNull(spec);
 
-        if (_garantiasExigidas.Any(g => g.Tipo == spec.Tipo))
+        var vigente = RevisaoGarantiasVigente;
+
+        // SR-06: valida duplicidade antes de criar a nova revisão.
+        if (vigente is not null && vigente.Itens.Any(i => i.Tipo == spec.Tipo))
         {
             throw new InvalidOperationException(
                 $"Garantia exigida do tipo {spec.Tipo} já está cadastrada (duplicada) no limite {Id}.");
         }
 
-        var garantia = GarantiaExigidaItem.Criar(
-            limiteBancoId: Id,
-            tipo: spec.Tipo,
-            percentualSobreLimite: spec.PercentualSobreLimite,
-            valorFixoBrl: spec.ValorFixoBrl,
-            obrigatoria: spec.Obrigatoria,
-            observacoes: spec.Observacoes,
-            clock: clock);
+        var now = clock.GetCurrentInstant();
 
-        _garantiasExigidas.Add(garantia);
+        var itensNovos = (vigente?.Itens ?? Array.Empty<GarantiaExigidaItem>())
+            .Select(i => new GarantiaExigidaItemSpec(
+                i.Tipo, i.PercentualSobreLimite, i.ValorFixoBrl, i.Obrigatoria, i.Observacoes))
+            .Append(spec)
+            .ToList();
+
+        vigente?.EncerrarVigencia(now);
+
+        var novaRevisao = GarantiaExigidaRevisao.CriarComInstant(
+            limiteBancoId: Id,
+            itens: itensNovos,
+            momento: now,
+            motivo: motivo);
+
+        _revisoesGarantias.Add(novaRevisao);
+        UpdatedAt = now;
+    }
+
+    /// <summary>
+    /// Remove uma garantia exigida pelo Tipo. Fecha a revisão vigente e abre nova
+    /// com (itens da anterior − tipo informado).
+    /// Lança se não houver revisão vigente ou se o tipo não estiver presente.
+    /// </summary>
+    public void RemoverGarantiaExigidaPorTipo(
+        TipoGarantia tipo,
+        IClock clock,
+        string? motivo = null)
+    {
+        var vigente = RevisaoGarantiasVigente
+            ?? throw new InvalidOperationException(
+                $"Nenhuma revisão vigente no limite {Id}. Não é possível remover garantia.");
+
+        var itemARemover = vigente.Itens.FirstOrDefault(i => i.Tipo == tipo)
+            ?? throw new InvalidOperationException(
+                $"Garantia exigida do tipo {tipo} não encontrada na revisão vigente do limite {Id}.");
+
+        var now = clock.GetCurrentInstant();
+
+        var itensSemRemovido = vigente.Itens
+            .Where(i => i.Tipo != tipo)
+            .Select(i => new GarantiaExigidaItemSpec(
+                i.Tipo, i.PercentualSobreLimite, i.ValorFixoBrl, i.Obrigatoria, i.Observacoes))
+            .ToList();
+
+        vigente.EncerrarVigencia(now);
+
+        var novaRevisao = GarantiaExigidaRevisao.CriarComInstant(
+            limiteBancoId: Id,
+            itens: itensSemRemovido,
+            momento: now,
+            motivo: motivo);
+
+        _revisoesGarantias.Add(novaRevisao);
+        UpdatedAt = now;
+    }
+
+    private static bool PoliticasEquivalentes(
+        IReadOnlyCollection<GarantiaExigidaItem> atuais,
+        List<GarantiaExigidaItemSpec> novas)
+    {
+        if (atuais.Count != novas.Count)
+        {
+            return false;
+        }
+
+        var porTipoAtuais = atuais.ToDictionary(i => i.Tipo);
+        foreach (var nova in novas)
+        {
+            if (!porTipoAtuais.TryGetValue(nova.Tipo, out var atual))
+            {
+                return false;
+            }
+
+            if (atual.PercentualSobreLimite != nova.PercentualSobreLimite)
+            {
+                return false;
+            }
+
+            if (atual.ValorFixoBrl?.Valor != nova.ValorFixoBrl?.Valor)
+            {
+                return false;
+            }
+
+            if (atual.Obrigatoria != nova.Obrigatoria)
+            {
+                return false;
+            }
+
+            if (atual.Observacoes != nova.Observacoes)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static void ValidarSemDuplicadosPorTipo(IEnumerable<GarantiaExigidaItemSpec> specs)

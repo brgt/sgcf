@@ -190,19 +190,22 @@ public sealed class LimiteBancoRepositoryTests(CotacoesDbFixture fixture)
 
         await using SgcfDbContext ctxDelete = fixture.CreateFreshContext();
         LimiteBanco aRemover = await ctxDelete.LimitesBanco
-            .Include(l => l.GarantiasExigidas)
+            .Include(l => l.RevisoesGarantiasExigidas)
             .Include(l => l.Historico)
             .SingleAsync(l => l.Id == limiteId);
         ctxDelete.LimitesBanco.Remove(aRemover);
         await ctxDelete.SaveChangesAsync();
 
+        // Cascade via LimiteBanco → GarantiaExigidaRevisao → GarantiaExigidaItem.
+        // Após T0.6, a coluna revisao_id existirá fisicamente; por ora verificamos
+        // revisões órfãs que indicariam falha no cascade.
         await using SgcfDbContext ctxVerify = fixture.CreateFreshContext();
-        bool garantiasOrfas = await ctxVerify.Set<GarantiaExigidaItem>()
-            .AnyAsync(g => g.LimiteBancoId == limiteId);
+        bool revisoesOrfas = await ctxVerify.Set<GarantiaExigidaRevisao>()
+            .AnyAsync(r => r.LimiteBancoId == limiteId);
         bool historicoOrfao = await ctxVerify.Set<LimiteBancoHistorico>()
             .AnyAsync(h => h.LimiteBancoId == limiteId);
 
-        garantiasOrfas.Should().BeFalse();
+        revisoesOrfas.Should().BeFalse();
         historicoOrfao.Should().BeFalse();
     }
 }

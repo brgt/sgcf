@@ -10,6 +10,11 @@ namespace Sgcf.Infrastructure.Persistence.Configurations;
 ///
 /// Decisão: unicidade de (banco_id, modalidade) é enforced via índice único,
 /// sem filtro de vigência — a Application garante a regra de um limite vigente por vez.
+///
+/// T0.2 (S34): navegação <c>GarantiasExigidas</c> (HasMany direto de LimiteBanco →
+/// GarantiaExigidaItem) removida. A nova hierarquia passa por
+/// <c>RevisoesGarantiasExigidas</c> → <c>GarantiaExigidaRevisao</c> → <c>Itens</c>.
+/// O HasMany de GarantiaExigidaItem agora está em GarantiaExigidaRevisaoConfiguration.
 /// </summary>
 internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<LimiteBanco>
 {
@@ -36,7 +41,6 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
             .IsRequired();
 
         // Unique por banco+modalidade: apenas um registro por combinação (vigência atual).
-        // Histórico pode ser mantido via data_vigencia_fim, mas a Application controla isso.
         builder.HasIndex(l => new { l.BancoId, l.Modalidade })
             .IsUnique()
             .HasFilter("data_vigencia_fim IS NULL");
@@ -82,22 +86,27 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
             .HasForeignKey(l => l.BancoId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Coleção de garantias exigidas: cascade delete (filhas acompanham o limite).
-        builder.HasMany(l => l.GarantiasExigidas)
+        // Revisões de garantias exigidas (S34): cascade delete.
+        // Navegação via field privado _revisoesGarantias.
+        builder.HasMany(l => l.RevisoesGarantiasExigidas)
             .WithOne()
-            .HasForeignKey(g => g.LimiteBancoId)
+            .HasForeignKey(r => r.LimiteBancoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Histórico de valores concedidos: cascade delete (filhas acompanham o limite).
+        // Histórico de valores concedidos: cascade delete.
         builder.HasMany(l => l.Historico)
             .WithOne()
             .HasForeignKey(h => h.LimiteBancoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Metadata.FindNavigation(nameof(LimiteBanco.GarantiasExigidas))!
+        builder.Metadata.FindNavigation(nameof(LimiteBanco.RevisoesGarantiasExigidas))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
         builder.Metadata.FindNavigation(nameof(LimiteBanco.Historico))!
             .SetPropertyAccessMode(PropertyAccessMode.Field);
+
+        // Propriedades computadas — não persistidas.
+        builder.Ignore(l => l.GarantiasExigidas);
+        builder.Ignore(l => l.RevisaoGarantiasVigente);
 
         // ── Configuração de antecipação por modalidade (S32) ─────────────────────
         builder.Property(l => l.PadraoAntecipacao)

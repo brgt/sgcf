@@ -80,6 +80,7 @@ public class SgcfDbContext(
     public DbSet<Cotacao> Cotacoes => Set<Cotacao>();
     public DbSet<Proposta> Propostas => Set<Proposta>();
     public DbSet<LimiteBanco> LimitesBanco => Set<LimiteBanco>();
+    public DbSet<GarantiaExigidaRevisao> GarantiasExigidasRevisoes => Set<GarantiaExigidaRevisao>();
     public DbSet<LimiteGlobalBanco> LimitesGlobaisBanco => Set<LimiteGlobalBanco>();
     public DbSet<LimiteGlobalBancoHistorico> LimitesGlobaisBancoHistorico => Set<LimiteGlobalBancoHistorico>();
     public DbSet<EconomiaNegociacao> EconomiasNegociacao => Set<EconomiaNegociacao>();

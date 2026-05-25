@@ -8,11 +8,12 @@ namespace Sgcf.Infrastructure.Persistence.Configurations;
 /// Mapeamento EF Core da entidade <see cref="GarantiaExigidaItem"/> para a tabela
 /// <c>sgcf.limite_banco_garantia_exigida</c>.
 ///
-/// CHECK constraint XOR: (percentual IS NOT NULL) &lt;&gt; (valor_fixo IS NOT NULL),
-/// relaxado para Aval (ambos podem ser nulos quando tipo = 3).
-///
-/// UNIQUE(limite_banco_id, tipo): espelha o invariante de domínio de que não há
-/// duplicação por tipo dentro de um mesmo limite.
+/// TRANSIÇÃO T0.2→T0.6: A propriedade de domínio foi renomeada de LimiteBancoId
+/// para RevisaoId (SPEC §3.4). A coluna física ainda se chama <c>limite_banco_id</c>
+/// pois o schema será atualizado na migration S34 (T0.6), que criará a tabela
+/// <c>garantia_exigida_revisao</c>, fará o backfill e renomeará a coluna.
+/// Até lá, mapeamos RevisaoId → limite_banco_id via HasColumnName.
+/// O índice único e FK estão marcados como TODO para atualização em T0.6.
 /// </summary>
 internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguration<GarantiaExigidaItem>
 {
@@ -42,7 +43,9 @@ internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguratio
             .HasColumnType("uuid")
             .ValueGeneratedNever();
 
-        builder.Property(g => g.LimiteBancoId)
+        // TODO T0.6: renomear para "revisao_id" após migration S34 criar a coluna física.
+        // Por ora, RevisaoId aponta para a coluna "limite_banco_id" existente (transição semântica).
+        builder.Property(g => g.RevisaoId)
             .HasColumnName("limite_banco_id")
             .HasColumnType("uuid")
             .IsRequired();
@@ -83,10 +86,13 @@ internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguratio
             .HasColumnType("timestamptz")
             .IsRequired();
 
-        builder.HasIndex(g => g.LimiteBancoId)
+        // TODO T0.6: atualizar nome do índice para ix_garantia_exigida_revisao
+        // quando a coluna física for renomeada para revisao_id.
+        builder.HasIndex(g => g.RevisaoId)
             .HasDatabaseName("ix_garantia_exigida_limite_banco");
 
-        builder.HasIndex(g => new { g.LimiteBancoId, g.Tipo })
+        // TODO T0.6: índice unique passará a ser (revisao_id, tipo) após migration S34.
+        builder.HasIndex(g => new { g.RevisaoId, g.Tipo })
             .IsUnique()
             .HasDatabaseName("ux_garantia_exigida_limite_tipo");
 

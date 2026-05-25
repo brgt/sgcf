@@ -7,6 +7,11 @@ using Xunit;
 
 namespace Sgcf.Domain.Tests.Cotacoes;
 
+/// <summary>
+/// Testes dos métodos de garantias em <see cref="LimiteBanco"/>.
+/// Adaptados para semântica de revisões (S34 T0.2/T0.3): cada mutação
+/// de garantias fecha a revisão vigente e abre uma nova.
+/// </summary>
 public sealed class LimiteBancoGarantiasTests
 {
     private static readonly IClock Clock = PropostaFactory.CriarClockFixo();
@@ -34,6 +39,7 @@ public sealed class LimiteBancoGarantiasTests
     {
         var limite = CriarLimite();
         limite.GarantiasExigidas.Should().BeEmpty();
+        limite.RevisaoGarantiasVigente.Should().BeNull();
     }
 
     [Fact]
@@ -44,7 +50,8 @@ public sealed class LimiteBancoGarantiasTests
         limite.GarantiasExigidas.Should().ContainSingle();
         var g = limite.GarantiasExigidas.Single();
         g.Tipo.Should().Be(TipoGarantia.CdbCativo);
-        g.LimiteBancoId.Should().Be(limite.Id);
+        // RevisaoId aponta para a revisão vigente, não para o LimiteBanco
+        g.RevisaoId.Should().Be(limite.RevisaoGarantiasVigente!.Id);
     }
 
     [Fact]
@@ -55,7 +62,9 @@ public sealed class LimiteBancoGarantiasTests
         limite.GarantiasExigidas.Should().HaveCount(2);
         limite.GarantiasExigidas.Select(g => g.Tipo).Should()
             .BeEquivalentTo(new[] { TipoGarantia.CdbCativo, TipoGarantia.Aval });
-        limite.GarantiasExigidas.Should().OnlyContain(g => g.LimiteBancoId == limite.Id);
+        // Todos os itens pertencem à revisão vigente
+        var revisaoId = limite.RevisaoGarantiasVigente!.Id;
+        limite.GarantiasExigidas.Should().OnlyContain(g => g.RevisaoId == revisaoId);
     }
 
     [Fact]
@@ -81,6 +90,22 @@ public sealed class LimiteBancoGarantiasTests
         limite.AdicionarGarantiaExigida(SpecCdb(), Clock);
 
         limite.GarantiasExigidas.Should().ContainSingle();
+        limite.RevisoesGarantiasExigidas.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public void Adicionar_garantia_em_limite_com_revisao_vigente_cria_nova_revisao()
+    {
+        var limite = CriarLimite(new[] { SpecCdb() });
+
+        var clockDepois = PropostaFactory.CriarClockFixo(2026, 6, 1);
+        limite.AdicionarGarantiaExigida(SpecAval(), clockDepois);
+
+        // Deve haver 2 revisões: a original (encerrada) e a nova (vigente com 2 itens)
+        limite.RevisoesGarantiasExigidas.Should().HaveCount(2);
+        limite.GarantiasExigidas.Should().HaveCount(2);
+        limite.RevisaoGarantiasVigente.Should().NotBeNull();
+        limite.RevisaoGarantiasVigente!.VigenciaFim.Should().BeNull();
     }
 
     [Fact]
@@ -105,28 +130,40 @@ public sealed class LimiteBancoGarantiasTests
         limite.UpdatedAt.Should().Be(clockDepois.GetCurrentInstant());
     }
 
-    // ─── RemoverGarantiaExigida ──────────────────────────────────────────────
+    // ─── RemoverGarantiaExigidaPorTipo ──────────────────────────────────────
 
     [Fact]
-    public void Remover_garantia_por_id_funciona()
+    public void Remover_garantia_por_tipo_funciona()
     {
         var limite = CriarLimite(new[] { SpecCdb() });
-        var id = limite.GarantiasExigidas.Single().Id;
 
-        limite.RemoverGarantiaExigida(id, Clock);
+        limite.RemoverGarantiaExigidaPorTipo(TipoGarantia.CdbCativo, Clock);
 
+        // Nova revisão criada com lista vazia
         limite.GarantiasExigidas.Should().BeEmpty();
+        limite.RevisoesGarantiasExigidas.Should().HaveCount(2);
     }
 
     [Fact]
-    public void Remover_garantia_inexistente_deve_lancar_excecao()
+    public void Remover_garantia_tipo_inexistente_deve_lancar_excecao()
     {
-        var limite = CriarLimite();
+        var limite = CriarLimite(new[] { SpecCdb() });
 
-        var act = () => limite.RemoverGarantiaExigida(Guid.NewGuid(), Clock);
+        var act = () => limite.RemoverGarantiaExigidaPorTipo(TipoGarantia.Aval, Clock);
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*não encontrada*");
+    }
+
+    [Fact]
+    public void Remover_garantia_sem_revisao_vigente_deve_lancar_excecao()
+    {
+        var limite = CriarLimite(); // sem garantias = sem revisão
+
+        var act = () => limite.RemoverGarantiaExigidaPorTipo(TipoGarantia.CdbCativo, Clock);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Nenhuma revisão vigente*");
     }
 
     // ─── SubstituirGarantiasExigidas ─────────────────────────────────────────
@@ -144,19 +181,24 @@ public sealed class LimiteBancoGarantiasTests
 
         limite.SubstituirGarantiasExigidas(novas, Clock);
 
+        // GarantiasExigidas retorna itens da revisão vigente (nova)
         limite.GarantiasExigidas.Should().HaveCount(2);
         limite.GarantiasExigidas.Select(g => g.Tipo).Should()
             .BeEquivalentTo(new[] { TipoGarantia.Sblc, TipoGarantia.Fgi });
+        // Deve haver 2 revisões: original (fechada) + nova
+        limite.RevisoesGarantiasExigidas.Should().HaveCount(2);
     }
 
     [Fact]
-    public void Substituir_com_colecao_vazia_limpa_todas()
+    public void Substituir_com_colecao_vazia_cria_nova_revisao_vazia()
     {
         var limite = CriarLimite(new[] { SpecCdb() });
 
         limite.SubstituirGarantiasExigidas(Array.Empty<GarantiaExigidaItemSpec>(), Clock);
 
         limite.GarantiasExigidas.Should().BeEmpty();
+        // Lista diferente → nova revisão criada
+        limite.RevisoesGarantiasExigidas.Should().HaveCount(2);
     }
 
     [Fact]

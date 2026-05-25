@@ -34,7 +34,7 @@ public sealed class CalculadorValorGarantiaExigidaTests
         decimal? valorFixo = null,
         bool obrigatoria = true) =>
         GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: LimiteId,
             tipo: tipo,
             percentualSobreLimite: percentual,
             valorFixoBrl: valorFixo.HasValue ? new Money(valorFixo.Value, Moeda.Brl) : null,

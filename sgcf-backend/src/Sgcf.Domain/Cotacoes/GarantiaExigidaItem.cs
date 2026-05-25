@@ -6,17 +6,24 @@ using Sgcf.Domain.Contratos;
 namespace Sgcf.Domain.Cotacoes;
 
 /// <summary>
-/// Requisito de garantia exigido pelo banco para liberar uma linha de crédito (LimiteBanco).
-/// Child entity owned by LimiteBanco — uma linha pode ter zero, uma ou várias garantias exigidas.
+/// Requisito de garantia exigido pelo banco para liberar uma linha de crédito.
+/// Child entity owned by <see cref="GarantiaExigidaRevisao"/> — uma revisão pode
+/// ter zero, uma ou várias garantias exigidas.
 ///
 /// AD-4 (relaxada): para tipos diferentes de Aval, exatamente um entre
 /// <see cref="PercentualSobreLimite"/> ou <see cref="ValorFixoBrl"/> deve ser informado.
 /// Para Aval, ambos podem ser nulos (representa exigência implícita de aval pelos sócios
 /// cobrindo 100% da exposição da linha).
+///
+/// Imutabilidade: a invariante SR-05 (item imutável após revisão encerrada) é verificada
+/// no agregado pai <see cref="GarantiaExigidaRevisao"/>, que rejeita toda tentativa de
+/// modificação quando VigenciaFim != null.
 /// </summary>
 public sealed class GarantiaExigidaItem : Entity, IAuditable
 {
-    public Guid LimiteBancoId { get; private set; }
+    /// <summary>FK → garantia_exigida_revisao.id (substitui o antigo LimiteBancoId). SPEC §3.4.</summary>
+    public Guid RevisaoId { get; private set; }
+
     public TipoGarantia Tipo { get; private set; }
 
     /// <summary>Percentual sobre o limite, em valor humano (ex: 20 = 20%). Exclusivo com ValorFixoBrl.</summary>
@@ -37,35 +44,53 @@ public sealed class GarantiaExigidaItem : Entity, IAuditable
     /// <summary>Construtor privado para EF Core.</summary>
     private GarantiaExigidaItem() { }
 
-    public static GarantiaExigidaItem Criar(
-        Guid limiteBancoId,
+    /// <summary>
+    /// Cria um item a partir de um <see cref="Instant"/> explícito. Chamado por
+    /// <see cref="GarantiaExigidaRevisao"/> que já capturou o momento do clock.
+    /// </summary>
+    internal static GarantiaExigidaItem Criar(
+        Guid revisaoId,
+        TipoGarantia tipo,
+        decimal? percentualSobreLimite,
+        Money? valorFixoBrl,
+        bool obrigatoria,
+        string? observacoes,
+        Instant momento)
+    {
+        if (revisaoId == Guid.Empty)
+        {
+            throw new ArgumentException("RevisaoId não pode ser vazio.", nameof(revisaoId));
+        }
+
+        ValidarCamposExclusivos(tipo, percentualSobreLimite, valorFixoBrl);
+
+        return new GarantiaExigidaItem
+        {
+            RevisaoId = revisaoId,
+            Tipo = tipo,
+            PercentualSobreLimite = percentualSobreLimite,
+            ValorFixoBrlDecimal = valorFixoBrl?.Valor,
+            Obrigatoria = obrigatoria,
+            Observacoes = observacoes,
+            CreatedAt = momento,
+            UpdatedAt = momento,
+        };
+    }
+
+    /// <summary>
+    /// Sobrecarga que aceita IClock. Mantida para compatibilidade de testes e
+    /// chamadas externas que não têm um Instant pré-capturado.
+    /// </summary>
+    internal static GarantiaExigidaItem Criar(
+        Guid revisaoId,
         TipoGarantia tipo,
         decimal? percentualSobreLimite,
         Money? valorFixoBrl,
         bool obrigatoria,
         string? observacoes,
         IClock clock)
-    {
-        if (limiteBancoId == Guid.Empty)
-        {
-            throw new ArgumentException("LimiteBancoId não pode ser vazio.", nameof(limiteBancoId));
-        }
-
-        ValidarCamposExclusivos(tipo, percentualSobreLimite, valorFixoBrl);
-
-        var now = clock.GetCurrentInstant();
-        return new GarantiaExigidaItem
-        {
-            LimiteBancoId = limiteBancoId,
-            Tipo = tipo,
-            PercentualSobreLimite = percentualSobreLimite,
-            ValorFixoBrlDecimal = valorFixoBrl?.Valor,
-            Obrigatoria = obrigatoria,
-            Observacoes = observacoes,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
-    }
+        => Criar(revisaoId, tipo, percentualSobreLimite, valorFixoBrl, obrigatoria, observacoes,
+            clock.GetCurrentInstant());
 
     public void Atualizar(
         decimal? percentualSobreLimite,

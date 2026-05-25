@@ -10,7 +10,7 @@ namespace Sgcf.Domain.Tests.Cotacoes;
 public sealed class GarantiaExigidaItemTests
 {
     private static readonly IClock Clock = PropostaFactory.CriarClockFixo();
-    private static readonly Guid LimiteId = Guid.NewGuid();
+    private static readonly Guid RevisaoId = Guid.NewGuid();
 
     // ─── Factory Criar — sucessos ────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ public sealed class GarantiaExigidaItemTests
     public void Criar_com_percentual_valido_e_sem_valor_fixo_deve_ter_sucesso()
     {
         var garantia = GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m,
             valorFixoBrl: null,
@@ -26,7 +26,7 @@ public sealed class GarantiaExigidaItemTests
             observacoes: null,
             clock: Clock);
 
-        garantia.LimiteBancoId.Should().Be(LimiteId);
+        garantia.RevisaoId.Should().Be(RevisaoId);
         garantia.Tipo.Should().Be(TipoGarantia.CdbCativo);
         garantia.PercentualSobreLimite.Should().Be(20m);
         garantia.ValorFixoBrl.Should().BeNull();
@@ -41,7 +41,7 @@ public sealed class GarantiaExigidaItemTests
         var valor = new Money(200_000m, Moeda.Brl);
 
         var garantia = GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: null,
             valorFixoBrl: valor,
@@ -58,7 +58,7 @@ public sealed class GarantiaExigidaItemTests
     {
         // Para Aval, ambos campos podem ser nulos (representa 100% do empréstimo implicitamente).
         var garantia = GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.Aval,
             percentualSobreLimite: null,
             valorFixoBrl: null,
@@ -76,7 +76,7 @@ public sealed class GarantiaExigidaItemTests
     public void Criar_garantia_opcional_deve_persistir_flag_falsa()
     {
         var garantia = GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.Fgi,
             percentualSobreLimite: 10m,
             valorFixoBrl: null,
@@ -93,7 +93,7 @@ public sealed class GarantiaExigidaItemTests
     public void Criar_nao_Aval_com_ambos_campos_nulos_deve_lancar_excecao()
     {
         var act = () => GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: null,
             valorFixoBrl: null,
@@ -109,7 +109,7 @@ public sealed class GarantiaExigidaItemTests
     public void Criar_com_ambos_campos_preenchidos_deve_lancar_excecao()
     {
         var act = () => GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m,
             valorFixoBrl: new Money(200_000m, Moeda.Brl),
@@ -126,7 +126,7 @@ public sealed class GarantiaExigidaItemTests
     {
         // A relaxação para Aval permite ambos nulos, mas não ambos preenchidos.
         var act = () => GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.Aval,
             percentualSobreLimite: 100m,
             valorFixoBrl: new Money(1_000_000m, Moeda.Brl),
@@ -146,7 +146,7 @@ public sealed class GarantiaExigidaItemTests
     public void Criar_com_percentual_fora_do_intervalo_deve_lancar_excecao(decimal percentual)
     {
         var act = () => GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: percentual,
             valorFixoBrl: null,
@@ -164,7 +164,7 @@ public sealed class GarantiaExigidaItemTests
     public void Criar_com_valor_fixo_nao_positivo_deve_lancar_excecao(decimal valor)
     {
         var act = () => GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: null,
             valorFixoBrl: new Money(valor, Moeda.Brl),
@@ -180,7 +180,7 @@ public sealed class GarantiaExigidaItemTests
     public void Criar_com_valor_fixo_em_moeda_diferente_de_BRL_deve_lancar_excecao()
     {
         var act = () => GarantiaExigidaItem.Criar(
-            limiteBancoId: LimiteId,
+            revisaoId: RevisaoId,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: null,
             valorFixoBrl: new Money(200_000m, Moeda.Usd),
@@ -193,10 +193,10 @@ public sealed class GarantiaExigidaItemTests
     }
 
     [Fact]
-    public void Criar_com_limiteBancoId_vazio_deve_lancar_excecao()
+    public void Criar_com_revisaoId_vazio_deve_lancar_excecao()
     {
         var act = () => GarantiaExigidaItem.Criar(
-            limiteBancoId: Guid.Empty,
+            revisaoId: Guid.Empty,
             tipo: TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m,
             valorFixoBrl: null,
@@ -205,7 +205,7 @@ public sealed class GarantiaExigidaItemTests
             clock: Clock);
 
         act.Should().Throw<ArgumentException>()
-            .WithMessage("*LimiteBancoId*");
+            .WithMessage("*RevisaoId*");
     }
 
     // ─── Atualizar ───────────────────────────────────────────────────────────
@@ -214,7 +214,7 @@ public sealed class GarantiaExigidaItemTests
     public void Atualizar_pode_trocar_percentual_por_valor_fixo()
     {
         var garantia = GarantiaExigidaItem.Criar(
-            LimiteId, TipoGarantia.CdbCativo,
+            RevisaoId, TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m, valorFixoBrl: null,
             obrigatoria: true, observacoes: null, clock: Clock);
 
@@ -236,7 +236,7 @@ public sealed class GarantiaExigidaItemTests
     public void Atualizar_aplica_mesmas_validacoes_da_criacao()
     {
         var garantia = GarantiaExigidaItem.Criar(
-            LimiteId, TipoGarantia.CdbCativo,
+            RevisaoId, TipoGarantia.CdbCativo,
             percentualSobreLimite: 20m, valorFixoBrl: null,
             obrigatoria: true, observacoes: null, clock: Clock);
 
