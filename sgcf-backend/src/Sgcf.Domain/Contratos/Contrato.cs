@@ -39,6 +39,26 @@ public sealed class Contrato : Entity, IAuditable, ITenantScoped
     public Periodicidade? PeriodicidadeJuros { get; private set; }
     public ConvencaoDataNaoUtil ConvencaoDataNaoUtil { get; private set; }
 
+    // ── Política do banco no momento da contratação (SC-05 — imutáveis após preenchimento) ──
+
+    /// <summary>
+    /// Identificador do <c>LimiteBanco</c> vigente no momento da conversão cotação→contrato.
+    /// Nulo para contratos pré-feature ou criados sem <c>LimiteBanco</c> cadastrado (SC-06/SC-07).
+    /// </summary>
+    public Guid? LimiteBancoId { get; private set; }
+
+    /// <summary>
+    /// Identificador do <c>LimiteGlobalBanco</c> vigente no momento da conversão.
+    /// Nulo quando não há limite global para o banco (SC-06/SC-07).
+    /// </summary>
+    public Guid? LimiteGlobalBancoId { get; private set; }
+
+    /// <summary>
+    /// Identificador da <c>GarantiaExigidaRevisao</c> vigente no momento da conversão.
+    /// Nulo quando o banco não tem política de garantias formalizada (SC-06/SC-07).
+    /// </summary>
+    public Guid? GarantiasExigidasRevisaoId { get; private set; }
+
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
     public Instant? DeletedAt { get; private set; }
@@ -283,6 +303,51 @@ public sealed class Contrato : Entity, IAuditable, ITenantScoped
         }
 
         UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Vincula o contrato à política vigente do banco no momento da conversão cotação→contrato.
+    /// Idempotente: re-chamada com exatamente os mesmos valores (incluindo combinações de nulos)
+    /// é no-op silencioso — necessário para retries de transação.
+    /// Lança <see cref="InvalidOperationException"/> se qualquer campo já preenchido receber
+    /// um valor diferente — snapshot imutável (SPEC §3.5, invariante SC-05).
+    /// Não atualiza <c>UpdatedAt</c>: vinculação é metadado de criação, não modificação do contrato.
+    /// </summary>
+    internal void VincularPoliticaBanco(
+        Guid? limiteBancoId,
+        Guid? limiteGlobalBancoId,
+        Guid? garantiasExigidasRevisaoId)
+    {
+        // Idempotência: mesma combinação de valores (inclusive todos nulos) → no-op.
+        if (LimiteBancoId == limiteBancoId
+            && LimiteGlobalBancoId == limiteGlobalBancoId
+            && GarantiasExigidasRevisaoId == garantiasExigidasRevisaoId)
+        {
+            return;
+        }
+
+        // Imutabilidade: campo já preenchido não pode receber valor diferente.
+        if (LimiteBancoId is not null && LimiteBancoId != limiteBancoId)
+        {
+            throw new InvalidOperationException(
+                $"LimiteBancoId já está vinculado a '{LimiteBancoId}' e não pode ser alterado para '{limiteBancoId}'.");
+        }
+
+        if (LimiteGlobalBancoId is not null && LimiteGlobalBancoId != limiteGlobalBancoId)
+        {
+            throw new InvalidOperationException(
+                $"LimiteGlobalBancoId já está vinculado a '{LimiteGlobalBancoId}' e não pode ser alterado para '{limiteGlobalBancoId}'.");
+        }
+
+        if (GarantiasExigidasRevisaoId is not null && GarantiasExigidasRevisaoId != garantiasExigidasRevisaoId)
+        {
+            throw new InvalidOperationException(
+                $"GarantiasExigidasRevisaoId já está vinculado a '{GarantiasExigidasRevisaoId}' e não pode ser alterado para '{garantiasExigidasRevisaoId}'.");
+        }
+
+        LimiteBancoId = limiteBancoId;
+        LimiteGlobalBancoId = limiteGlobalBancoId;
+        GarantiasExigidasRevisaoId = garantiasExigidasRevisaoId;
     }
 
     public void Deletar(IClock clock) => DeletedAt = clock.GetCurrentInstant();
