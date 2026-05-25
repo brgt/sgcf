@@ -83,6 +83,65 @@ public sealed class LimitesBancoController(IMediator mediator) : ControllerBase
     }
 
     /// <summary>
+    /// Lista todas as revisões de garantias exigidas do limite, ordenadas por
+    /// VigenciaInicio ascendente (histórico completo — vigente e encerradas).
+    /// Política: Leitura.
+    /// </summary>
+    [HttpGet("{id:guid}/revisoes-garantias")]
+    [Authorize(Policy = Policies.Leitura)]
+    [ProducesResponseType<ListarRevisoesGarantiasResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListarRevisoes(Guid id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            ListarRevisoesGarantiasResponse result =
+                await mediator.Send(new ListarRevisoesGarantiasQuery(id), cancellationToken);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>
+    /// Remove o item do tipo informado da revisão vigente de garantias exigidas.
+    /// Fecha a revisão vigente e abre nova sem aquele tipo. Política: Admin.
+    /// Nota: o endpoint <c>DELETE /garantias-exigidas/{itemId}</c> não existe neste
+    /// codebase; não há necessidade de retornar 410 Gone (SPEC §5.3 fase 1).
+    /// </summary>
+    [HttpDelete("{id:guid}/garantias-exigidas")]
+    [Authorize(Policy = Policies.Admin)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RemoverGarantiaPorTipo(
+        Guid id,
+        [FromQuery] string tipo,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await mediator.Send(new RemoverGarantiaExigidaPorTipoCommand(id, tipo), cancellationToken);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Atualiza o limite operacional existente (semântica PATCH).
     /// Garante e substitui garantias exigidas quando fornecidas. Política: Admin.
     /// </summary>
