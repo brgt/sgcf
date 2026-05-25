@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Sgcf.Application.Cotacoes.Exceptions;
 
 namespace Sgcf.Api.Middleware;
 
@@ -52,6 +53,33 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
             };
 
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+            return true;
+        }
+
+        if (exception is GarantiaExigidaNaoCobertaException garantiaEx)
+        {
+            // SC-04 — conversão bloqueada por garantia obrigatória sem cobertura. SPEC §4.5.
+            httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
+
+            ProblemDetails problem = new()
+            {
+                Type = "https://sgcf.io/errors/garantia-exigida-nao-coberta",
+                Title = "Garantias exigidas pela política do banco não foram cobertas pelo contrato.",
+                Status = StatusCodes.Status409Conflict,
+                Detail = $"A revisão vigente do LimiteBanco {garantiaEx.LimiteBancoId} exige " +
+                         $"{garantiaEx.Lacunas.Count} garantia(s) obrigatória(s) que não foram supridas.",
+            };
+            problem.Extensions["limiteBancoId"] = garantiaEx.LimiteBancoId;
+            problem.Extensions["garantiasExigidasRevisaoId"] = garantiaEx.GarantiasExigidasRevisaoId;
+            problem.Extensions["lacunas"] = garantiaEx.Lacunas.Select(l => new
+            {
+                tipo = l.Tipo,
+                obrigatoria = l.Obrigatoria,
+                valorEsperadoBrl = l.ValorEsperadoBrl,
+                valorCobertoBrl = l.ValorCobertoBrl,
+            }).ToArray();
+
+            await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
             return true;
         }
 

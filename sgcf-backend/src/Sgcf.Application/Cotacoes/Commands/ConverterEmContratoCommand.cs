@@ -4,13 +4,30 @@ using MediatR;
 using NodaTime;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cotacoes;
+using Sgcf.Application.Cotacoes.Exceptions;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
+using TipoGarantia = Sgcf.Domain.Contratos.TipoGarantia;
 using Entity = Sgcf.Domain.Common.Entity;
 
 namespace Sgcf.Application.Cotacoes.Commands;
+
+/// <summary>
+/// Garantia declarada pelo operador no ato da conversão cotação→contrato.
+/// Usada tanto para o enforcement SC-04 (verificação de cobertura antes da criação)
+/// quanto para persistência das garantias no contrato recém-criado.
+/// </summary>
+/// <param name="Tipo">Nome do <c>TipoGarantia</c> (ex.: "CdbCativo", "Aval").</param>
+/// <param name="ValorBrl">Valor da garantia em BRL. Obrigatório para todos os tipos exceto Aval sem valor monetário.</param>
+/// <param name="DataConstituicao">Data de constituição da garantia.</param>
+/// <param name="Observacoes">Observações opcionais.</param>
+public sealed record GarantiaContratoInput(
+    string Tipo,
+    decimal ValorBrl,
+    DateOnly DataConstituicao,
+    string? Observacoes = null);
 
 /// <summary>
 /// Inputs específicos da modalidade REFINIMP para o command de conversão.
@@ -94,7 +111,11 @@ public sealed record ConverterEmContratoCommand(
     // Onda 3a FGI — SPEC fgi.md §6.1: número de operação (opcional) separado dos inputs financeiros.
     string? NumeroOperacaoFgi = null,
     // Onda 3a FGI — SPEC fgi.md §6.1: taxa e percentual de cobertura do FGI.
-    FgiInputs? Fgi = null) : IRequest<ContratoDto>;
+    FgiInputs? Fgi = null,
+    // S34 Fase 3 — SC-04: garantias declaradas pelo operador no ato da conversão.
+    // Usadas para enforcement de cobertura e persistência no contrato criado.
+    // Null ou lista vazia = nenhuma garantia declarada (válido quando não há política obrigatória).
+    IReadOnlyList<GarantiaContratoInput>? GarantiasContrato = null) : IRequest<ContratoDto>;
 
 public sealed class ConverterEmContratoCommandValidator : AbstractValidator<ConverterEmContratoCommand>
 {
@@ -116,6 +137,7 @@ public sealed class ConverterEmContratoCommandHandler(
     ILimiteBancoRepository limiteRepo,
     ILimiteGlobalBancoRepository limiteGlobalRepo,
     ICdiSnapshotRepository cdiRepo,
+    IGarantiaRepository garantiaRepo,
     IEnumerable<IConversorModalidade> conversores,
     IClock clock) : IRequestHandler<ConverterEmContratoCommand, ContratoDto>
 {
@@ -138,13 +160,58 @@ public sealed class ConverterEmContratoCommandHandler(
 
         Proposta propostaAceita = cotacao.Propostas.First(p => p.Id == cotacao.PropostaAceitaId.Value);
 
-        // ── 1. Criar o Contrato ────────────────────────────────────────────────
+        // ── 1. Preparar dados financeiros ──────────────────────────────────────
         LocalDate dataContratacao = new(cmd.DataContratacao.Year, cmd.DataContratacao.Month, cmd.DataContratacao.Day);
         LocalDate dataVencimento = new(cmd.DataVencimento.Year, cmd.DataVencimento.Month, cmd.DataVencimento.Day);
 
         Money valorPrincipal = propostaAceita.ValorOferecidoMoedaOriginal;
         Percentual taxaAa = Percentual.De(cmd.TaxaAa);
 
+        // Converte principal para BRL (necessário para enforcement SC-04 e cálculo de economia).
+        // ! null-forgiving seguro: invariante de domínio garante PtaxUsadaUsdBrl não-null
+        // para modalidades cambiais (ExigeMoedaEstrangeira). Propostas em moeda não-BRL
+        // só existem em cotações FINIMP/REFINIMP/Lei4131 que sempre têm PTAX.
+        Money valorPrincipalBrl = propostaAceita.MoedaOriginal == Moeda.Brl
+            ? valorPrincipal
+            : new Money(Math.Round(valorPrincipal.Valor * cotacao.PtaxUsadaUsdBrl!.Value, 6, MidpointRounding.AwayFromZero), Moeda.Brl);
+
+        // ── 1b. Lookup de política do banco (SC-01..SC-03) ─────────────────────
+        // Feito ANTES de Contrato.Criar para que enforcement SC-04 possa rodar sem contrato.
+        // Lookup temporal: retorna o LimiteBanco cujo período [DataVigenciaInicio, DataVigenciaFim]
+        // contém dataContratacao. Null se banco não tiver limite cadastrado (SC-07).
+        LimiteBanco? limiteBancoVigente = await limiteRepo.GetVigenteByBancoModalidadeAsync(
+            bancoId: propostaAceita.BancoId,
+            modalidade: cotacao.Modalidade,
+            dataReferencia: dataContratacao,
+            cancellationToken);
+
+        // SC-02: LimiteGlobalBanco vigente para o banco (DataVigenciaFim == null).
+        LimiteGlobalBanco? limiteGlobalVigente = await limiteGlobalRepo.GetVigenteByBancoAsync(
+            bancoId: propostaAceita.BancoId,
+            ct: cancellationToken);
+
+        // SC-04: Enforcement — bloqueia conversão se garantias obrigatórias não estão cobertas.
+        // Roda ANTES de Contrato.Criar para que uma falha não persista estado parcial.
+        // SC-07: sem LimiteBanco ou sem revisão vigente → enforcement desligado.
+        GarantiaExigidaRevisao? revisaoVigente = limiteBancoVigente?.RevisaoGarantiasVigente;
+        if (revisaoVigente is not null)
+        {
+            var itensObrigatorios = revisaoVigente.Itens.Where(i => i.Obrigatoria).ToList();
+            List<LacunaGarantia> lacunas = AvaliarCobertura(
+                itensObrigatorios,
+                cmd.GarantiasContrato ?? [],
+                valorPrincipalBrl);
+
+            if (lacunas.Count > 0)
+            {
+                throw new GarantiaExigidaNaoCobertaException(
+                    limiteBancoId: limiteBancoVigente!.Id,
+                    garantiasExigidasRevisaoId: revisaoVigente.Id,
+                    lacunas: lacunas);
+            }
+        }
+
+        // ── 2. Criar o Contrato ────────────────────────────────────────────────
         Contrato contrato = Contrato.Criar(
             numeroExterno: cmd.NumeroExternoContrato,
             bancoId: propostaAceita.BancoId,
@@ -170,34 +237,53 @@ public sealed class ConverterEmContratoCommandHandler(
         contrato.SetCodigoInterno(codigoInterno);
         contratoRepo.Add(contrato);
 
-        // ── 1b. Vincular política do banco vigente no momento da contratação (SC-01..SC-03) ─
-        // Lookup temporal: retorna o LimiteBanco cujo período [DataVigenciaInicio, DataVigenciaFim]
-        // contém dataContratacao. Null se banco não tiver limite cadastrado (SC-07 → todos os ids ficam null).
-        LimiteBanco? limiteBancoVigente = await limiteRepo.GetVigenteByBancoModalidadeAsync(
-            bancoId: propostaAceita.BancoId,
-            modalidade: cotacao.Modalidade,
-            dataReferencia: dataContratacao,
-            cancellationToken);
-
-        // SC-02: LimiteGlobalBanco vigente para o banco (DataVigenciaFim == null).
-        // Nota: ILimiteGlobalBancoRepository.GetVigenteByBancoAsync usa DataVigenciaFim == null,
-        // não um critério temporal por data de referência. O modelo de LimiteGlobal não registra
-        // histórico de vigências sobrepostas — apenas um registro vigente por banco.
-        // Ver ponto 6 do report para discussão sobre esta limitação.
-        LimiteGlobalBanco? limiteGlobalVigente = await limiteGlobalRepo.GetVigenteByBancoAsync(
-            bancoId: propostaAceita.BancoId,
-            ct: cancellationToken);
-
-        // SC-03: Id da revisão de garantias vigente no LimiteBanco (VigenciaFim == null).
-        // RevisaoGarantiasVigente é propriedade computada — filtrada em memória após eager-load.
-        Guid? garantiasRevisaoId = limiteBancoVigente?.RevisaoGarantiasVigente?.Id;
-
+        // ── 2b. Vincular política do banco (SC-01..SC-03) ─────────────────────
+        // Os lookups já foram feitos antes do enforcement (passo 1b acima).
+        // Reutiliza as variáveis já resolvidas: limiteBancoVigente, limiteGlobalVigente, revisaoVigente.
         contrato.VincularPoliticaBanco(
             limiteBancoId: limiteBancoVigente?.Id,
             limiteGlobalBancoId: limiteGlobalVigente?.Id,
-            garantiasExigidasRevisaoId: garantiasRevisaoId);
+            garantiasExigidasRevisaoId: revisaoVigente?.Id);
 
-        // Dispatcher: roteia a criação do Detail para o conversor da modalidade registrada.
+        // ── 2c. Persistir garantias declaradas no command (SC-04 já validado acima) ──
+        // Cada GarantiaContratoInput se torna uma entidade Garantia no contrato recém-criado.
+        // O SaveChanges ao final inclui essas garantias atomicamente.
+        if (cmd.GarantiasContrato is { Count: > 0 })
+        {
+            decimal? principalBrlParaCalculo = contrato.Moeda == Moeda.Brl
+                ? contrato.ValorPrincipal.Valor
+                : null;
+
+            foreach (GarantiaContratoInput garantiaInput in cmd.GarantiasContrato)
+            {
+                if (!Enum.TryParse<TipoGarantia>(garantiaInput.Tipo, ignoreCase: true, out TipoGarantia tipoGarantia))
+                {
+                    throw new ArgumentException(
+                        $"TipoGarantia inválido na garantia declarada: '{garantiaInput.Tipo}'.");
+                }
+
+                LocalDate dataConst = new(
+                    garantiaInput.DataConstituicao.Year,
+                    garantiaInput.DataConstituicao.Month,
+                    garantiaInput.DataConstituicao.Day);
+
+                Garantia garantia = Garantia.Criar(
+                    contratoId: contrato.Id,
+                    tipo: tipoGarantia,
+                    valorBrl: new Money(garantiaInput.ValorBrl, Moeda.Brl),
+                    principalBrlParaCalculo: principalBrlParaCalculo,
+                    dataConstituicao: dataConst,
+                    dataLiberacaoPrevista: null,
+                    observacoes: garantiaInput.Observacoes,
+                    createdBy: "conversor-cotacao",
+                    clock: clock);
+
+                garantiaRepo.Add(garantia);
+            }
+        }
+
+        // ── 3. Dispatcher de Detail por modalidade ─────────────────────────────
+        // Roteia a criação do Detail para o conversor da modalidade registrada.
         // Cada modalidade implementa IConversorModalidade e é registrada em DI.
         // Onda 0 F0.3 — docs/specs/cotacoes/modalidades/onda-0.md §5.5.
         IConversorModalidade conversor = _conversoresMap.GetValueOrDefault(cotacao.Modalidade)
@@ -224,7 +310,7 @@ public sealed class ConverterEmContratoCommandHandler(
         CapitalDeGiroDetail? capitalDeGiroDetail = detailPrincipal as CapitalDeGiroDetail;   // Onda 3b
         FgiDetail? fgiDetail = detailPrincipal as FgiDetail;                                 // Onda 3a
 
-        // ── 2. Calcular CET do contrato fechado ────────────────────────────────
+        // ── 4. Calcular CET do contrato fechado ────────────────────────────────
         // Usa a taxa final negociada (cmd.TaxaAa) via override — preserva a proposta original
         // como snapshot imutável e reflete corretamente a economia na transição (SPEC §5.2).
         // Onda 0 F0.2: CalcularCet aceita decimal? — passa PtaxUsadaUsdBrl diretamente.
@@ -236,7 +322,7 @@ public sealed class ConverterEmContratoCommandHandler(
             dataContratacao,
             taxaAaPercentualOverride: cmd.TaxaAa);
 
-        // ── 3. Criar EconomiaNegociacao ────────────────────────────────────────
+        // ── 5. Criar EconomiaNegociacao ────────────────────────────────────────
         decimal cetProposta = propostaAceita.CetCalculadoAaPercentual
             ?? throw new InvalidOperationException("CET da proposta aceita não calculado. Execute o cálculo antes de converter.");
 
@@ -262,12 +348,7 @@ public sealed class ConverterEmContratoCommandHandler(
 
         int prazoProposta = propostaAceita.PrazoDias;
         int prazoContrato = Period.Between(dataContratacao, dataVencimento, PeriodUnits.Days).Days;
-        // ! null-forgiving seguro: invariante de domínio garante PtaxUsadaUsdBrl não-null
-        // para modalidades cambiais (ExigeMoedaEstrangeira). Propostas em moeda não-BRL
-        // só existem em cotações FINIMP/REFINIMP/Lei4131 que sempre têm PTAX.
-        Money valorPrincipalBrl = propostaAceita.MoedaOriginal == Moeda.Brl
-            ? valorPrincipal
-            : new Money(Math.Round(valorPrincipal.Valor * cotacao.PtaxUsadaUsdBrl!.Value, 6, MidpointRounding.AwayFromZero), Moeda.Brl);
+        // valorPrincipalBrl foi calculado no passo 1 (antes do enforcement SC-04) e reutilizado aqui.
 
         (Money economiaBruta, Money economiaAjustada, LocalDate dataRefCdi) = CalculadoraEconomia.Calcular(
             cetProposta,
@@ -292,7 +373,7 @@ public sealed class ConverterEmContratoCommandHandler(
 
         economiaRepo.Add(economia);
 
-        // ── 4. Atualizar LimiteBanco ───────────────────────────────────────────
+        // ── 6. Atualizar LimiteBanco ───────────────────────────────────────────
         LimiteBanco? limite = await limiteRepo.GetByBancoModalidadeAsync(
             propostaAceita.BancoId,
             cotacao.Modalidade,
@@ -304,10 +385,11 @@ public sealed class ConverterEmContratoCommandHandler(
             limiteRepo.Update(limite);
         }
 
-        // ── 5. Transição de estado da Cotação ──────────────────────────────────
+        // ── 7. Transição de estado da Cotação ──────────────────────────────────
         cotacao.ConverterEmContrato(contrato.Id, clock);
 
-        // ── 6. Salvar tudo atomicamente (single UoW via SaveChanges) ───────────
+        // ── 8. Salvar tudo atomicamente (single UoW via SaveChanges) ───────────
+        // Inclui: Contrato, Detail, Garantias declaradas, EconomiaNegociacao, Cotacao.
         await contratoRepo.SaveChangesAsync(cancellationToken);
 
         return ContratoDto.From(
@@ -318,6 +400,77 @@ public sealed class ConverterEmContratoCommandHandler(
             nceDetail: nceDetail,
             capitalDeGiroDetail: capitalDeGiroDetail,
             fgiDetail: fgiDetail);
+    }
+
+    /// <summary>
+    /// Avalia se cada item obrigatório da revisão vigente está coberto pelas garantias
+    /// declaradas no command. Retorna lista de lacunas (vazia = cobertura completa).
+    ///
+    /// Regras por tipo de item (SPEC §4.4):
+    /// - <c>PercentualSobreLimite</c>: valor esperado = percentual/100 × valorPrincipalBrl.
+    /// - <c>ValorFixoBrl</c>: valor esperado = ValorFixoBrl.
+    /// - Aval sem percentual e sem valor fixo: cobertura satisfeita pela presença de qualquer
+    ///   garantia do tipo Aval no contrato, independente do valor.
+    ///
+    /// Usa <see cref="CalculadorValorGarantiaExigida"/> para calcular o valor esperado,
+    /// garantindo consistência com a feature de preenchimento automático de cotações.
+    /// </summary>
+    private static List<LacunaGarantia> AvaliarCobertura(
+        IReadOnlyList<GarantiaExigidaItem> itensObrigatorios,
+        IReadOnlyList<GarantiaContratoInput> garantiasDeclaradas,
+        Money valorPrincipalBrl)
+    {
+        // Agrupa garantias declaradas por tipo para somar valor coberto por tipo.
+        Dictionary<TipoGarantia, decimal> valorCobertoPorTipo =
+            garantiasDeclaradas
+                .Where(g => Enum.TryParse<TipoGarantia>(g.Tipo, ignoreCase: true, out _))
+                .GroupBy(
+                    g => Enum.Parse<TipoGarantia>(g.Tipo, ignoreCase: true),
+                    g => g.ValorBrl)
+                .ToDictionary(grp => grp.Key, grp => grp.Sum());
+
+        var lacunas = new List<LacunaGarantia>();
+
+        foreach (GarantiaExigidaItem item in itensObrigatorios)
+        {
+            bool ehAvalPuro = item.Tipo == TipoGarantia.Aval
+                && !item.PercentualSobreLimite.HasValue
+                && !item.ValorFixoBrl.HasValue;
+
+            if (ehAvalPuro)
+            {
+                // Aval sem parâmetros monetários: cobertura satisfeita se há ao menos 1 Aval declarado.
+                bool temAval = valorCobertoPorTipo.ContainsKey(TipoGarantia.Aval);
+                if (!temAval)
+                {
+                    lacunas.Add(new LacunaGarantia(
+                        Tipo: item.Tipo.ToString(),
+                        Obrigatoria: true,
+                        ValorEsperadoBrl: null,
+                        ValorCobertoBrl: null));
+                }
+                continue;
+            }
+
+            // Para itens com percentual ou valor fixo: usa CalculadorValorGarantiaExigida
+            // para calcular o valor esperado (mesma fórmula do preenchimento automático em cotações).
+            Money valorEsperado = CalculadorValorGarantiaExigida.Calcular(
+                [item],
+                valorPrincipalBrl);
+
+            decimal valorCoberto = valorCobertoPorTipo.GetValueOrDefault(item.Tipo, 0m);
+
+            if (valorCoberto < valorEsperado.Valor)
+            {
+                lacunas.Add(new LacunaGarantia(
+                    Tipo: item.Tipo.ToString(),
+                    Obrigatoria: true,
+                    ValorEsperadoBrl: valorEsperado.Valor,
+                    ValorCobertoBrl: valorCoberto));
+            }
+        }
+
+        return lacunas;
     }
 
     private static async Task<string> GerarCodigoInternoContratoAsync(
