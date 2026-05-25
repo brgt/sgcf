@@ -127,6 +127,19 @@ public sealed class ConverterEmContratoCommandValidator : AbstractValidator<Conv
         RuleFor(c => c.DataVencimento)
             .GreaterThan(c => c.DataContratacao)
             .WithMessage("DataVencimento deve ser posterior a DataContratacao.");
+
+        RuleForEach(c => c.GarantiasContrato)
+            .ChildRules(g =>
+            {
+                g.RuleFor(i => i.Tipo)
+                    .NotEmpty()
+                    .Must(t => Enum.TryParse<TipoGarantia>(t, ignoreCase: true, out _))
+                    .WithMessage("TipoGarantia inválido.");
+                g.RuleFor(i => i.ValorBrl)
+                    .GreaterThanOrEqualTo(0m)
+                    .WithMessage("ValorBrl da garantia não pode ser negativo.");
+            })
+            .When(c => c.GarantiasContrato is { Count: > 0 });
     }
 }
 
@@ -193,7 +206,14 @@ public sealed class ConverterEmContratoCommandHandler(
         // SC-04: Enforcement — bloqueia conversão se garantias obrigatórias não estão cobertas.
         // Roda ANTES de Contrato.Criar para que uma falha não persista estado parcial.
         // SC-07: sem LimiteBanco ou sem revisão vigente → enforcement desligado.
-        GarantiaExigidaRevisao? revisaoVigente = limiteBancoVigente?.RevisaoGarantiasVigente;
+        // Captura a política vigente NA data de contratação.
+        // Usa início do dia seguinte como limite exclusivo para incluir revisões criadas
+        // a qualquer hora em dataContratacao (ex.: limite criado às 10h, contrato às 15h).
+        Instant fimExclusivoContratacao = dataContratacao
+            .PlusDays(1)
+            .AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"])
+            .ToInstant();
+        GarantiaExigidaRevisao? revisaoVigente = limiteBancoVigente?.RevisaoVigenteEm(fimExclusivoContratacao);
         if (revisaoVigente is not null)
         {
             var itensObrigatorios = revisaoVigente.Itens.Where(i => i.Obrigatoria).ToList();
@@ -374,15 +394,17 @@ public sealed class ConverterEmContratoCommandHandler(
         economiaRepo.Add(economia);
 
         // ── 6. Atualizar LimiteBanco ───────────────────────────────────────────
-        LimiteBanco? limite = await limiteRepo.GetByBancoModalidadeAsync(
-            propostaAceita.BancoId,
-            cotacao.Modalidade,
-            cancellationToken);
-
-        if (limite is not null)
+        // Usa GetByIdTracking com o Id já resolvido no passo 1b para garantir que é o mesmo
+        // agregado — evita race condition entre GetVigenteByBancoModalidade e GetByBancoModalidade.
+        if (limiteBancoVigente is not null)
         {
-            limite.RegistrarUso(valorPrincipalBrl, clock);
-            limiteRepo.Update(limite);
+            LimiteBanco? limiteTracked = await limiteRepo.GetByIdTrackingAsync(
+                limiteBancoVigente.Id, cancellationToken);
+            if (limiteTracked is not null)
+            {
+                limiteTracked.RegistrarUso(valorPrincipalBrl, clock);
+                limiteRepo.Update(limiteTracked);
+            }
         }
 
         // ── 7. Transição de estado da Cotação ──────────────────────────────────

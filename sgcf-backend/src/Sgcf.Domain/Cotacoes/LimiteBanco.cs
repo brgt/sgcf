@@ -76,7 +76,23 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
     /// SLB-01: no máximo uma vigente por LimiteBanco.
     /// </summary>
     public GarantiaExigidaRevisao? RevisaoGarantiasVigente
+        // SingleOrDefault é intencional: lança InvalidOperationException se houver 2+ vigentes,
+        // expondo imediatamente uma violação SLB-01 em vez de mascarar a corrupção.
         => _revisoesGarantias.SingleOrDefault(r => r.VigenciaFim is null);
+
+    /// <summary>
+    /// Revisão vigente em relação a um instante exclusivo de fim de período.
+    /// <para>
+    /// <paramref name="fimExclusivo"/> deve ser o início do dia seguinte ao dia de referência
+    /// (ex.: <c>dataContratacao.PlusDays(1).AtStartOfDayInZone(TZ).ToInstant()</c>).
+    /// A revisão é considerada vigente se <c>VigenciaInicio &lt; fimExclusivo</c>
+    /// e <c>VigenciaFim == null || VigenciaFim &gt;= fimExclusivo</c>.
+    /// </para>
+    /// </summary>
+    public GarantiaExigidaRevisao? RevisaoVigenteEm(Instant fimExclusivo) =>
+        _revisoesGarantias.FirstOrDefault(r =>
+            r.VigenciaInicio < fimExclusivo &&
+            (r.VigenciaFim is null || r.VigenciaFim.Value >= fimExclusivo));
 
     /// <summary>
     /// Itens da revisão vigente. Coleção vazia se não houver revisão.

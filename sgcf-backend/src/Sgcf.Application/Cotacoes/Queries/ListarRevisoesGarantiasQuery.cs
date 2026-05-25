@@ -25,9 +25,11 @@ public sealed class ListarRevisoesGarantiasQueryHandler(ILimiteBancoRepository r
         ListarRevisoesGarantiasQuery query,
         CancellationToken cancellationToken)
     {
-        // Valida existência do limite antes de tentar listar revisões.
-        LimiteBanco? limite = await repo.GetByIdAsync(query.LimiteBancoId, cancellationToken)
-            ?? throw new KeyNotFoundException($"Limite '{query.LimiteBancoId}' não encontrado.");
+        bool exists = await repo.ExistsAsync(query.LimiteBancoId, cancellationToken);
+        if (!exists)
+        {
+            throw new KeyNotFoundException($"Limite '{query.LimiteBancoId}' não encontrado.");
+        }
 
         IReadOnlyList<GarantiaExigidaRevisao> revisoes =
             await repo.GetRevisoesGarantiasAsync(query.LimiteBancoId, cancellationToken);

@@ -69,6 +69,8 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
                 Detail = $"A revisão vigente do LimiteBanco {garantiaEx.LimiteBancoId} exige " +
                          $"{garantiaEx.Lacunas.Count} garantia(s) obrigatória(s) que não foram supridas.",
             };
+            // Exposição intencional: API é exclusivamente interna (operadores da Proxys).
+            // Os IDs permitem consulta direta pelo operador sem round-trip adicional.
             problem.Extensions["limiteBancoId"] = garantiaEx.LimiteBancoId;
             problem.Extensions["garantiasExigidasRevisaoId"] = garantiaEx.GarantiasExigidasRevisaoId;
             problem.Extensions["lacunas"] = garantiaEx.Lacunas.Select(l => new

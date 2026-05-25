@@ -92,7 +92,7 @@ public sealed class GarantiaExigidaItem : Entity, IAuditable
         => Criar(revisaoId, tipo, percentualSobreLimite, valorFixoBrl, obrigatoria, observacoes,
             clock.GetCurrentInstant());
 
-    public void Atualizar(
+    internal void Atualizar(
         decimal? percentualSobreLimite,
         Money? valorFixoBrl,
         bool obrigatoria,

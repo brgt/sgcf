@@ -15,9 +15,12 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
 
     public void Update(LimiteBanco limite) => context.LimitesBanco.Update(limite);
 
+    public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default) =>
+        context.LimitesBanco.AnyAsync(l => l.Id == id, cancellationToken);
+
     public Task<LimiteBanco?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         context.LimitesBanco
-            .Include(l => l.RevisoesGarantiasExigidas)
+            .Include(l => l.RevisoesGarantiasExigidas.Where(r => r.VigenciaFim == null))
                 .ThenInclude(r => r.Itens)
             .Include(l => l.Historico)
             .AsNoTracking()
@@ -101,7 +104,7 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
         CancellationToken cancellationToken = default)
     {
         IQueryable<LimiteBanco> q = context.LimitesBanco
-            .Include(l => l.RevisoesGarantiasExigidas)
+            .Include(l => l.RevisoesGarantiasExigidas.Where(r => r.VigenciaFim == null))
                 .ThenInclude(r => r.Itens)
             .Include(l => l.Historico)
             .AsNoTracking();

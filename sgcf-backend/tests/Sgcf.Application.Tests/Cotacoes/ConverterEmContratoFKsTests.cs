@@ -89,7 +89,10 @@ public sealed class ConverterEmContratoFKsTests
     /// </summary>
     private static LimiteBanco CriarLimiteBancoComRevisao(Guid bancoId)
     {
-        IClock clock = CriarClock();
+        // Usa instante anterior a DataContratacao (2026-05-20) para que
+        // RevisaoVigenteEm(momentoContratacao) localize a revisão criada aqui.
+        IClock clock = Substitute.For<IClock>();
+        clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 1, 1, 10, 0));
 
         LimiteBanco limite = LimiteBanco.Criar(
             bancoId: bancoId,

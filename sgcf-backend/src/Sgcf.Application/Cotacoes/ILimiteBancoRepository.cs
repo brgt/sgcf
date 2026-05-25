@@ -70,5 +70,8 @@ public interface ILimiteBancoRepository
         Guid limiteBancoId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Returns true if a <see cref="LimiteBanco"/> with the given id exists.</summary>
+    public Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
+
     public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

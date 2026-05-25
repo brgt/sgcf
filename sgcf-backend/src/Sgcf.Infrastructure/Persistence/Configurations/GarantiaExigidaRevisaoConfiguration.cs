@@ -70,12 +70,6 @@ internal sealed class GarantiaExigidaRevisaoConfiguration : IEntityTypeConfigura
             .HasColumnType("timestamptz")
             .IsRequired();
 
-        // FK → limite_banco.id (Cascade: revisões são descartadas com o limite).
-        builder.HasOne<Domain.Cotacoes.LimiteBanco>()
-            .WithMany()
-            .HasForeignKey(r => r.LimiteBancoId)
-            .OnDelete(DeleteBehavior.Cascade);
-
         // Coleção de itens: cascade delete.
         // FK física revisao_id criada pela migration S34 em garantia_exigida_item.
         builder.HasMany(r => r.Itens)
@@ -83,8 +77,9 @@ internal sealed class GarantiaExigidaRevisaoConfiguration : IEntityTypeConfigura
             .HasForeignKey(i => i.RevisaoId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Metadata.FindNavigation(nameof(GarantiaExigidaRevisao.Itens))!
-            .SetPropertyAccessMode(PropertyAccessMode.Field);
+        builder.Navigation(r => r.Itens)
+            .HasField("_itens")
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
 
         // Índice no LimiteBancoId para queries de revisões por limite.
         builder.HasIndex(r => r.LimiteBancoId)

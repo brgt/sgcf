@@ -29,6 +29,10 @@ public sealed class ConverterEmContratoEnforcementTests
     private static readonly LocalDate DataContratacao = new(2026, 5, 20);
     private static readonly LocalDate DataVencimento = new(2027, 5, 20);
 
+    // Instante usado para criar limites — deve ser anterior a DataContratacao (2026-05-20)
+    // para que RevisaoVigenteEm(momentoContratacao) encontre a revisão vigente.
+    private static readonly Instant InstanteLimite = Instant.FromUtc(2026, 1, 1, 10, 0);
+
     // ──────────────────────────────────────────────────────────────────────────────
     // Helpers
     // ──────────────────────────────────────────────────────────────────────────────
@@ -37,6 +41,13 @@ public sealed class ConverterEmContratoEnforcementTests
     {
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(InstanteFixo);
+        return clock;
+    }
+
+    private static IClock CriarClockLimite()
+    {
+        IClock clock = Substitute.For<IClock>();
+        clock.GetCurrentInstant().Returns(InstanteLimite);
         return clock;
     }
 
@@ -201,7 +212,7 @@ public sealed class ConverterEmContratoEnforcementTests
             modalidade: ModalidadeContrato.Finimp,
             valorLimiteBrl: new Money(5_000_000m, Moeda.Brl),
             dataVigenciaInicio: new LocalDate(2026, 1, 1),
-            clock: CriarClock(),
+            clock: CriarClockLimite(),
             garantiasExigidas: itens);
     }
 

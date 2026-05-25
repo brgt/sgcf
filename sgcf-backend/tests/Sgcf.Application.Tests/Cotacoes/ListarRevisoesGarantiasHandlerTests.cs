@@ -66,7 +66,7 @@ public sealed class ListarRevisoesGarantiasHandlerTests
             clock: clock);
 
         ILimiteBancoRepository repo = Substitute.For<ILimiteBancoRepository>();
-        repo.GetByIdAsync(LimiteId, default).Returns(limite);
+        repo.ExistsAsync(LimiteId, default).Returns(true);
         repo.GetRevisoesGarantiasAsync(LimiteId, default)
             .Returns(Array.Empty<GarantiaExigidaRevisao>() as IReadOnlyList<GarantiaExigidaRevisao>);
 
@@ -92,7 +92,7 @@ public sealed class ListarRevisoesGarantiasHandlerTests
             new GarantiaExigidaItemSpec(TipoGarantia.CdbCativo, 20m, null, true, null));
 
         ILimiteBancoRepository repo = Substitute.For<ILimiteBancoRepository>();
-        repo.GetByIdAsync(LimiteId, default).Returns(limite);
+        repo.ExistsAsync(LimiteId, default).Returns(true);
         repo.GetRevisoesGarantiasAsync(LimiteId, default)
             .Returns(new[] { revisao } as IReadOnlyList<GarantiaExigidaRevisao>);
 
@@ -156,7 +156,7 @@ public sealed class ListarRevisoesGarantiasHandlerTests
             clock: clock1);
 
         ILimiteBancoRepository repo = Substitute.For<ILimiteBancoRepository>();
-        repo.GetByIdAsync(LimiteId, default).Returns(limite);
+        repo.ExistsAsync(LimiteId, default).Returns(true);
         repo.GetRevisoesGarantiasAsync(LimiteId, default).Returns(listaOrdenada);
 
         var handler = new ListarRevisoesGarantiasQueryHandler(repo);

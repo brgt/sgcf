@@ -48,7 +48,7 @@ public static class CalculadorValorGarantiaExigida
             if (garantia.PercentualSobreLimite.HasValue)
             {
                 // Percentual humano (20 = 20%) — divide por 100 para obter fração
-                total += garantia.PercentualSobreLimite.Value / 100m * valorAlvo.Valor;
+                total += Math.Round(garantia.PercentualSobreLimite.Value / 100m * valorAlvo.Valor, 2, MidpointRounding.AwayFromZero);
                 continue;
             }
 

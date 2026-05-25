@@ -334,7 +334,9 @@ public sealed class MigrationS34BackfillTests : IAsyncLifetime
 
         revisoes.Should().Be(3, because: "cada LimiteBanco com itens deve ter uma revisão inicial");
 
-        // Assert: 6 itens vinculados (2 por limite × 3 limites), nenhum com revisao_id nulo
+        // Assert: 6 itens vinculados (2 por limite × 3 limites), nenhum com revisao_id nulo.
+        // Sentinel '00000000-...' é o placeholder que o backfill usa para marcar itens
+        // "pendentes de migração" — após Up() todos devem ter um UUID real de revisão.
         int itensSemRevisao = await QueryScalarForConnectionAsync<int>(
             backfillContainer.GetConnectionString(),
             "SELECT COUNT(*) FROM sgcf.garantia_exigida_item WHERE revisao_id = '00000000-0000-0000-0000-000000000000'");
