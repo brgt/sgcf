@@ -1,11 +1,13 @@
 using MediatR;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Cotacoes;
 
 namespace Sgcf.Application.Contratos.Queries;
 
 public sealed record GetContratoQuery(Guid Id) : IRequest<ContratoDto>;
 
-public sealed class GetContratoQueryHandler(IContratoRepository repo)
+public sealed class GetContratoQueryHandler(IContratoRepository repo, ILimiteBancoRepository limiteBancoRepo)
     : IRequestHandler<GetContratoQuery, ContratoDto>
 {
     public async Task<ContratoDto> Handle(GetContratoQuery query, CancellationToken cancellationToken)
@@ -28,6 +30,26 @@ public sealed class GetContratoQueryHandler(IContratoRepository repo)
             ? await repo.GetFgiDetailAsync(query.Id, cancellationToken)
             : null;
 
-        return ContratoDto.From(contrato, finimpDetail, lei4131Detail, refinimpDetail, nceDetail, capitalDeGiroDetail, fgiDetail);
+        // Snapshot de garantias: carregado apenas no detalhe (SPEC §5.2).
+        // Só vale a pena buscar se o contrato tiver GarantiasExigidasRevisaoId preenchido.
+        IReadOnlyCollection<GarantiaExigidaItem>? snapshotItens = null;
+        if (contrato.GarantiasExigidasRevisaoId.HasValue)
+        {
+            // GetRevisoesGarantiasAsync retorna todas as revisões do LimiteBanco com seus itens.
+            // Filtramos a revisão específica apontada pelo snapshot do contrato.
+            // LimiteBancoId nunca é null quando GarantiasExigidasRevisaoId está preenchido (SC-01→SC-03).
+            if (contrato.LimiteBancoId.HasValue)
+            {
+                IReadOnlyList<GarantiaExigidaRevisao> revisoes = await limiteBancoRepo
+                    .GetRevisoesGarantiasAsync(contrato.LimiteBancoId.Value, cancellationToken);
+
+                GarantiaExigidaRevisao? revisao = revisoes
+                    .FirstOrDefault(r => r.Id == contrato.GarantiasExigidasRevisaoId.Value);
+
+                snapshotItens = revisao?.Itens;
+            }
+        }
+
+        return ContratoDto.From(contrato, finimpDetail, lei4131Detail, refinimpDetail, nceDetail, capitalDeGiroDetail, fgiDetail, snapshotItens);
     }
 }

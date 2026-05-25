@@ -3,6 +3,7 @@ using FluentValidation;
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Contratos;
+using Sgcf.Application.Cotacoes;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -113,6 +114,7 @@ public sealed class ConverterEmContratoCommandHandler(
     IContratoRepository contratoRepo,
     IEconomiaRepository economiaRepo,
     ILimiteBancoRepository limiteRepo,
+    ILimiteGlobalBancoRepository limiteGlobalRepo,
     ICdiSnapshotRepository cdiRepo,
     IEnumerable<IConversorModalidade> conversores,
     IClock clock) : IRequestHandler<ConverterEmContratoCommand, ContratoDto>
@@ -167,6 +169,33 @@ public sealed class ConverterEmContratoCommandHandler(
 
         contrato.SetCodigoInterno(codigoInterno);
         contratoRepo.Add(contrato);
+
+        // ── 1b. Vincular política do banco vigente no momento da contratação (SC-01..SC-03) ─
+        // Lookup temporal: retorna o LimiteBanco cujo período [DataVigenciaInicio, DataVigenciaFim]
+        // contém dataContratacao. Null se banco não tiver limite cadastrado (SC-07 → todos os ids ficam null).
+        LimiteBanco? limiteBancoVigente = await limiteRepo.GetVigenteByBancoModalidadeAsync(
+            bancoId: propostaAceita.BancoId,
+            modalidade: cotacao.Modalidade,
+            dataReferencia: dataContratacao,
+            cancellationToken);
+
+        // SC-02: LimiteGlobalBanco vigente para o banco (DataVigenciaFim == null).
+        // Nota: ILimiteGlobalBancoRepository.GetVigenteByBancoAsync usa DataVigenciaFim == null,
+        // não um critério temporal por data de referência. O modelo de LimiteGlobal não registra
+        // histórico de vigências sobrepostas — apenas um registro vigente por banco.
+        // Ver ponto 6 do report para discussão sobre esta limitação.
+        LimiteGlobalBanco? limiteGlobalVigente = await limiteGlobalRepo.GetVigenteByBancoAsync(
+            bancoId: propostaAceita.BancoId,
+            ct: cancellationToken);
+
+        // SC-03: Id da revisão de garantias vigente no LimiteBanco (VigenciaFim == null).
+        // RevisaoGarantiasVigente é propriedade computada — filtrada em memória após eager-load.
+        Guid? garantiasRevisaoId = limiteBancoVigente?.RevisaoGarantiasVigente?.Id;
+
+        contrato.VincularPoliticaBanco(
+            limiteBancoId: limiteBancoVigente?.Id,
+            limiteGlobalBancoId: limiteGlobalVigente?.Id,
+            garantiasExigidasRevisaoId: garantiasRevisaoId);
 
         // Dispatcher: roteia a criação do Detail para o conversor da modalidade registrada.
         // Cada modalidade implementa IConversorModalidade e é registrada em DI.

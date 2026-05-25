@@ -48,6 +48,20 @@ public interface ILimiteBancoRepository
     public Task<LimiteBanco?> GetByIdTrackingAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Retorna o limite vigente para a combinação banco+modalidade em uma data de referência.
+    /// "Vigente em data X" é definido como:
+    ///   DataVigenciaInicio &lt;= dataReferencia AND (DataVigenciaFim IS NULL OR DataVigenciaFim &gt;= dataReferencia).
+    /// Faz eager-load da RevisaoGarantiasVigente (VigenciaFim IS NULL) com seus Itens
+    /// para que SC-03 seja resolvido sem round-trip adicional.
+    /// Retorna null se nenhum limite cobrir a data informada (SC-07: banco sem limite cadastrado).
+    /// </summary>
+    public Task<LimiteBanco?> GetVigenteByBancoModalidadeAsync(
+        Guid bancoId,
+        ModalidadeContrato modalidade,
+        LocalDate dataReferencia,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Retorna todas as revisões de garantias exigidas do limite especificado,
     /// ordenadas por VigenciaInicio ascendente (SLB-05).
     /// Inclui eager-load dos Itens de cada revisão.

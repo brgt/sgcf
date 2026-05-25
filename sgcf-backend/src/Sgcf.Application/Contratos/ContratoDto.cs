@@ -1,5 +1,6 @@
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Cotacoes;
 
 namespace Sgcf.Application.Contratos;
 
@@ -98,8 +99,31 @@ public sealed record ContratoDto(
     RefinimpDetailDto? RefinimpDetail,
     NceDetailDto? NceDetail,
     CapitalDeGiroDetailDto? CapitalDeGiroDetail,
-    FgiDetailDto? FgiDetail)
+    FgiDetailDto? FgiDetail,
+    // ── Rastreabilidade da política do banco (SC-01..SC-03) ─────────────────
+    // Preenchidos na conversão cotação→contrato. Null para contratos pré-feature
+    // ou em bancos sem LimiteBanco cadastrado (SC-06/SC-07). SPEC §3.5.
+    Guid? LimiteBancoId,
+    Guid? LimiteGlobalBancoId,
+    Guid? GarantiasExigidasRevisaoId,
+    // Snapshot dos itens da revisão vigente no momento da contratação.
+    // Populado apenas em GET /contratos/{id} (detalhe). Null em listagem. SPEC §5.2.
+    IReadOnlyList<GarantiaExigidaSnapshotItemDto>? GarantiasExigidasSnapshot)
 {
+    /// <summary>
+    /// Constrói <see cref="ContratoDto"/> a partir da entidade de domínio.
+    /// </summary>
+    /// <param name="c">Entidade Contrato.</param>
+    /// <param name="detail">Detail FINIMP (null se outra modalidade).</param>
+    /// <param name="lei4131Detail">Detail Lei 4131 (null se outra modalidade).</param>
+    /// <param name="refinimpDetail">Detail REFINIMP (null se outra modalidade).</param>
+    /// <param name="nceDetail">Detail NCE (null se outra modalidade).</param>
+    /// <param name="capitalDeGiroDetail">Detail Capital de Giro (null se outra modalidade).</param>
+    /// <param name="fgiDetail">Detail FGI (null se outra modalidade).</param>
+    /// <param name="snapshotItens">
+    /// Itens da <c>GarantiaExigidaRevisao</c> apontada por <c>GarantiasExigidasRevisaoId</c>.
+    /// Passar null (padrão) em listagem — economiza eager-load. Passar os itens em detalhe (SPEC §5.2).
+    /// </param>
     public static ContratoDto From(
         Contrato c,
         FinimpDetail? detail,
@@ -107,7 +131,8 @@ public sealed record ContratoDto(
         RefinimpDetail? refinimpDetail = null,
         NceDetail? nceDetail = null,
         CapitalDeGiroDetail? capitalDeGiroDetail = null,
-        FgiDetail? fgiDetail = null)
+        FgiDetail? fgiDetail = null,
+        IReadOnlyCollection<GarantiaExigidaItem>? snapshotItens = null)
     {
         List<ParcelaDto> parcelas = new(c.Parcelas.Count);
         foreach (Parcela p in c.Parcelas)
@@ -194,6 +219,24 @@ public sealed record ContratoDto(
                 fgiDetail.TaxaFgiAa.HasValue ? fgiDetail.TaxaFgiAa.Value.AsHumano : (decimal?)null,
                 fgiDetail.PercentualCoberto.HasValue ? fgiDetail.PercentualCoberto.Value.AsHumano : (decimal?)null);
 
+        // Snapshot: converte GarantiaExigidaItem → GarantiaExigidaSnapshotItemDto.
+        // snapshotItens == null em listagem (performance) e em contratos pré-feature (sem revisão).
+        IReadOnlyList<GarantiaExigidaSnapshotItemDto>? snapshotDto = null;
+        if (snapshotItens is not null)
+        {
+            var itensDto = new List<GarantiaExigidaSnapshotItemDto>(snapshotItens.Count);
+            foreach (GarantiaExigidaItem item in snapshotItens)
+            {
+                itensDto.Add(new GarantiaExigidaSnapshotItemDto(
+                    Tipo: item.Tipo.ToString(),
+                    PercentualSobreLimite: item.PercentualSobreLimite,
+                    ValorFixoBrl: item.ValorFixoBrl?.Valor,
+                    Obrigatoria: item.Obrigatoria,
+                    Observacoes: item.Observacoes));
+            }
+            snapshotDto = itensDto.AsReadOnly();
+        }
+
         return new ContratoDto(
             c.Id,
             c.NumeroExterno,
@@ -226,6 +269,10 @@ public sealed record ContratoDto(
             refinimpDto,
             nceDto,
             capitalDeGiroDto,
-            fgiDto);
+            fgiDto,
+            LimiteBancoId: c.LimiteBancoId,
+            LimiteGlobalBancoId: c.LimiteGlobalBancoId,
+            GarantiasExigidasRevisaoId: c.GarantiasExigidasRevisaoId,
+            GarantiasExigidasSnapshot: snapshotDto);
     }
 }

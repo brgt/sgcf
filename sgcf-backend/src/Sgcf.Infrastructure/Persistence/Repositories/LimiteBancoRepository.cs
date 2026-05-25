@@ -48,6 +48,27 @@ internal sealed class LimiteBancoRepository(SgcfDbContext context) : ILimiteBanc
                   && l.DataVigenciaFim == null,
                 cancellationToken);
 
+    /// <inheritdoc/>
+    public Task<LimiteBanco?> GetVigenteByBancoModalidadeAsync(
+        Guid bancoId,
+        ModalidadeContrato modalidade,
+        LocalDate dataReferencia,
+        CancellationToken cancellationToken = default) =>
+        // Critério: DataVigenciaInicio <= dataReferencia
+        //       AND (DataVigenciaFim IS NULL OR DataVigenciaFim >= dataReferencia)
+        // Eager-load de RevisoesGarantiasExigidas com Itens: necessário para SC-03 (RevisaoGarantiasVigente).
+        // AsNoTracking: leitura — o handler não persiste o LimiteBanco aqui (apenas lê o Id e a revisão vigente).
+        context.LimitesBanco
+            .Include(l => l.RevisoesGarantiasExigidas)
+                .ThenInclude(r => r.Itens)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                l => l.BancoId == bancoId
+                  && l.Modalidade == modalidade
+                  && l.DataVigenciaInicio <= dataReferencia
+                  && (l.DataVigenciaFim == null || l.DataVigenciaFim.Value >= dataReferencia),
+                cancellationToken);
+
     /// <summary>
     /// Retorna o primeiro limite que se sobrepõe ao período [inicio, fim] para o par bancoId+modalidade.
     /// Overlap: existente.Inicio &lt;= fim (ou fim é null) AND inicio &lt;= existente.Fim (ou existente.Fim é null).

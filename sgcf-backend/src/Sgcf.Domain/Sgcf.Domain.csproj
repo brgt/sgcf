@@ -19,4 +19,21 @@
     <PackageReference Include="NodaTime" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!--
+      InternalsVisibleTo para Sgcf.Application:
+      Contrato.VincularPoliticaBanco é internal por design (SPEC §3.5, invariante SC-05) —
+      não deve ser chamado por terceiros, apenas pelo handler de conversão cotação→contrato.
+      Expor como public violaria o princípio de menor privilégio sem necessidade: a única
+      camada legítima para invocar esse método é Sgcf.Application.
+    -->
+    <InternalsVisibleTo Include="Sgcf.Application" />
+    <!--
+      InternalsVisibleTo para Sgcf.Application.Tests:
+      Permite que os testes unitários do handler acessem VincularPoliticaBanco diretamente
+      para verificar o estado do contrato após a chamada (white-box testing).
+    -->
+    <InternalsVisibleTo Include="Sgcf.Application.Tests" />
+  </ItemGroup>
+
 </Project>
