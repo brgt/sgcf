@@ -11,6 +11,141 @@
 
 ---
 
+## [0.11.0] — 2026-05-25
+
+### Resumo executivo
+
+Entrega do **S34 — Snapshot Temporal de Garantias no Contrato**. Versionamento append-only das garantias exigidas pelos bancos, rastreabilidade do contrato à política vigente no momento da contratação, e enforcement na conversão cotação→contrato.
+
+Três lacunas fechadas:
+- **Lacuna 1** — toda alteração em garantias exigidas gera nova `GarantiaExigidaRevisao` com vigência temporal; revisões antigas ficam imutáveis. Permite responder "qual era a política do banco em data X".
+- **Lacuna 2** — contrato carrega 3 FKs rastreáveis (`limiteBancoId`, `limiteGlobalBancoId`, `garantiasExigidasRevisaoId`) e snapshot imutável das garantias vigentes; auditoria/regulação podem reconstruir o contexto de aprovação.
+- **Lacuna 3** — conversão cotação→contrato bloqueia (`409 Conflict`) quando garantias com `obrigatoria=true` não estão cobertas pelo contrato.
+
+Documentação técnica em [`docs/specs/limites-banco/SPEC_SNAPSHOT_LIMITE_NO_CONTRATO.md`](../specs/limites-banco/SPEC_SNAPSHOT_LIMITE_NO_CONTRATO.md).
+
+---
+
+### ADDITIVE — Histórico de garantias exigidas
+
+**Novo endpoint:**
+
+```
+GET /api/v1/limites-banco/{id}/revisoes-garantias
+Política: Leitura
+```
+
+Retorna lista de revisões do `LimiteBanco`, ordenadas por `VigenciaInicio` ascendente. Cada revisão traz `vigenciaInicio`, `vigenciaFim` (null = vigente), `motivo`, `observacoes` e `itens[]` com as garantias daquele período.
+
+**DTOs novos:** `GarantiaExigidaRevisaoDto`, `ListarRevisoesGarantiasResponse`.
+
+**Erros:** `404` quando `limiteBancoId` inexistente ou inacessível ao tenant (RLS).
+
+---
+
+### ADDITIVE — Snapshot da política no contrato
+
+`ContratoDto` ganha 4 campos opcionais:
+
+- `limiteBancoId: uuid?` — referência ao `LimiteBanco` vigente no momento da conversão.
+- `limiteGlobalBancoId: uuid?` — referência ao `LimiteGlobalBanco` vigente.
+- `garantiasExigidasRevisaoId: uuid?` — referência à revisão da política aplicável.
+- `garantiasExigidasSnapshot: GarantiaExigidaSnapshotItemDto[]?` — projeção imutável dos itens da revisão (apenas no detalhe `GET /contratos/{id}`; ausente em listagem `GET /contratos`).
+
+**Comportamento:**
+- Contratos novos criados via `POST /api/v1/cotacoes/{id}/converter` recebem os 3 FKs preenchidos automaticamente (quando os limites existem).
+- Contratos legados retornam os 3 FKs como `null` (sem backfill retroativo).
+- Após persistência, os 3 campos são imutáveis: `PATCH /contratos/{id}` não os altera.
+- Snapshot é congelado: alterações posteriores no `LimiteBanco` não afetam contratos já criados.
+
+**DTO novo:** `GarantiaExigidaSnapshotItemDto` (sem `id`/`createdAt`/`updatedAt` — projeção imutável).
+
+**Exposição MCP:** `Sgcf.Mcp.Tools.ContratoTools` reflete o `ContratoDto` expandido automaticamente.
+
+---
+
+### ADDITIVE — Remoção de garantia por tipo
+
+**Novo endpoint:**
+
+```
+DELETE /api/v1/limites-banco/{id}/garantias-exigidas?tipo={TipoGarantia}
+Política: Admin
+```
+
+Remove a garantia do tipo informado da revisão vigente, fechando-a e abrindo uma nova revisão sem aquele tipo. Retorna `204 No Content`. Erros: `400` para tipo inválido, `404` para limite inexistente, `409` se o tipo não estiver presente na revisão vigente.
+
+---
+
+### BREAKING — Semântica de PATCH em garantiasExigidas
+
+`PATCH /api/v1/limites-banco/{id}` com `garantiasExigidas` populado **passa a versionar** em vez de mutar in-place:
+
+- Antes: substituía a lista de garantias destrutivamente.
+- Agora: fecha a `GarantiaExigidaRevisao` vigente (`vigenciaFim = now`) e abre uma nova com a lista enviada (`vigenciaInicio = now`). Vigência contínua sem gaps.
+- Idempotência: PATCH com lista equivalente à vigente (mesmos itens, ignorando ordem) **não cria nova revisão**.
+- Semântica de `null`: PATCH com `garantiasExigidas: null` (omitido) **preserva** a revisão vigente.
+
+**Impacto para consumidores:**
+- Assinatura externa do endpoint **inalterada**.
+- Resposta inalterada.
+- Comportamento observável: PATCHes sequenciais agora preservam histórico (não destroem); `GET /revisoes-garantias` mostra a trilha.
+
+---
+
+### BREAKING — Bloqueio de conversão sem garantia obrigatória
+
+`POST /api/v1/cotacoes/{id}/converter` passa a validar que cada `GarantiaExigidaItem.obrigatoria=true` da revisão vigente do `LimiteBanco` está coberta pelas garantias declaradas no contrato a ser criado.
+
+**Critério de cobertura:**
+- Tipo `Aval` com `percentualSobreLimite` e `valorFixoBrl` ambos nulos: satisfeito por presença de qualquer garantia `Aval` no contrato (independente de valor).
+- Demais tipos: `Σ Garantia.ValorBrl >= valorEsperadoBrl` (calculado via `CalculadorValorGarantiaExigida` — mesma fórmula do preenchimento automático em cotações).
+- Cobertura excedente: aceita.
+- Itens `obrigatoria=false`: ignorados.
+- Sem `LimiteBanco` cadastrado ou sem revisão vigente: enforcement desligado (SC-07).
+
+**Erro 409 Conflict** com `ProblemDetails`:
+
+```json
+{
+  "type": "https://sgcf.io/errors/garantia-exigida-nao-coberta",
+  "title": "Garantias exigidas pela política do banco não foram cobertas pelo contrato.",
+  "status": 409,
+  "detail": "A revisão vigente do LimiteBanco {id} exige N garantia(s) obrigatória(s) que não foram supridas.",
+  "limiteBancoId": "uuid",
+  "garantiasExigidasRevisaoId": "uuid",
+  "lacunas": [
+    { "tipo": "Cdb", "obrigatoria": true, "valorEsperadoBrl": 600000.00, "valorCobertoBrl": 0.00 },
+    { "tipo": "Aval", "obrigatoria": true, "valorEsperadoBrl": null, "valorCobertoBrl": null }
+  ]
+}
+```
+
+---
+
+### INTERNAL — Modelagem de domínio
+
+- Renomeada `GarantiaExigidaLimite` → `GarantiaExigidaItem` (item de uma revisão).
+- Nova entidade `GarantiaExigidaRevisao` (child de `LimiteBanco`, append-only).
+- Refator de `LimiteBanco`: coleção `_garantiasExigidas` substituída por `_revisoesGarantias`. Métodos `SubstituirGarantiasExigidas`, `AdicionarGarantiaExigida`, `RemoverGarantiaExigidaPorTipo` agora abrem nova revisão. Método `RemoverGarantiaExigida(Guid itemId)` removido — Id pertenceria a revisão potencialmente fechada.
+- `Contrato.VincularPoliticaBanco(limiteBancoId?, limiteGlobalBancoId?, garantiasExigidasRevisaoId?)` — método `internal` idempotente; setado uma única vez na conversão; visibilidade exposta via `InternalsVisibleTo("Sgcf.Application")`.
+
+---
+
+### INTERNAL — Schema e migração
+
+**Migration `S34_SnapshotGarantiasContrato`:**
+
+- `CREATE TABLE sgcf.garantia_exigida_revisao` com RLS, índice UQ parcial `(tenant_id, limite_banco_id) WHERE vigencia_fim IS NULL`.
+- Tabela `garantia_exigida_limite` renomeada para `garantia_exigida_item`; coluna `limite_banco_id` substituída por `revisao_id` (FK para `garantia_exigida_revisao`).
+- Backfill in-migration: para cada `LimiteBanco` com itens, cria uma revisão inicial com `motivo = "Revisão inicial gerada pela migration S34"`, `vigencia_inicio = lb.created_at`, `vigencia_fim = NULL`.
+- `contrato` ganha 3 colunas nullable: `limite_banco_id`, `limite_global_banco_id`, `garantias_exigidas_revisao_id`, todas com FK `ON DELETE SET NULL` e índice não-único parcial.
+- `Down()` destrutivo + documentado como não-suportado em produção (forward-only após deploy).
+
+**Validação Testcontainers:** `MigrationS34BackfillTests` (8 cases TC-01..TC-08) cobre backfill, renomes, RLS e estrutura final.
+
+---
+
 ## [0.10.0] — 2026-05-19
 
 ### Resumo executivo
