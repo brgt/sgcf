@@ -390,6 +390,8 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
         string? observacoes = null,
         string? motivoEncerramento = null)
     {
+        Instant now = clock.GetCurrentInstant();
+
         if (novoLimiteBrl.HasValue)
         {
             if (novoLimiteBrl.Value.Moeda != Moeda.Brl)
@@ -416,7 +418,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
                     limiteBancoId: Id,
                     valorAnteriorBrl: valorAnterior,
                     valorNovoBrl: novoLimiteBrl.Value,
-                    registradoEm: clock.GetCurrentInstant(),
+                    registradoEm: now,
                     observacoes: observacoes));
             }
         }
@@ -451,7 +453,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
             MotivoEncerramento = motivoEncerramento;
         }
 
-        UpdatedAt = clock.GetCurrentInstant();
+        UpdatedAt = now;
     }
 
     /// <summary>

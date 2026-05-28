@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Common;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -28,9 +29,18 @@ public sealed class SubstituirLimiteBancoCommandValidator : AbstractValidator<Su
     {
         RuleFor(c => c.LimiteId).NotEmpty();
 
+        RuleFor(c => c.NovoInicio)
+            .Must(d => d != DateOnly.MinValue)
+            .WithMessage("NovoInicio deve ser uma data válida.");
+
         RuleFor(c => c.NovoValorLimiteBrl)
             .GreaterThan(0m)
             .WithMessage("NovoValorLimiteBrl deve ser maior que zero.");
+
+        RuleFor(c => c)
+            .Must(c => c.NovaDataVigenciaFim!.Value > c.NovoInicio)
+            .When(c => c.NovaDataVigenciaFim.HasValue)
+            .WithMessage("NovaDataVigenciaFim deve ser posterior a NovoInicio.");
 
         RuleForEach(c => c.GarantiasExigidas)
             .ChildRules(g =>
@@ -53,7 +63,7 @@ public sealed class SubstituirLimiteBancoCommandHandler(
         LimiteBanco anterior = await repo.GetByIdTrackingAsync(cmd.LimiteId, cancellationToken)
             ?? throw new KeyNotFoundException($"Limite '{cmd.LimiteId}' não encontrado.");
 
-        LocalDate novoInicio = new(cmd.NovoInicio.Year, cmd.NovoInicio.Month, cmd.NovoInicio.Day);
+        LocalDate novoInicio = cmd.NovoInicio.ToLocalDate();
 
         // RV-02-A: NovoInicio deve ser posterior ao início do limite atual.
         if (novoInicio <= anterior.DataVigenciaInicio)
@@ -63,9 +73,7 @@ public sealed class SubstituirLimiteBancoCommandHandler(
         }
 
         // RV-02-D: verificar sobreposição do sucessor.
-        LocalDate? novaFimSucessor = cmd.NovaDataVigenciaFim.HasValue
-            ? new LocalDate(cmd.NovaDataVigenciaFim.Value.Year, cmd.NovaDataVigenciaFim.Value.Month, cmd.NovaDataVigenciaFim.Value.Day)
-            : (LocalDate?)null;
+        LocalDate? novaFimSucessor = cmd.NovaDataVigenciaFim?.ToLocalDate();
 
         LimiteBanco? conflito = await repo.FindOverlappingAsync(
             anterior.BancoId,

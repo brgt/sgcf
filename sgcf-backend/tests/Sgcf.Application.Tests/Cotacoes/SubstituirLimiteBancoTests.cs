@@ -152,6 +152,41 @@ public sealed class SubstituirLimiteBancoTests
         anterior.MotivoEncerramento.Should().Be("Renovação anual — comitê mai/2026");
     }
 
+    // ── Validador ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Validator_NovoInicioDefault_EhInvalido()
+    {
+        var validator = new SubstituirLimiteBancoCommandValidator();
+        var cmd = new SubstituirLimiteBancoCommand(
+            Guid.NewGuid(),
+            NovoInicio: default,
+            NovoValorLimiteBrl: 10_000_000m);
+
+        var result = validator.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e =>
+            e.PropertyName == "NovoInicio" && e.ErrorMessage.Contains("válida"));
+    }
+
+    [Fact]
+    public void Validator_NovaDataVigenciaFimAnteriorAoNovoInicio_EhInvalido()
+    {
+        var validator = new SubstituirLimiteBancoCommandValidator();
+        var cmd = new SubstituirLimiteBancoCommand(
+            Guid.NewGuid(),
+            NovoInicio: new DateOnly(2027, 6, 1),
+            NovoValorLimiteBrl: 10_000_000m,
+            NovaDataVigenciaFim: new DateOnly(2027, 1, 1));
+
+        var result = validator.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e =>
+            e.ErrorMessage.Contains("NovaDataVigenciaFim") && e.ErrorMessage.Contains("posterior"));
+    }
+
     // ── Validações ───────────────────────────────────────────────────────────
 
     [Fact]

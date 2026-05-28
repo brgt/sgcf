@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Common;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -55,17 +56,16 @@ public sealed class UpdateLimiteBancoCommandValidator : AbstractValidator<Update
             .WithMessage($"PadraoAntecipacao deve ser um dos valores: {string.Join(", ", Enum.GetNames<Domain.Common.PadraoAntecipacao>())}.")
             .When(c => c.ConfigurarAntecipacao && c.PadraoAntecipacao is not null);
 
+        RuleFor(c => c.MotivoEncerramento)
+            .Null()
+            .When(c => !c.NovaDataVigenciaFim.HasValue)
+            .WithMessage("MotivoEncerramento só é válido quando NovaDataVigenciaFim também é informado.");
+
         RuleFor(c => c.BreakFundingFeePct).GreaterThanOrEqualTo(0).When(c => c.BreakFundingFeePct.HasValue);
         RuleFor(c => c.TlaPctSobreSaldo).GreaterThanOrEqualTo(0).When(c => c.TlaPctSobreSaldo.HasValue);
         RuleFor(c => c.TlaPctPorMesRemanescente).GreaterThanOrEqualTo(0).When(c => c.TlaPctPorMesRemanescente.HasValue);
         RuleFor(c => c.ValorMinimoParcialPct).GreaterThanOrEqualTo(0).When(c => c.ValorMinimoParcialPct.HasValue);
     }
-}
-
-/// <summary>Helper para converter DateOnly → LocalDate.</summary>
-file static class DateOnlyExtensions
-{
-    internal static LocalDate ToLocalDate(this DateOnly d) => new(d.Year, d.Month, d.Day);
 }
 
 public sealed class UpdateLimiteBancoCommandHandler(

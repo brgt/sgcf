@@ -181,6 +181,38 @@ public sealed class AtualizarLimiteVigenciaTests
         response.Limite.ValorLimiteBrl.Should().Be(15_000_000m);
     }
 
+    // ── Validador: MotivoEncerramento requer NovaDataVigenciaFim ─────────────
+
+    [Fact]
+    public void Validator_MotivoEncerramentoSemNovaDataVigenciaFim_EhInvalido()
+    {
+        var validator = new UpdateLimiteBancoCommandValidator();
+        var cmd = new UpdateLimiteBancoCommand(
+            Guid.NewGuid(),
+            MotivoEncerramento: "Banco retirou linha");
+
+        var result = validator.Validate(cmd);
+
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle(e =>
+            e.PropertyName == "MotivoEncerramento" &&
+            e.ErrorMessage.Contains("NovaDataVigenciaFim"));
+    }
+
+    [Fact]
+    public void Validator_MotivoEncerramentoComNovaDataVigenciaFim_EhValido()
+    {
+        var validator = new UpdateLimiteBancoCommandValidator();
+        var cmd = new UpdateLimiteBancoCommand(
+            Guid.NewGuid(),
+            NovaDataVigenciaFim: new DateOnly(2026, 12, 31),
+            MotivoEncerramento: "Banco retirou linha");
+
+        var result = validator.Validate(cmd);
+
+        result.Errors.Should().NotContain(e => e.PropertyName == "MotivoEncerramento");
+    }
+
     // ── LG-09: valor acima do limite global → 409 ────────────────────────────
 
     [Fact]

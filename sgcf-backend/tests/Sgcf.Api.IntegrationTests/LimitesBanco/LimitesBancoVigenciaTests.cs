@@ -61,10 +61,10 @@ public sealed class LimitesBancoVigenciaTests(LimitesBancoApiFixture fixture)
         return (res, raw, body);
     }
 
-    // ─── V01: PATCH sem novaDataVigenciaFim → contrato anterior (LimiteBancoDto) ─
+    // ─── V01: PATCH sempre retorna envelope AtualizarLimiteBancoResponse ────────
 
     [Fact]
-    public async Task Patch_SemNovaDataVigenciaFim_Retorna200ComLimiteBancoDto()
+    public async Task Patch_SemNovaDataVigenciaFim_Retorna200ComEnvelope()
     {
         using HttpClient client = fixture.CreateAuthenticatedClient();
         Guid bancoId = await CriarBancoAsync(client, "V01");
@@ -75,10 +75,10 @@ public sealed class LimitesBancoVigenciaTests(LimitesBancoApiFixture fixture)
             new { novoValorLimiteBrl = 12_000_000m });
 
         res.StatusCode.Should().Be(HttpStatusCode.OK, raw);
-        // backward-compat: resposta é LimiteBancoDto direto (sem envelope avisos)
-        body.TryGetProperty("avisos", out _).Should().BeFalse(
-            "sem novaDataVigenciaFim, resposta deve ser LimiteBancoDto sem campo 'avisos'");
-        body.GetProperty("valorLimiteBrl").GetDecimal().Should().Be(12_000_000m);
+        // PATCH always returns AtualizarLimiteBancoResponse with { limite, avisos }
+        body.TryGetProperty("avisos", out _).Should().BeTrue(
+            "PATCH sempre retorna AtualizarLimiteBancoResponse com campo 'avisos'");
+        body.GetProperty("limite").GetProperty("valorLimiteBrl").GetDecimal().Should().Be(12_000_000m);
     }
 
     // ─── V02: PATCH com novaDataVigenciaFim → envelope AtualizarLimiteBancoResponse ─
@@ -175,10 +175,9 @@ public sealed class LimitesBancoVigenciaTests(LimitesBancoApiFixture fixture)
             new { novaDataVigenciaInicio = "2099-01-01" });
 
         res.StatusCode.Should().Be(HttpStatusCode.OK, raw);
-        // Sem novaDataVigenciaFim, o controller retorna response.Limite (flat DTO),
-        // mesmo quando novaDataVigenciaInicio está presente.
-        body.TryGetProperty("avisos", out _).Should().BeFalse(
-            "sem novaDataVigenciaFim, resposta deve ser LimiteBancoDto sem campo 'avisos'");
-        body.GetProperty("dataVigenciaInicio").GetString().Should().Be("2099-01-01");
+        // PATCH always returns the envelope
+        body.TryGetProperty("avisos", out _).Should().BeTrue(
+            "PATCH sempre retorna AtualizarLimiteBancoResponse com campo 'avisos'");
+        body.GetProperty("limite").GetProperty("dataVigenciaInicio").GetString().Should().Be("2099-01-01");
     }
 }
