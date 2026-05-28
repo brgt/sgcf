@@ -107,45 +107,100 @@ PATCH /api/v1/limites-banco/{id}
 Autorização: Admin
 ```
 
-Atualiza o valor do limite e/ou as garantias exigidas com semântica PATCH:
+Atualiza o limite com semântica PATCH — campos omitidos (null) preservam o valor atual:
 
 - `novoValorLimiteBrl` nulo → preserva valor atual
-- `garantiasExigidas` nulo → preserva garantias atuais
-- `garantiasExigidas` com lista vazia (`[]`) → remove todas as garantias
-- `garantiasExigidas` com itens → substitui toda a coleção (replace-all)
+- `garantiasExigidas` nulo → preserva garantias atuais; `[]` → remove todas; itens → replace-all
+- `novaDataVigenciaFim` nulo → preserva vigência atual; informado → registra data de encerramento (RV-01)
+- `novaDataVigenciaInicio` nulo → preserva início atual; informado → ajusta início da vigência
+- `motivoEncerramento` nulo → preserva; informado → registra motivo (usado em conjunto com encerramento)
 
-Quando `novoValorLimiteBrl` é informado e difere do valor atual, uma nova entrada é registrada automaticamente no histórico.
+Quando `novoValorLimiteBrl` é informado e difere do valor atual, uma nova entrada é registrada no histórico.
+
+> **Contrato dual de resposta (RV-01):**
+> - Sem `novaDataVigenciaFim`: retorna **[LimiteBancoDto](#limitebancodto)** diretamente (compatibilidade com clientes anteriores).
+> - Com `novaDataVigenciaFim`: retorna **[AtualizarLimiteBancoResponse](#atualizarlimitebancoresposne)** com envelope `{ limite, avisos }`. O campo `avisos` contém alertas não bloqueantes (ex.: limite com utilização ativa sendo encerrado).
 
 **Request Body:**
 
 ```json
 {
   "novoValorLimiteBrl": 75000000.00,
+  "novaDataVigenciaFim": "2026-12-31",
+  "motivoEncerramento": "Banco não renovou linha para 2027",
   "garantiasExigidas": [
     {
       "tipo": "CdbCativo",
       "percentualSobreLimite": 20.0,
       "obrigatoria": true
-    },
-    {
-      "tipo": "Aval",
-      "obrigatoria": false,
-      "observacoes": "Aval dos sócios negociável"
     }
   ]
 }
 ```
 
-**Exemplo — PATCH substituindo garantias, preservando valor:**
+**Exemplo — encerrar vigência preservando demais campos:**
 
 ```json
 {
+  "novaDataVigenciaFim": "2026-06-30",
+  "motivoEncerramento": "Reavaliação de crédito — comitê mai/2026"
+}
+```
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `novoValorLimiteBrl` | decimal | Não | > 0 |
+| `novaDataVigenciaFim` | date | Não | Encerra vigência na data informada. Altera o contrato de resposta — ver nota acima |
+| `novaDataVigenciaInicio` | date | Não | Ajusta início da vigência |
+| `motivoEncerramento` | string | Não | Registrado no limite encerrado |
+| `garantiasExigidas` | [CriarGarantiaExigidaLimiteRequest](#criargarantiaexigidalimiterequest)[] | Não | `null` = preservar; `[]` = remover todas; itens = replace-all |
+| `configurarAntecipacao` | bool | Não | `true` para atualizar os campos de antecipação abaixo |
+| `padraoAntecipacao` | string | Não | Ver [PadraoAntecipacao](./schemas.md#padraoantecipacao) |
+| `breakFundingFeePct` | decimal | Não | ≥ 0 |
+| `tlaPctSobreSaldo` | decimal | Não | ≥ 0 |
+| `tlaPctPorMesRemanescente` | decimal | Não | ≥ 0 |
+| `valorMinimoParcialPct` | decimal | Não | ≥ 0 |
+| `observacoesAntecipacao` | string | Não | — |
+
+**Responses:**
+- `200 OK` — [LimiteBancoDto](#limitebancodto) (sem `novaDataVigenciaFim`) ou [AtualizarLimiteBancoResponse](#atualizarlimitebancoresposne) (com `novaDataVigenciaFim`)
+- `400 Bad Request` — campo inválido
+- `404 Not Found`
+- `409 Conflict` — a nova vigência causa sobreposição com outro limite existente (RV-01-B)
+
+---
+
+### Substituir Limite (Reavaliação de Crédito)
+
+```
+POST /api/v1/limites-banco/{id}/substituir
+Autorização: Admin
+```
+
+> **Adicionado em [0.12.0].**
+
+Operação atômica de reavaliação de crédito: encerra o limite atual e cria um sucessor em uma única transação. Fluxo esperado:
+
+1. O banco concede novo limite (valor, vigência) após reavaliação do crédito.
+2. O sistema registra `DataVigenciaFim = novoInicio − 1 dia` no limite atual.
+3. O limite sucessor é criado com os novos parâmetros, sem herdar configurações de antecipação.
+
+Use este endpoint em vez de `PATCH` quando o objetivo for registrar uma nova concessão formal de crédito, preservando o histórico do limite anterior para auditoria.
+
+**Request Body:**
+
+```json
+{
+  "novoInicio": "2027-01-01",
+  "novoValorLimiteBrl": 80000000.00,
+  "novaDataVigenciaFim": "2027-12-31",
+  "motivoEncerramento": "Renovação anual — comitê mai/2026",
+  "observacoes": "Limite renovado com aumento de 60%",
   "garantiasExigidas": [
     {
-      "tipo": "AlienacaoFiduciaria",
-      "valorFixoBrl": 5000000.00,
-      "obrigatoria": true,
-      "observacoes": "Imóvel comercial registrado"
+      "tipo": "CdbCativo",
+      "percentualSobreLimite": 15.0,
+      "obrigatoria": true
     }
   ]
 }
@@ -153,20 +208,92 @@ Quando `novoValorLimiteBrl` é informado e difere do valor atual, uma nova entra
 
 | Campo | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|-----------|
-| `novoValorLimiteBrl` | decimal | Não | > 0; não pode ser menor que `valorUtilizadoBrl` corrente |
-| `garantiasExigidas` | [CriarGarantiaExigidaLimiteRequest](#criargarantiaexigidalimiterequest)[] | Não | `null` = preservar; `[]` = remover todas; itens = replace-all |
+| `novoInicio` | date | Sim | Início da vigência do sucessor. Deve ser posterior ao início do limite atual (RV-02-A) |
+| `novoValorLimiteBrl` | decimal | Sim | > 0 |
+| `novaDataVigenciaFim` | date | Não | Data de fim da vigência do sucessor. Omitir cria limite de vigência indefinida |
+| `motivoEncerramento` | string | Não | Registrado no limite encerrado |
+| `observacoes` | string | Não | Observações do limite sucessor |
+| `garantiasExigidas` | [CriarGarantiaExigidaLimiteRequest](#criargarantiaexigidalimiterequest)[] | Não | Garantias do sucessor. Omitir cria sucessor sem garantias |
 
 **Responses:**
-- `200 OK` — [LimiteBancoDto](#limitebancodto)
-- `400 Bad Request` — campo inválido ou valor abaixo do utilizado
+- `201 Created` — [LimiteBancoDto](#limitebancodto) do sucessor (com `Location` apontando para `GET /limites-banco/{sucessorId}`)
+- `400 Bad Request` — `novoInicio` não é posterior ao início do limite atual (RV-02-A)
+- `404 Not Found` — limite não encontrado
+- `409 Conflict` — a vigência do sucessor causa sobreposição com outro limite existente (RV-02-D), ou novo valor supera o limite global do banco (LG-09)
+
+---
+
+### Listar Revisões de Garantias
+
+```
+GET /api/v1/limites-banco/{id}/revisoes-garantias
+Autorização: Leitura
+```
+
+Retorna o histórico temporal completo das políticas de garantia do limite, ordenado por `vigenciaInicio` crescente. Cada revisão representa um intervalo de vigência com seu conjunto de itens.
+
+> **Adicionado em [0.11.0] (S34).**
+
+**Path Parameters:**
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `id` | guid | ID do limite |
+
+**Responses:**
+- `200 OK` — [ListarRevisoesGarantiasResponse](#listarevisoesgarantiasresponse)
 - `404 Not Found`
-- `409 Conflict` — tipo de garantia duplicado na lista enviada
+
+---
+
+### Remover Garantia Exigida por Tipo
+
+```
+DELETE /api/v1/limites-banco/{id}/garantias-exigidas?tipo=X
+Autorização: Admin
+```
+
+Remove uma garantia exigida pelo tipo. Se a revisão vigente continha o tipo informado, uma nova revisão é criada sem esse item. A operação é **idempotente**: se o tipo não existia na revisão vigente, retorna `204` sem criar nova revisão.
+
+> **Adicionado em [0.11.0] (S34).**
+
+**Path Parameters:**
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `id` | guid | ID do limite |
+
+**Query Parameters:**
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|-----------|------|-------------|-----------|
+| `tipo` | string | Sim | Nome do [TipoGarantia](#tipogarantia) a remover (case-insensitive) |
+
+**Responses:**
+- `204 No Content` — Garantia removida (ou tipo já ausente — idempotente)
+- `400 Bad Request` — `tipo` ausente ou inválido
+- `404 Not Found`
 
 ---
 
 ## Garantias Exigidas
 
 Cada `LimiteBanco` pode ter zero ou mais garantias exigidas. A coleção representa os requisitos que o banco estabelece para liberar a linha de crédito.
+
+### Versionamento Temporal
+
+A partir de `[0.11.0]` (S34), as garantias exigidas são gerenciadas por **revisões temporais** (`GarantiaExigidaRevisao`). Cada limite possui no máximo uma revisão **vigente** (sem `vigenciaFim`) em qualquer instante.
+
+Comportamento do campo `garantiasExigidas` no `PATCH /api/v1/limites-banco/{id}`:
+
+| Valor enviado | Efeito |
+|---------------|--------|
+| `null` (omitido) | Preserva a revisão vigente — nenhuma nova revisão é criada |
+| `[]` (lista vazia) | Cria nova revisão vazia (sem garantias exigidas) |
+| Lista com itens idênticos à revisão vigente | **Idempotente** — sem nova revisão |
+| Lista com itens diferentes | Fecha a revisão vigente e cria nova com os novos itens |
+
+O campo `garantiasExigidas` no `LimiteBancoDto` continua expondo os itens da revisão vigente, compatível com clientes anteriores à S34. Use `GET /revisoes-garantias` para o histórico completo.
 
 ### Modelo
 
@@ -229,9 +356,16 @@ O histórico é retornado pela propriedade `historico` no [LimiteBancoDto](#limi
   "dataVigenciaInicio": "YYYY-MM-DD",
   "dataVigenciaFim": "YYYY-MM-DD | null",
   "observacoes": "string | null",
+  "motivoEncerramento": "string | null",
+  "padraoAntecipacao": "A | B | null",
+  "breakFundingFeePct": 0.5,
+  "tlaPctSobreSaldo": null,
+  "tlaPctPorMesRemanescente": null,
+  "valorMinimoParcialPct": null,
+  "observacoesAntecipacao": "string | null",
   "createdAt": "DateTimeOffset",
   "updatedAt": "DateTimeOffset",
-  "garantiasExigidas": [GarantiaExigidaLimiteDto],
+  "garantiasExigidas": [GarantiaExigidaItemDto],
   "historico": [LimiteBancoHistoricoDto]
 }
 ```
@@ -239,10 +373,34 @@ O histórico é retornado pela propriedade `historico` no [LimiteBancoDto](#limi
 > `valorDisponivelBrl = valorLimiteBrl − valorUtilizadoBrl`. O `valorUtilizadoBrl` é mantido pela API: incrementado em `POST /api/v1/cotacoes/{id}/converter-em-contrato` e decrementado quando um contrato derivado é liquidado/cancelado.
 >
 > `historico` é ordenado por `registradoEm` crescente.
+>
+> `motivoEncerramento` é preenchido quando o limite é encerrado via `PATCH` com `motivoEncerramento` ou via `POST /substituir`.
 
 ---
 
-### GarantiaExigidaLimiteDto
+### AtualizarLimiteBancoResposne
+
+Retornado pelo `PATCH` quando `novaDataVigenciaFim` está presente.
+
+```json
+{
+  "limite": { ...LimiteBancoDto },
+  "avisos": [
+    "Este limite possui BRL 3.000.000 em utilização ativa. Contratos vinculados não são afetados, mas nenhuma nova cotação poderá usar este limite após 2026-12-31."
+  ]
+}
+```
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `limite` | [LimiteBancoDto](#limitebancodto) | Limite atualizado |
+| `avisos` | string[] | Alertas não bloqueantes. Vazio quando não há utilização ativa |
+
+---
+
+### GarantiaExigidaItemDto
+
+> Renomeado de `GarantiaExigidaLimiteDto` em [0.11.0] (S34). O contrato JSON não mudou.
 
 ```json
 {
@@ -256,6 +414,39 @@ O histórico é retornado pela propriedade `historico` no [LimiteBancoDto](#limi
   "updatedAt": "DateTimeOffset"
 }
 ```
+
+---
+
+### ListarRevisoesGarantiasResponse
+
+```json
+{
+  "limiteBancoId": "guid",
+  "revisoes": [GarantiaExigidaRevisaoDto]
+}
+```
+
+---
+
+### GarantiaExigidaRevisaoDto
+
+```json
+{
+  "id": "guid",
+  "limiteBancoId": "guid",
+  "vigenciaInicio": "DateTimeOffset",
+  "vigenciaFim": "DateTimeOffset | null",
+  "motivo": "string | null",
+  "itens": [GarantiaExigidaItemDto]
+}
+```
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `vigenciaInicio` | DateTimeOffset | Instante em que a revisão entrou em vigor |
+| `vigenciaFim` | DateTimeOffset \| null | `null` indica a revisão **vigente**; preenchido nas revisões encerradas |
+| `motivo` | string \| null | Descrição do motivo da revisão (ex.: "Ajuste em comitê de crédito") |
+| `itens` | GarantiaExigidaItemDto[] | Itens de garantia desta revisão; vazio se a revisão não exige garantias |
 
 ---
 
@@ -306,6 +497,10 @@ O histórico é retornado pela propriedade `historico` no [LimiteBancoDto](#limi
 4. Não pode haver duas garantias com o mesmo `TipoGarantia` no mesmo limite.
 5. `percentualSobreLimite` e `valorFixoBrl` são mutuamente exclusivos por garantia.
 6. Para tipos diferentes de `Aval`, ao menos um entre `percentualSobreLimite` e `valorFixoBrl` deve ser informado.
+7. **RV-01-B**: ao ajustar `novaDataVigenciaFim` ou `novaDataVigenciaInicio` via PATCH, a nova vigência não pode sobrepor outro limite do mesmo par banco/modalidade (excluindo o próprio limite).
+8. **RV-02-A**: em `POST /substituir`, `novoInicio` deve ser estritamente posterior à `dataVigenciaInicio` do limite atual.
+9. **RV-02-D**: em `POST /substituir`, a vigência do sucessor não pode sobrepor outro limite existente do par banco/modalidade (excluindo o limite sendo substituído).
+10. **LG-09**: o valor do limite por modalidade não pode superar o limite global vigente do banco (quando houver limite global cadastrado).
 
 ---
 
