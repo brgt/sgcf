@@ -70,6 +70,11 @@ internal sealed class LimiteBancoConfiguration : IEntityTypeConfiguration<Limite
             .HasColumnType("text")
             .IsRequired(false);
 
+        builder.Property(l => l.MotivoEncerramento)
+            .HasColumnName("motivo_encerramento")
+            .HasColumnType("text")
+            .IsRequired(false);
+
         builder.Property(l => l.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz")

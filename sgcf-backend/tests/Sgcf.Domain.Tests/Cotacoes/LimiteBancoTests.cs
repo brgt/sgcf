@@ -184,6 +184,32 @@ public sealed class LimiteBancoTests
         limite.ValorDisponivelBrl.Valor.Should().BeGreaterThanOrEqualTo(0m);
     }
 
+    // ─── Atualizar — MotivoEncerramento ─────────────────────────────────────
+
+    [Fact]
+    public void Atualizar_com_motivoEncerramento_deve_persistir_motivo()
+    {
+        var limite = CriarLimite();
+        limite.Atualizar(Clock, motivoEncerramento: "Banco retirou linha");
+        limite.MotivoEncerramento.Should().Be("Banco retirou linha");
+    }
+
+    [Fact]
+    public void Atualizar_sem_motivoEncerramento_deve_preservar_valor_existente()
+    {
+        var limite = CriarLimite();
+        limite.Atualizar(Clock, motivoEncerramento: "Motivo original");
+        limite.Atualizar(Clock, novoLimiteBrl: new Money(20_000_000m, Moeda.Brl));
+        limite.MotivoEncerramento.Should().Be("Motivo original");
+    }
+
+    [Fact]
+    public void Criar_limite_deve_ter_motivoEncerramento_nulo()
+    {
+        var limite = CriarLimite();
+        limite.MotivoEncerramento.Should().BeNull();
+    }
+
     // ─── ConfigurarAntecipacao ───────────────────────────────────────────────
 
     [Fact]

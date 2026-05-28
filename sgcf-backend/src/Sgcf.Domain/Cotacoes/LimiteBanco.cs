@@ -31,6 +31,7 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
     public LocalDate DataVigenciaInicio { get; private set; }
     public LocalDate? DataVigenciaFim { get; private set; }
     public string? Observacoes { get; private set; }
+    public string? MotivoEncerramento { get; private set; }
 
     // ── Configuração de antecipação por modalidade ───────────────────────────
     // Movido de Banco para cá (S32): o padrão e os parâmetros de cálculo variam
@@ -386,7 +387,8 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
         Money? novoLimiteBrl = null,
         LocalDate? novaDataVigenciaInicio = null,
         LocalDate? novaDataVigenciaFim = null,
-        string? observacoes = null)
+        string? observacoes = null,
+        string? motivoEncerramento = null)
     {
         if (novoLimiteBrl.HasValue)
         {
@@ -442,6 +444,11 @@ public sealed class LimiteBanco : Entity, IAuditable, ITenantScoped
         if (observacoes is not null)
         {
             Observacoes = observacoes;
+        }
+
+        if (motivoEncerramento is not null)
+        {
+            MotivoEncerramento = motivoEncerramento;
         }
 
         UpdatedAt = clock.GetCurrentInstant();

@@ -12,6 +12,7 @@ public sealed record LimiteBancoDto(
     DateOnly DataVigenciaInicio,
     DateOnly? DataVigenciaFim,
     string? Observacoes,
+    string? MotivoEncerramento,
     string? PadraoAntecipacao,
     decimal? BreakFundingFeePct,
     decimal? TlaPctSobreSaldo,
@@ -49,6 +50,7 @@ public sealed record LimiteBancoDto(
                 ? new DateOnly(l.DataVigenciaFim.Value.Year, l.DataVigenciaFim.Value.Month, l.DataVigenciaFim.Value.Day)
                 : null,
             l.Observacoes,
+            l.MotivoEncerramento,
             l.PadraoAntecipacao?.ToString(),
             l.BreakFundingFeePct.HasValue ? l.BreakFundingFeePct.Value.AsHumano : (decimal?)null,
             l.TlaPctSobreSaldo.HasValue ? l.TlaPctSobreSaldo.Value.AsHumano : (decimal?)null,
