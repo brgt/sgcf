@@ -11,8 +11,9 @@ namespace Sgcf.Application.Cotacoes.Commands;
 /// Atualiza limite operacional com semântica PATCH. SPEC §6.1.
 /// NovoValorLimiteBrl null = preservar valor atual.
 /// GarantiasExigidas null = preservar garantias atuais; lista vazia = remover todas; populada = substituir todas.
+/// NovaDataVigenciaFim null = preservar; informado = encerrar vigência na data indicada (RV-01).
+/// MotivoEncerramento null = preservar; informado = registrar motivo do encerramento (RV-01).
 /// Campos de antecipação: quando o campo está ausente (null) no request, é preservado o valor atual.
-/// Para limpar um campo, envie explicitamente null.
 /// </summary>
 public sealed record UpdateLimiteBancoCommand(
     Guid LimiteId,
@@ -24,7 +25,10 @@ public sealed record UpdateLimiteBancoCommand(
     decimal? TlaPctSobreSaldo = null,
     decimal? TlaPctPorMesRemanescente = null,
     decimal? ValorMinimoParcialPct = null,
-    string? ObservacoesAntecipacao = null) : IRequest<LimiteBancoDto>;
+    string? ObservacoesAntecipacao = null,
+    DateOnly? NovaDataVigenciaFim = null,
+    DateOnly? NovaDataVigenciaInicio = null,
+    string? MotivoEncerramento = null) : IRequest<AtualizarLimiteBancoResponse>;
 
 public sealed class UpdateLimiteBancoCommandValidator : AbstractValidator<UpdateLimiteBancoCommand>
 {
@@ -58,16 +62,20 @@ public sealed class UpdateLimiteBancoCommandValidator : AbstractValidator<Update
     }
 }
 
+/// <summary>Helper para converter DateOnly → LocalDate.</summary>
+file static class DateOnlyExtensions
+{
+    internal static LocalDate ToLocalDate(this DateOnly d) => new(d.Year, d.Month, d.Day);
+}
+
 public sealed class UpdateLimiteBancoCommandHandler(
     ILimiteBancoRepository repo,
     ILimiteGlobalBancoRepository limiteGlobalRepo,
     IClock clock)
-    : IRequestHandler<UpdateLimiteBancoCommand, LimiteBancoDto>
+    : IRequestHandler<UpdateLimiteBancoCommand, AtualizarLimiteBancoResponse>
 {
-    public async Task<LimiteBancoDto> Handle(UpdateLimiteBancoCommand cmd, CancellationToken cancellationToken)
+    public async Task<AtualizarLimiteBancoResponse> Handle(UpdateLimiteBancoCommand cmd, CancellationToken cancellationToken)
     {
-        // GetByIdAsync already eager-loads GarantiasExigidas + Historico (see repository).
-        // AsNoTracking is used there, so we need tracking for the update path.
         LimiteBanco limite = await repo.GetByIdTrackingAsync(cmd.LimiteId, cancellationToken)
             ?? throw new KeyNotFoundException($"Limite '{cmd.LimiteId}' não encontrado.");
 
@@ -87,6 +95,43 @@ public sealed class UpdateLimiteBancoCommandHandler(
 
             Money novoValor = new(cmd.NovoValorLimiteBrl.Value, Moeda.Brl);
             limite.Atualizar(clock, novoLimiteBrl: novoValor);
+        }
+
+        // RV-01: encerrar / ajustar vigência.
+        LocalDate? novaDataVigenciaFim = cmd.NovaDataVigenciaFim?.ToLocalDate();
+        LocalDate? novaDataVigenciaInicio = cmd.NovaDataVigenciaInicio?.ToLocalDate();
+
+        if (novaDataVigenciaFim.HasValue || novaDataVigenciaInicio.HasValue)
+        {
+            // RV-01-B: verificar sobreposição excluindo o próprio limite.
+            LocalDate inicioParaChecagem = novaDataVigenciaInicio ?? limite.DataVigenciaInicio;
+            LimiteBanco? conflito = await repo.FindOverlappingAsync(
+                limite.BancoId,
+                limite.Modalidade,
+                inicioParaChecagem,
+                novaDataVigenciaFim,
+                excluirId: limite.Id,
+                cancellationToken: cancellationToken);
+
+            if (conflito is not null)
+            {
+                string fimConflito = conflito.DataVigenciaFim.HasValue
+                    ? conflito.DataVigenciaFim.Value.ToString("uuuu-MM-dd", null)
+                    : "em aberto";
+
+                throw new InvalidOperationException(
+                    $"A nova vigência causa sobreposição com o limite '{conflito.Id}' " +
+                    $"(vigência: {conflito.DataVigenciaInicio:uuuu-MM-dd} – {fimConflito}). [RV-01-B]");
+            }
+
+            limite.Atualizar(clock,
+                novaDataVigenciaInicio: novaDataVigenciaInicio,
+                novaDataVigenciaFim: novaDataVigenciaFim,
+                motivoEncerramento: cmd.MotivoEncerramento);
+        }
+        else if (cmd.MotivoEncerramento is not null)
+        {
+            limite.Atualizar(clock, motivoEncerramento: cmd.MotivoEncerramento);
         }
 
         if (cmd.GarantiasExigidas is not null)
@@ -130,6 +175,26 @@ public sealed class UpdateLimiteBancoCommandHandler(
         repo.Update(limite);
         await repo.SaveChangesAsync(cancellationToken);
 
-        return LimiteBancoDto.From(limite);
+        LimiteBancoDto dto = LimiteBancoDto.From(limite);
+        List<string> avisos = BuildAvisos(limite, novaDataVigenciaFim);
+        return new AtualizarLimiteBancoResponse(dto, avisos.AsReadOnly());
+    }
+
+    private static List<string> BuildAvisos(LimiteBanco limite, LocalDate? novaDataVigenciaFim)
+    {
+        var avisos = new List<string>();
+
+        if (novaDataVigenciaFim.HasValue && limite.ValorUtilizadoBrl.Valor > 0)
+        {
+            string valor = limite.ValorUtilizadoBrl.Valor.ToString("N0",
+                System.Globalization.CultureInfo.GetCultureInfo("pt-BR"));
+            string dataFim = novaDataVigenciaFim.Value.ToString("uuuu-MM-dd", null);
+            avisos.Add(
+                $"Este limite possui BRL {valor} em utilização ativa. " +
+                $"Contratos vinculados não são afetados, mas nenhuma nova cotação " +
+                $"poderá usar este limite após {dataFim}.");
+        }
+
+        return avisos;
     }
 }

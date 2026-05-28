@@ -142,12 +142,14 @@ public sealed class LimitesBancoController(IMediator mediator) : ControllerBase
     }
 
     /// <summary>
-    /// Atualiza o limite operacional existente (semântica PATCH).
-    /// Garante e substitui garantias exigidas quando fornecidas. Política: Admin.
+    /// Atualiza o limite operacional existente (semântica PATCH). Política: Admin.
+    /// Sem <c>novaDataVigenciaFim</c>: retorna <see cref="LimiteBancoDto"/> (compatibilidade).
+    /// Com <c>novaDataVigenciaFim</c>: retorna <see cref="AtualizarLimiteBancoResponse"/> com avisos.
     /// </summary>
     [HttpPatch("{id:guid}")]
     [Authorize(Policy = Policies.Admin)]
     [ProducesResponseType<LimiteBancoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<AtualizarLimiteBancoResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -160,8 +162,16 @@ public sealed class LimitesBancoController(IMediator mediator) : ControllerBase
 
         try
         {
-            LimiteBancoDto result = await mediator.Send(cmd, cancellationToken);
-            return Ok(result);
+            AtualizarLimiteBancoResponse response = await mediator.Send(cmd, cancellationToken);
+
+            // RV-01: quando novaDataVigenciaFim foi informada, retorna o envelope completo
+            // com possíveis avisos. Caso contrário, mantém o contrato anterior (LimiteBancoDto simples).
+            if (cmd.NovaDataVigenciaFim.HasValue)
+            {
+                return Ok(response);
+            }
+
+            return Ok(response.Limite);
         }
         catch (KeyNotFoundException)
         {
