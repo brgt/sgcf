@@ -142,6 +142,43 @@ public sealed class LimitesBancoController(IMediator mediator) : ControllerBase
     }
 
     /// <summary>
+    /// Substitui o limite operacional indicado criando um sucessor. Operação atômica:
+    /// encerra o limite atual (DataVigenciaFim = NovoInicio − 1 dia) e cria o sucessor
+    /// em uma única transação. O DTO do sucessor é retornado. Política: Admin.
+    /// </summary>
+    [HttpPost("{id:guid}/substituir")]
+    [Authorize(Policy = Policies.Admin)]
+    [ProducesResponseType<LimiteBancoDto>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Substituir(
+        Guid id,
+        [FromBody] SubstituirLimiteBancoCommand command,
+        CancellationToken cancellationToken)
+    {
+        SubstituirLimiteBancoCommand cmd = command with { LimiteId = id };
+
+        try
+        {
+            LimiteBancoDto result = await mediator.Send(cmd, cancellationToken);
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Atualiza o limite operacional existente (semântica PATCH). Política: Admin.
     /// Sem <c>novaDataVigenciaFim</c>: retorna <see cref="LimiteBancoDto"/> (compatibilidade).
     /// Com <c>novaDataVigenciaFim</c>: retorna <see cref="AtualizarLimiteBancoResponse"/> com avisos.

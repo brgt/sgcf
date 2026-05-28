@@ -2185,6 +2185,10 @@ namespace Sgcf.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("modalidade");
 
+                    b.Property<string>("MotivoEncerramento")
+                        .HasColumnType("text")
+                        .HasColumnName("motivo_encerramento");
+
                     b.Property<string>("Observacoes")
                         .HasColumnType("text")
                         .HasColumnName("observacoes");
