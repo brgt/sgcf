@@ -72,6 +72,7 @@ public sealed class SubstituirLimiteBancoCommandHandler(
             anterior.Modalidade,
             novoInicio,
             novaFimSucessor,
+            excluirId: anterior.Id,
             cancellationToken: cancellationToken);
 
         if (conflito is not null)
@@ -102,6 +103,7 @@ public sealed class SubstituirLimiteBancoCommandHandler(
         anterior.Atualizar(clock,
             novaDataVigenciaFim: dataFimAnterior,
             motivoEncerramento: cmd.MotivoEncerramento);
+        repo.Update(anterior);
 
         // RV-02-C: criar o sucessor com os novos parâmetros — sem herdar antecipação.
         IEnumerable<GarantiaExigidaItemSpec>? specs = cmd.GarantiasExigidas?
