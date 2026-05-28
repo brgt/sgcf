@@ -181,6 +181,37 @@ public sealed class AtualizarLimiteVigenciaTests
         response.Limite.ValorLimiteBrl.Should().Be(15_000_000m);
     }
 
+    // ── LG-09: valor acima do limite global → 409 ────────────────────────────
+
+    [Fact]
+    public async Task Handle_NovoValorAcimaLimiteGlobal_LancaInvalidOperationException()
+    {
+        // Arrange
+        LimiteBanco limite = CriarLimite(valorLimite: 10_000_000m);
+        LimiteGlobalBanco limiteGlobal = LimiteGlobalBanco.Criar(
+            BancoId,
+            new Money(5_000_000m, Moeda.Brl),
+            new LocalDate(2026, 1, 1),
+            CriarClock());
+
+        var repo = NSubstitute.Substitute.For<ILimiteBancoRepository>();
+        var globalRepo = NSubstitute.Substitute.For<ILimiteGlobalBancoRepository>();
+        repo.GetByIdTrackingAsync(limite.Id, default).Returns(limite);
+        globalRepo.GetVigenteByBancoAsync(BancoId, default).Returns(limiteGlobal);
+
+        var handler = CriarHandler(repo, globalRepo);
+        var cmd = new UpdateLimiteBancoCommand(
+            limite.Id,
+            NovoValorLimiteBrl: 8_000_000m);
+
+        // Act
+        var act = async () => await handler.Handle(cmd, default);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*LG-09*");
+    }
+
     // ── NovaDataVigenciaFim não chama FindOverlapping quando ausente ─────────
 
     [Fact]

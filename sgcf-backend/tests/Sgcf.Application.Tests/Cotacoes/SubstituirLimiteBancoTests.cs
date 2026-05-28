@@ -258,8 +258,67 @@ public sealed class SubstituirLimiteBancoTests
         // Act
         await handler.Handle(cmd, default);
 
-        // Assert — Add chamado 1x, SaveChanges chamado 1x
+        // Assert — Update(anterior) + Add(sucessor) + SaveChanges, todos 1x
+        repo.Received(1).Update(anterior);
         repo.Received(1).Add(Arg.Any<LimiteBanco>());
         await repo.Received(1).SaveChangesAsync(default);
+    }
+
+    [Fact]
+    public async Task Handle_AnteriorEhExplicitamenteAtualizadoNaTransacao()
+    {
+        // Guards the bug found during integration testing: without repo.Update(anterior),
+        // EF Core may not detect changes to private-setter properties (DataVigenciaFim,
+        // MotivoEncerramento) made by anterior.Atualizar(), so they are never persisted.
+        LimiteBanco anterior = CriarLimite();
+        var repo = NSubstitute.Substitute.For<ILimiteBancoRepository>();
+        repo.GetByIdTrackingAsync(anterior.Id, default).Returns(anterior);
+        repo.FindOverlappingAsync(BancoId, ModalidadeContrato.Finimp,
+            Arg.Any<LocalDate>(), Arg.Any<LocalDate?>(), Arg.Any<Guid?>(), default)
+            .Returns((LimiteBanco?)null);
+
+        var handler = CriarHandler(repo);
+        var cmd = new SubstituirLimiteBancoCommand(
+            anterior.Id,
+            NovoInicio: new DateOnly(2027, 1, 1),
+            NovoValorLimiteBrl: 10_000_000m,
+            MotivoEncerramento: "Renovação anual");
+
+        await handler.Handle(cmd, default);
+
+        repo.Received(1).Update(anterior);
+    }
+
+    // ── GarantiasExigidas passadas ao sucessor ───────────────────────────────
+
+    [Fact]
+    public async Task Handle_GarantiasExigidas_SaoPassadasAoSucessor()
+    {
+        LimiteBanco anterior = CriarLimite();
+        LimiteBanco? sucessorAdicionado = null;
+
+        var repo = NSubstitute.Substitute.For<ILimiteBancoRepository>();
+        repo.GetByIdTrackingAsync(anterior.Id, default).Returns(anterior);
+        repo.FindOverlappingAsync(BancoId, ModalidadeContrato.Finimp,
+            Arg.Any<LocalDate>(), Arg.Any<LocalDate?>(), Arg.Any<Guid?>(), default)
+            .Returns((LimiteBanco?)null);
+        repo.When(r => r.Add(Arg.Any<LimiteBanco>()))
+            .Do(ci => sucessorAdicionado = ci.Arg<LimiteBanco>());
+
+        var handler = CriarHandler(repo);
+        var cmd = new SubstituirLimiteBancoCommand(
+            anterior.Id,
+            NovoInicio: new DateOnly(2027, 1, 1),
+            NovoValorLimiteBrl: 10_000_000m,
+            GarantiasExigidas:
+            [
+                new Sgcf.Application.Cotacoes.CriarGarantiaExigidaItemRequest("CdbCativo", PercentualSobreLimite: 20m)
+            ]);
+
+        await handler.Handle(cmd, default);
+
+        sucessorAdicionado.Should().NotBeNull();
+        sucessorAdicionado!.GarantiasExigidas.Should().ContainSingle()
+            .Which.Tipo.Should().Be(TipoGarantia.CdbCativo);
     }
 }
