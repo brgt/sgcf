@@ -55,7 +55,6 @@ public sealed class CotacoesApiFixture : IAsyncLifetime
                         npgsql =>
                         {
                             npgsql.UseNodaTime();
-                            npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "public");
                         }));
 
                 // Substitui IClock por relógio fixo determinístico
