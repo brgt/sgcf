@@ -24,7 +24,7 @@ public sealed class GetCalendarioVencimentosQueryHandler(
     IContratoRepository contratoRepo,
     IEventoCronogramaRepository cronogramaRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     ICdiSnapshotRepository cdiSnapshotRepo,
     IBancoRepository bancoRepo,
     IClock clock)
@@ -337,7 +337,7 @@ public sealed class GetCalendarioVencimentosQueryHandler(
                 continue;
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
             if (ptax is not null)

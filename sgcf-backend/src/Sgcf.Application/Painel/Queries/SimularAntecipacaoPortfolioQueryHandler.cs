@@ -23,7 +23,7 @@ public sealed class SimularAntecipacaoPortfolioQueryHandler(
     IBancoRepository bancoRepo,
     ILimiteBancoRepository limiteBancoRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
     : IRequestHandler<SimularAntecipacaoPortfolioQuery, ResultadoAntecipacaoPortfolioDto>
 {
@@ -265,7 +265,7 @@ public sealed class SimularAntecipacaoPortfolioQueryHandler(
                 continue;
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
             if (ptax is not null)
