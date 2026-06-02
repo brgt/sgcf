@@ -232,7 +232,9 @@ public sealed record ContratoDto(
                     PercentualSobreLimite: item.PercentualSobreLimite,
                     ValorFixoBrl: item.ValorFixoBrl?.Valor,
                     Obrigatoria: item.Obrigatoria,
-                    Observacoes: item.Observacoes));
+                    Observacoes: item.Observacoes,
+                    GrupoAlternativaId: item.GrupoAlternativaId,
+                    GrupoRotulo: item.GrupoRotulo));
             }
             snapshotDto = itensDto.AsReadOnly();
         }

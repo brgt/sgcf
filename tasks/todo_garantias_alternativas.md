@@ -8,18 +8,20 @@
 ## Fase 1 — Cadastro & Persistência
 - [x] **T1** Campos de grupo no domínio (`GarantiaExigidaItem` + `Spec`, normalização GA-04; rótulo GA-01) — campos opcionais/retrocompatíveis ✓
 - [x] **T2** Invariantes de agregado em `GarantiaExigidaRevisao`: GA-02 (≥2 itens) + GA-05 (rótulo ≤120 e consistente). GA-03/GA-07 já garantidos por SR-06; GA-06 por SR-05. 8 testes GA-01..GA-07 verdes; Domain 763/763 ✓
-- [ ] **T3** Migration `S36_GarantiasAlternativas` + EF config (item + snapshot S34) — integration — **BLOQUEADO**: investigar infra de teste S34 antes (4 testes vermelhos pré-existentes; banco POST 500 só nas fixtures `LimitesBancoApiFixture`/`GarantiaPreenchimento`)
-- [ ] **T4** DTOs + Request + `LimitesBancoController` (cadastrar→ler grupo via API) — integration
+- [x] **T3** Migration `S36_GarantiasAlternativas` (2 colunas nullable + índice parcial) + EF config ✓ — snapshot S34 é por-referência (sem tabela separada); migration aplica em container novo; 16/16 garantias verdes
+- [x] **T4** DTOs (`GarantiaExigidaItemDto`, `GarantiaExigidaSnapshotItemDto`) + `CriarGarantiaExigidaItemRequest` + `ContratoDto` ✓ — PATCH/POST e `GET revisoes-garantias` expõem grupo via `GarantiaExigidaItemDto.From`; 2 testes de integração (cadastro→leitura + retrocompat). Controller inalterado (DTOs propagam)
 
 ### ✅ Checkpoint Fase 1
-- [x] `dotnet build` limpo + Domain `dotnet test --filter "Category!=Slow"` verde (763)
-- [ ] Migration aplica em base existente sem afetar linhas legadas (T3)
-- [ ] Cadastrar/reler "CDB OU Recebíveis" via API funciona (T4)
+- [x] `dotnet build` limpo + `dotnet test --filter "Category!=Slow"` verde (Domain 763, Application 461)
+- [x] Migration S36 aplica em container novo sem afetar linhas legadas (NULL)
+- [x] Cadastrar/reler "CDB OU Recebíveis" via API funciona (LimitesBancoGruposTests)
 - [ ] Revisado com o humano
 
 ### 🔎 Achados (registrar antes da Fase 2)
-- **Modelagem:** `PercentualSobreLimite` é limitado a (0,100]. O exemplo da spec "Recebíveis **120%**" NÃO é representável como percentual — usar `ValorFixoBrl` para alvos >100%. Impacta os cenários AC-1..AC-7 e a decisão RV-GA.
-- **Infra S34:** 4 testes de integração de garantias (stream S34) estão vermelhos no HEAD/`main` (banco POST 500 nas fixtures S34). Pré-existente; bloqueia T3/T4 até diagnóstico.
+- **Modelagem (impacta RV-GA):** `PercentualSobreLimite` é limitado a (0,100]. O exemplo "Recebíveis **120%**" NÃO é representável como percentual — usar `ValorFixoBrl` para alvos >100%. Afeta os cenários AC-1..AC-7.
+- **Infra S34 (diagnosticada/corrigida em parte):** os 4 testes vermelhos eram (a) `PendingModelChangesWarning` — causado pela T1 sem migration, **resolvido pela T3**; (b) 3 testes PATCH desatualizados liam `garantiasExigidas` na raiz, mas o PATCH retorna envelope `{ limite, avisos }` — **corrigidos** (`.limite.garantiasExigidas`). Banco POST 500 era efeito do mesmo PendingModelChanges.
+- **Dois `__EFMigrationsHistory` (public vs sgcf):** o DB dev tem o histórico real em `public`, mas o DbContext tem `HasDefaultSchema("sgcf")` sem override do history → `dotnet ef database update` via CLI mira `sgcf` (vazio) e não aplica no DB dev. Testes usam `public` (ok). **Não corrigido** (fora do escopo; recomenda configurar `MigrationsHistoryTable(..., "public")` no DbContext). É a raiz do "dois diretórios de migrations".
+- **Flaky:** banco POST 500 intermitente sob carga paralela de Testcontainers (`CotacoesFluxoTests` falhou 1× no full-run, passou isolado). Pré-existente.
 
 ## ⛔ GATE
 - [ ] **RV-GA confirmada** (regra de fração default ou Alternativa B) — bloqueia Fase 2
