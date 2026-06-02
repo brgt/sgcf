@@ -117,9 +117,7 @@ Atualiza o limite com semântica PATCH — campos omitidos (null) preservam o va
 
 Quando `novoValorLimiteBrl` é informado e difere do valor atual, uma nova entrada é registrada no histórico.
 
-> **Contrato dual de resposta (RV-01):**
-> - Sem `novaDataVigenciaFim`: retorna **[LimiteBancoDto](#limitebancodto)** diretamente (compatibilidade com clientes anteriores).
-> - Com `novaDataVigenciaFim`: retorna **[AtualizarLimiteBancoResponse](#atualizarlimitebancoresposne)** com envelope `{ limite, avisos }`. O campo `avisos` contém alertas não bloqueantes (ex.: limite com utilização ativa sendo encerrado).
+> **Contrato de resposta:** este endpoint sempre retorna **[AtualizarLimiteBancoResponse](#atualizarlimitebancoresponse)** `{ limite, avisos }`. O campo `avisos` contém alertas não bloqueantes (ex.: limite com utilização ativa sendo encerrado). **Clientes devem ler os dados em `response.limite.*`, não na raiz do objeto.**
 
 **Request Body:**
 
@@ -150,9 +148,9 @@ Quando `novoValorLimiteBrl` é informado e difere do valor atual, uma nova entra
 | Campo | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|-----------|
 | `novoValorLimiteBrl` | decimal | Não | > 0 |
-| `novaDataVigenciaFim` | date | Não | Encerra vigência na data informada. Altera o contrato de resposta — ver nota acima |
+| `novaDataVigenciaFim` | date | Não | Encerra vigência na data informada |
 | `novaDataVigenciaInicio` | date | Não | Ajusta início da vigência |
-| `motivoEncerramento` | string | Não | Registrado no limite encerrado |
+| `motivoEncerramento` | string | Não | Registrado no limite encerrado. Requer `novaDataVigenciaFim` no mesmo request — `400` se informado isoladamente |
 | `garantiasExigidas` | [CriarGarantiaExigidaLimiteRequest](#criargarantiaexigidalimiterequest)[] | Não | `null` = preservar; `[]` = remover todas; itens = replace-all |
 | `configurarAntecipacao` | bool | Não | `true` para atualizar os campos de antecipação abaixo |
 | `padraoAntecipacao` | string | Não | Ver [PadraoAntecipacao](./schemas.md#padraoantecipacao) |
@@ -163,8 +161,8 @@ Quando `novoValorLimiteBrl` é informado e difere do valor atual, uma nova entra
 | `observacoesAntecipacao` | string | Não | — |
 
 **Responses:**
-- `200 OK` — [LimiteBancoDto](#limitebancodto) (sem `novaDataVigenciaFim`) ou [AtualizarLimiteBancoResponse](#atualizarlimitebancoresposne) (com `novaDataVigenciaFim`)
-- `400 Bad Request` — campo inválido
+- `200 OK` — [AtualizarLimiteBancoResponse](#atualizarlimitebancoresponse) `{ limite, avisos }`
+- `400 Bad Request` — campo inválido ou `motivoEncerramento` informado sem `novaDataVigenciaFim`
 - `404 Not Found`
 - `409 Conflict` — a nova vigência causa sobreposição com outro limite existente (RV-01-B)
 
@@ -306,6 +304,8 @@ Cada garantia pertence a um único `TipoGarantia`. Para tipos diferentes de `Ava
 | `valorFixoBrl` | decimal | > 0; exclusivo com `percentualSobreLimite` |
 | `obrigatoria` | bool | `true` = banco exige; `false` = banco negocia |
 | `observacoes` | string | Opcional |
+| `grupoAlternativaId` | guid | Opcional. Identifica o grupo de alternativas "OU" ao qual o item pertence. `null` = item independente |
+| `grupoRotulo` | string | Opcional; ≤ 120 caracteres. Rótulo legível do grupo. Só faz sentido com `grupoAlternativaId`; é ignorado (normalizado para `null`) em itens independentes |
 
 ### Invariantes
 
@@ -313,6 +313,62 @@ Cada garantia pertence a um único `TipoGarantia`. Para tipos diferentes de `Ava
 - `percentualSobreLimite` e `valorFixoBrl` são mutuamente exclusivos — ambos preenchidos retornam `400 Bad Request`.
 - Para tipos diferentes de `Aval`: omitir ambos retorna `400 Bad Request`.
 - Operações de replace-all (`PATCH` com lista) validam a ausência de duplicatas antes de aplicar qualquer alteração.
+
+### Grupos de Alternativas "OU"
+
+> **Adicionado em [0.13.0] (S36).**
+
+Um conjunto de itens que compartilham o mesmo `grupoAlternativaId` forma um **grupo de alternativas mutuamente substituíveis** ("OU"). O banco aceita qualquer uma das alternativas — ou a combinação parcial delas — para satisfazer a exigência do grupo. Exemplo: "CDB cativo de 100% do principal **OU** caução de boletos bancários de 100% do principal".
+
+Regras do grupo:
+
+- **Sempre obrigatório.** Todo item agrupado é tratado como `obrigatoria = true` no enforcement, independentemente do `obrigatoria` enviado por item. O grupo, como um todo, precisa ser coberto na conversão cotação→contrato.
+- **Valor exigido do grupo = mínimo das alternativas.** A contribuição do grupo para o valor total de garantia exigida é o **menor** valor individual entre suas alternativas (o piso mais barato capaz de satisfazer o grupo), não a soma. Itens independentes (sem `grupoAlternativaId`) continuam somando normalmente.
+- **Cobertura por fração normalizada.** Na conversão, o grupo é considerado coberto quando a soma das frações de cobertura de cada alternativa atinge ou supera 1,0:
+
+  ```
+  Σ min(valorCoberto_A / valorAlvo_A, 1.0) ≥ 1.0
+  ```
+
+  Isso permite tanto cobrir o grupo com uma única alternativa a 100% quanto combinar parcelas de alternativas distintas (ex.: 60% em CDB cativo + 40% em boletos). A fração é arredondada a 6 casas (`AwayFromZero`) antes da comparação.
+- **Rótulo único por grupo.** Todos os itens do mesmo grupo devem usar o mesmo `grupoRotulo` (ou omiti-lo). O rótulo, quando presente, identifica o grupo nas respostas de lacuna.
+
+#### Relato de lacuna de grupo (409 na conversão)
+
+Quando uma cotação é convertida em contrato (`POST /api/v1/cotacoes/{id}/converter-em-contrato`) e um grupo "OU" não atinge a fração mínima de cobertura, a conversão é bloqueada com `409 Conflict`. O corpo segue o formato `ProblemDetails` (RFC 7807) com a extensão `lacunas`. Uma lacuna de **grupo** preenche os campos `grupoAlternativaId`, `grupoRotulo`, `alternativasAceitas` e `fracaoCoberta` — enquanto `valorEsperadoBrl` e `valorCobertoBrl` ficam `null` (a regra de grupo é baseada em fração, não em valor único):
+
+```json
+{
+  "type": "https://sgcf.io/errors/garantia-exigida-nao-coberta",
+  "title": "Garantias exigidas pela política do banco não foram cobertas pelo contrato.",
+  "status": 409,
+  "detail": "A revisão vigente do LimiteBanco {id} exige 1 garantia(s) obrigatória(s) que não foram supridas.",
+  "limiteBancoId": "guid",
+  "garantiasExigidasRevisaoId": "guid",
+  "lacunas": [
+    {
+      "tipo": "CDB OU Recebíveis",
+      "obrigatoria": true,
+      "valorEsperadoBrl": null,
+      "valorCobertoBrl": null,
+      "grupoAlternativaId": "8f1c3b2a-0d4e-4a6b-9c8d-1e2f3a4b5c6d",
+      "grupoRotulo": "CDB OU Recebíveis",
+      "alternativasAceitas": ["CdbCativo", "BoletoBancario"],
+      "fracaoCoberta": 0.6
+    }
+  ]
+}
+```
+
+| Campo da lacuna | Tipo | Lacuna de item | Lacuna de grupo |
+|-----------------|------|----------------|-----------------|
+| `tipo` | string | Nome do `TipoGarantia` | `grupoRotulo` se presente, senão `"Grupo: Tipo1 OU Tipo2"` |
+| `valorEsperadoBrl` | decimal \| null | Valor mínimo exigido | `null` |
+| `valorCobertoBrl` | decimal \| null | Valor coberto pelo contrato | `null` |
+| `grupoAlternativaId` | guid \| null | `null` | Id do grupo "OU" |
+| `grupoRotulo` | string \| null | `null` | Rótulo do grupo, quando informado |
+| `alternativasAceitas` | string[] \| null | `null` | Tipos aceitos no grupo |
+| `fracaoCoberta` | decimal \| null | `null` | Fração coberta acumulada (0,0 ≤ valor < 1,0), 6 casas `AwayFromZero` |
 
 ### TipoGarantia
 
@@ -378,9 +434,9 @@ O histórico é retornado pela propriedade `historico` no [LimiteBancoDto](#limi
 
 ---
 
-### AtualizarLimiteBancoResposne
+### AtualizarLimiteBancoResponse
 
-Retornado pelo `PATCH` quando `novaDataVigenciaFim` está presente.
+Retornado pelo `PATCH /limites-banco/{id}` em todos os casos.
 
 ```json
 {
@@ -410,10 +466,14 @@ Retornado pelo `PATCH` quando `novaDataVigenciaFim` está presente.
   "valorFixoBrl": null,
   "obrigatoria": true,
   "observacoes": "string | null",
+  "grupoAlternativaId": "guid | null",
+  "grupoRotulo": "string | null",
   "createdAt": "DateTimeOffset",
   "updatedAt": "DateTimeOffset"
 }
 ```
+
+> `grupoAlternativaId` e `grupoRotulo` foram adicionados em [0.13.0] (S36). São `null` em itens independentes (comportamento legado preservado).
 
 ---
 
@@ -475,7 +535,9 @@ Retornado pelo `PATCH` quando `novaDataVigenciaFim` está presente.
   "percentualSobreLimite": 20.0,
   "valorFixoBrl": null,
   "obrigatoria": true,
-  "observacoes": "string | null"
+  "observacoes": "string | null",
+  "grupoAlternativaId": null,
+  "grupoRotulo": null
 }
 ```
 
@@ -484,8 +546,35 @@ Retornado pelo `PATCH` quando `novaDataVigenciaFim` está presente.
 | `tipo` | string | — | Nome do enum `TipoGarantia` (case-insensitive) |
 | `percentualSobreLimite` | decimal | `null` | Percentual sobre o limite; (0, 100]; exclusivo com `valorFixoBrl` |
 | `valorFixoBrl` | decimal | `null` | Valor fixo em BRL; > 0; exclusivo com `percentualSobreLimite` |
-| `obrigatoria` | bool | `true` | `true` = banco exige; `false` = banco negocia |
+| `obrigatoria` | bool | `true` | `true` = banco exige; `false` = banco negocia. Ignorado para itens agrupados (sempre obrigatório) |
 | `observacoes` | string | `null` | — |
+| `grupoAlternativaId` | guid | `null` | Grupo de alternativas "OU". Itens com o mesmo valor formam um grupo mutuamente substituível. Não pode ser `Guid.Empty` |
+| `grupoRotulo` | string | `null` | Rótulo do grupo; ≤ 120 caracteres. Deve ser consistente entre os itens do mesmo grupo; ignorado em itens independentes |
+
+**Exemplo — grupo "CDB OU Recebíveis" (PATCH ou POST):**
+
+```json
+{
+  "garantiasExigidas": [
+    {
+      "tipo": "CdbCativo",
+      "percentualSobreLimite": 100.0,
+      "obrigatoria": true,
+      "grupoAlternativaId": "8f1c3b2a-0d4e-4a6b-9c8d-1e2f3a4b5c6d",
+      "grupoRotulo": "CDB OU Recebíveis"
+    },
+    {
+      "tipo": "BoletoBancario",
+      "percentualSobreLimite": 100.0,
+      "obrigatoria": true,
+      "grupoAlternativaId": "8f1c3b2a-0d4e-4a6b-9c8d-1e2f3a4b5c6d",
+      "grupoRotulo": "CDB OU Recebíveis"
+    }
+  ]
+}
+```
+
+> Neste exemplo, ambas as alternativas exigem 100% do principal. O valor exigido do grupo é o **mínimo** entre as contribuições (100% × principal em cada uma — iguais aqui), e não a soma de 200%. Na conversão, o grupo é satisfeito por CDB cativo a 100%, por boletos a 100%, ou por qualquer combinação cujas frações somem ≥ 1,0.
 
 ---
 
@@ -498,9 +587,11 @@ Retornado pelo `PATCH` quando `novaDataVigenciaFim` está presente.
 5. `percentualSobreLimite` e `valorFixoBrl` são mutuamente exclusivos por garantia.
 6. Para tipos diferentes de `Aval`, ao menos um entre `percentualSobreLimite` e `valorFixoBrl` deve ser informado.
 7. **RV-01-B**: ao ajustar `novaDataVigenciaFim` ou `novaDataVigenciaInicio` via PATCH, a nova vigência não pode sobrepor outro limite do mesmo par banco/modalidade (excluindo o próprio limite).
-8. **RV-02-A**: em `POST /substituir`, `novoInicio` deve ser estritamente posterior à `dataVigenciaInicio` do limite atual.
-9. **RV-02-D**: em `POST /substituir`, a vigência do sucessor não pode sobrepor outro limite existente do par banco/modalidade (excluindo o limite sendo substituído).
-10. **LG-09**: o valor do limite por modalidade não pode superar o limite global vigente do banco (quando houver limite global cadastrado).
+8. **RV-01-C** (PATCH): `motivoEncerramento` só pode ser enviado quando `novaDataVigenciaFim` também está presente no mesmo request — caso contrário retorna `400`.
+9. **RV-02-A**: em `POST /substituir`, `novoInicio` deve ser estritamente posterior à `dataVigenciaInicio` do limite atual.
+10. **RV-02-C**: em `POST /substituir`, quando `novaDataVigenciaFim` é informado, deve ser estritamente posterior a `novoInicio` — caso contrário retorna `400`.
+11. **RV-02-D**: em `POST /substituir`, a vigência do sucessor não pode sobrepor outro limite existente do par banco/modalidade (excluindo o limite sendo substituído).
+12. **LG-09**: o valor do limite por modalidade não pode superar o limite global vigente do banco (quando houver limite global cadastrado).
 
 ---
 
