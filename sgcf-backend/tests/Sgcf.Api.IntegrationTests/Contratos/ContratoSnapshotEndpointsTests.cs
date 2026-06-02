@@ -183,7 +183,7 @@ public sealed class ContratoSnapshotEndpointsTests(ContratoSnapshotApiFixture fi
     {
         using HttpClient client = fixture.CreateAuthenticatedClient();
 
-        string codigo = Random.Shared.Next(100, 499).ToString(CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         (Guid bancoId, _) = await SeedBancoComLimiteEGarantiaAsync(client, codigo);
 
         string numeroExterno = $"FINIMP-SNAP-{codigo}";
@@ -237,7 +237,7 @@ public sealed class ContratoSnapshotEndpointsTests(ContratoSnapshotApiFixture fi
     {
         using HttpClient client = fixture.CreateAuthenticatedClient();
 
-        string codigo = Random.Shared.Next(500, 699).ToString(CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         (Guid bancoId, _) = await SeedBancoComLimiteEGarantiaAsync(client, codigo);
 
         // Cria contrato NCE diretamente — não passa por ConverterEmContrato
@@ -301,7 +301,7 @@ public sealed class ContratoSnapshotEndpointsTests(ContratoSnapshotApiFixture fi
     {
         using HttpClient client = fixture.CreateAuthenticatedClient();
 
-        string codigo = Random.Shared.Next(700, 799).ToString(CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         (Guid bancoId, _) = await SeedBancoComLimiteEGarantiaAsync(client, codigo);
 
         // Cria contrato via converter para garantir que limiteBancoId seja preenchido
@@ -361,7 +361,7 @@ public sealed class ContratoSnapshotEndpointsTests(ContratoSnapshotApiFixture fi
     {
         using HttpClient client = fixture.CreateAuthenticatedClient();
 
-        string codigo = Random.Shared.Next(800, 899).ToString(CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         (Guid bancoId, Guid limiteId) = await SeedBancoComLimiteEGarantiaAsync(client, codigo);
 
         // Cria contrato com revisão R1 (garantia = Aval)
@@ -415,7 +415,7 @@ public sealed class ContratoSnapshotEndpointsTests(ContratoSnapshotApiFixture fi
     {
         using HttpClient clientA = fixture.CreateAuthenticatedClient();
 
-        string codigo = Random.Shared.Next(900, 999).ToString(CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         (Guid bancoId, _) = await SeedBancoComLimiteEGarantiaAsync(clientA, codigo);
 
         string numeroExterno = $"FINIMP-TENANT-{codigo}";

@@ -26,7 +26,7 @@ public sealed class RefinimpFluxoTests(CotacoesApiFixture fixture)
     /// </summary>
     private static async Task<(Guid BancoId, string CodigoCompe)> SeedBancoAsync(HttpClient client, string? codigoCompe = null)
     {
-        codigoCompe ??= Random.Shared.Next(100, 899).ToString(CultureInfo.InvariantCulture);
+        codigoCompe ??= TestBancoCodigo.Next();
 
         HttpResponseMessage res = await client.PostAsJsonAsync("/api/v1/bancos", new
         {
