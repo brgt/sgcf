@@ -13,4 +13,6 @@ public sealed record GarantiaExigidaItemSpec(
     decimal? PercentualSobreLimite,
     Money? ValorFixoBrl,
     bool Obrigatoria,
-    string? Observacoes);
+    string? Observacoes,
+    Guid? GrupoAlternativaId = null,
+    string? GrupoRotulo = null);
