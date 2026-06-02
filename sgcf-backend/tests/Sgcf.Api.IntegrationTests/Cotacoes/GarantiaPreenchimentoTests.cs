@@ -23,7 +23,7 @@ public sealed class GarantiaPreenchimentoTests(CotacoesApiFixture fixture)
     private static async Task<Guid> CriarBancoAsync(HttpClient client)
     {
         // Gera codigoCompe único de 3 dígitos para evitar conflito entre testes paralelos
-        string codigo = Random.Shared.Next(100, 999).ToString(CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         HttpResponseMessage res = await client.PostAsJsonAsync("/api/v1/bancos", new
         {
             codigoCompe = codigo,
@@ -334,7 +334,7 @@ public sealed class GarantiaPreenchimentoTests(CotacoesApiFixture fixture)
         using HttpClient client = fixture.CreateAuthenticatedClient();
 
         // Seed: banco, limite sem garantias, CDI, PTAX
-        string codigoReg = Random.Shared.Next(100, 999).ToString(CultureInfo.InvariantCulture);
+        string codigoReg = TestBancoCodigo.Next();
         HttpResponseMessage bancRes = await client.PostAsJsonAsync("/api/v1/bancos", new
         {
             codigoCompe = codigoReg,

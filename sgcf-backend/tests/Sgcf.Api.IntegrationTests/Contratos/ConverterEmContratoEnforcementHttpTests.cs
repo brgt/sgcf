@@ -26,7 +26,7 @@ public sealed class ConverterEmContratoEnforcementHttpTests(CotacoesApiFixture f
 
     private static async Task<Guid> CriarBancoAsync(HttpClient client)
     {
-        string codigo = Random.Shared.Next(600, 699).ToString(CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         HttpResponseMessage res = await client.PostAsJsonAsync("/api/v1/bancos", new
         {
             codigoCompe = codigo,

@@ -28,7 +28,7 @@ public sealed class CotacoesFluxoTests(CotacoesApiFixture fixture)
     private static async Task<Guid> SeedPreRequistosAsync(HttpClient client)
     {
         // Gera codigoCompe único de 3 dígitos para evitar conflito entre testes na mesma fixture
-        string codigoCompe = Random.Shared.Next(100, 999).ToString(CultureInfo.InvariantCulture);
+        string codigoCompe = TestBancoCodigo.Next();
 
         // Cria banco
         HttpResponseMessage bancRes = await client.PostAsJsonAsync("/api/v1/bancos", new

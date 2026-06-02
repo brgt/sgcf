@@ -23,7 +23,7 @@ public sealed class Lei4131FluxoTests(CotacoesApiFixture fixture)
 
     private static async Task<Guid> SeedBancoAsync(HttpClient client)
     {
-        string codigo = Random.Shared.Next(500, 899).ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         HttpResponseMessage res = await client.PostAsJsonAsync("/api/v1/bancos", new
         {
             codigoCompe = codigo,

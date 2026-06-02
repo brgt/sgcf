@@ -52,7 +52,6 @@ public sealed class ContratoSnapshotApiFixture : IAsyncLifetime
                         npgsql =>
                         {
                             npgsql.UseNodaTime();
-                            npgsql.MigrationsHistoryTable("__EFMigrationsHistory", "public");
                         }));
 
                 services.RemoveAll<IClock>();

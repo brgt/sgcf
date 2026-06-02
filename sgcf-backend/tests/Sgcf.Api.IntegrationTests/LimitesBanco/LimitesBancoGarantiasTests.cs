@@ -199,7 +199,7 @@ public sealed class LimitesBancoGarantiasTests(LimitesBancoApiFixture fixture)
             ]);
 
         patchRes.StatusCode.Should().Be(HttpStatusCode.OK, patchRaw);
-        JsonElement garantias = patchBody.GetProperty("garantiasExigidas");
+        JsonElement garantias = patchBody.GetProperty("limite").GetProperty("garantiasExigidas");
         garantias.GetArrayLength().Should().Be(1);
         garantias[0].GetProperty("tipo").GetString().Should().Be("Sblc");
     }
@@ -223,7 +223,7 @@ public sealed class LimitesBancoGarantiasTests(LimitesBancoApiFixture fixture)
             client, limiteId, garantiasExigidas: []);
 
         patchRes.StatusCode.Should().Be(HttpStatusCode.OK, patchRaw);
-        patchBody.GetProperty("garantiasExigidas").GetArrayLength().Should().Be(0,
+        patchBody.GetProperty("limite").GetProperty("garantiasExigidas").GetArrayLength().Should().Be(0,
             "lista vazia deve remover todas as garantias existentes");
     }
 
@@ -252,9 +252,9 @@ public sealed class LimitesBancoGarantiasTests(LimitesBancoApiFixture fixture)
             $"PATCH com apenas novoValorLimiteBrl deve retornar 200 — corpo: {patchRaw}");
 
         JsonElement patchBody = JsonSerializer.Deserialize<JsonElement>(patchRaw, JsonOpts);
-        patchBody.GetProperty("garantiasExigidas").GetArrayLength().Should().Be(1,
+        patchBody.GetProperty("limite").GetProperty("garantiasExigidas").GetArrayLength().Should().Be(1,
             "garantias não enviadas no PATCH devem ser preservadas");
-        patchBody.GetProperty("garantiasExigidas")[0]
+        patchBody.GetProperty("limite").GetProperty("garantiasExigidas")[0]
             .GetProperty("tipo").GetString().Should().Be("AlienacaoFiduciaria");
     }
 
