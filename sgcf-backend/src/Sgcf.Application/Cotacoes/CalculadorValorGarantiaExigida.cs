@@ -14,6 +14,19 @@ namespace Sgcf.Application.Cotacoes;
 ///   <item>Item sem nenhum dos dois (ex: <c>Aval</c>): contribui zero.</item>
 /// </list>
 ///
+/// Grupos de alternativas "OU" (RV-GA):
+/// <list type="bullet">
+///   <item>
+///     Itens com o mesmo <c>GrupoAlternativaId</c> não-nulo formam um grupo mutuamente
+///     substitutível. O grupo contribui com o <b>mínimo</b> entre as contribuições
+///     individuais de seus membros — o piso mais barato capaz de satisfazer o grupo.
+///   </item>
+///   <item>
+///     Itens sem <c>GrupoAlternativaId</c> (independentes) somam normalmente, sem alteração
+///     de comportamento em relação à versão anterior.
+///   </item>
+/// </list>
+///
 /// Pure static — sem estado, sem I/O, sem efeitos colaterais.
 /// </summary>
 public static class CalculadorValorGarantiaExigida
@@ -43,24 +56,50 @@ public static class CalculadorValorGarantiaExigida
 
         decimal total = 0m;
 
-        foreach (GarantiaExigidaItem garantia in garantias)
+        // Itens independentes: somam individualmente (comportamento legado preservado)
+        foreach (GarantiaExigidaItem garantia in garantias.Where(g => g.GrupoAlternativaId is null))
         {
-            if (garantia.PercentualSobreLimite.HasValue)
-            {
-                // Percentual humano (20 = 20%) — divide por 100 para obter fração
-                total += Math.Round(garantia.PercentualSobreLimite.Value / 100m * valorAlvo.Valor, 2, MidpointRounding.AwayFromZero);
-                continue;
-            }
+            total += ContribuicaoItem(garantia, valorAlvo);
+        }
 
-            if (garantia.ValorFixoBrl.HasValue)
-            {
-                total += garantia.ValorFixoBrl.Value.Valor;
-            }
+        // Grupos de alternativas "OU": cada grupo contribui com o mínimo entre seus membros.
+        // RV-GA: o exigido do grupo é o piso — basta a alternativa mais barata cobrir o grupo.
+        var grupos = garantias
+            .Where(g => g.GrupoAlternativaId is not null)
+            .GroupBy(g => g.GrupoAlternativaId!.Value);
 
-            // Sem percentual nem valor fixo (ex: Aval) → contribui zero; nada a somar
+        foreach (var grupo in grupos)
+        {
+            decimal minContribuicao = grupo.Min(g => ContribuicaoItem(g, valorAlvo));
+            total += minContribuicao;
         }
 
         // Money ctor aplica MidpointRounding.AwayFromZero automaticamente
         return new Money(total, Moeda.Brl);
+    }
+
+    /// <summary>
+    /// Calcula a contribuição individual de um item em reais (sem arredondamento adicional
+    /// além do que o percentual já impõe). O arredondamento final é feito pelo construtor
+    /// de <see cref="Money"/>.
+    /// </summary>
+    private static decimal ContribuicaoItem(GarantiaExigidaItem garantia, Money valorAlvo)
+    {
+        if (garantia.PercentualSobreLimite.HasValue)
+        {
+            // Percentual humano (20 = 20%) — divide por 100 para obter fração
+            return Math.Round(
+                garantia.PercentualSobreLimite.Value / 100m * valorAlvo.Valor,
+                2,
+                MidpointRounding.AwayFromZero);
+        }
+
+        if (garantia.ValorFixoBrl.HasValue)
+        {
+            return garantia.ValorFixoBrl.Value.Valor;
+        }
+
+        // Sem percentual nem valor fixo (ex: Aval) → contribui zero
+        return 0m;
     }
 }
