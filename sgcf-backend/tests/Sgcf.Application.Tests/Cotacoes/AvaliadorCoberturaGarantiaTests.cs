@@ -218,4 +218,61 @@ public sealed class AvaliadorCoberturaGarantiaTests
         resultado[0].Tipo.Should().StartWith("Grupo:");
         resultado[0].GrupoRotulo.Should().BeNull();
     }
+
+    // ── Regressão (review): dízima exata não pode falso-bloquear ─────────────
+    //
+    // Grupo de 3 alternativas, cada uma com alvo 30% de 100k = 30k. Cobrindo 10k de
+    // cada → fração 1/3 por alternativa → soma decimal = 0,999…9 (28 noves). Sem o
+    // arredondamento da soma isso bloquearia indevidamente um grupo que está coberto.
+
+    private static List<GarantiaExigidaItem> CriarItensGrupoTres()
+    {
+        IClock clock = CriarClock();
+        var revisao = GarantiaExigidaRevisao.Criar(
+            limiteBancoId: LimiteId,
+            itens:
+            [
+                new GarantiaExigidaItemSpec(TipoGarantia.CdbCativo, 30m, null, true, null, GrupoId, GrupoRotuloTeste),
+                new GarantiaExigidaItemSpec(TipoGarantia.BoletoBancario, 30m, null, true, null, GrupoId, GrupoRotuloTeste),
+                new GarantiaExigidaItemSpec(TipoGarantia.Duplicatas, 30m, null, true, null, GrupoId, GrupoRotuloTeste),
+            ],
+            clock: clock);
+
+        return revisao.Itens.Where(i => i.Obrigatoria).ToList();
+    }
+
+    [Fact]
+    public void Avaliar_GrupoTresAlternativasCobertasEmTercos_NaoFalsoBloqueia()
+    {
+        var itens = CriarItensGrupoTres();
+        // alvo de cada alternativa = 30% de 100k = 30k; 10k/30k = 1/3 cada → soma = 1,0.
+        var cobertura = Cobertura(
+            (TipoGarantia.CdbCativo, 10_000m),
+            (TipoGarantia.BoletoBancario, 10_000m),
+            (TipoGarantia.Duplicatas, 10_000m));
+
+        List<LacunaGarantia> resultado = AvaliadorCoberturaGarantia.Avaliar(itens, cobertura, ValorPrincipal);
+
+        resultado.Should().BeEmpty(
+            "1/3 + 1/3 + 1/3 cobre o grupo; dízima decimal não pode bloquear");
+    }
+
+    // ── Cap de over-coverage: uma alternativa acima de 100% satisfaz o grupo ──
+    //
+    // min(coberto/alvo, 1.0) impede que uma alternativa super-coberta "transborde"
+    // para mascarar outra; mas uma alternativa sozinha cobrindo ≥100% do seu alvo
+    // satisfaz o grupo (Σ = 1,0). É a semântica "OU" pretendida.
+
+    [Fact]
+    public void Avaliar_GrupoUmaAlternativaAcimaDe100Pct_SatisfazGrupo()
+    {
+        var itens = CriarItensGrupo(); // CdbCativo 100% OU BoletoBancario 100% (alvo 100k cada)
+        // Cdb cobre 150k (min(1.5,1.0)=1.0); Boleto zero. Σ = 1,0 → coberto.
+        var cobertura = Cobertura((TipoGarantia.CdbCativo, 150_000m));
+
+        List<LacunaGarantia> resultado = AvaliadorCoberturaGarantia.Avaliar(itens, cobertura, ValorPrincipal);
+
+        resultado.Should().BeEmpty(
+            "uma alternativa cobrindo >=100% do próprio alvo satisfaz o grupo OU");
+    }
 }

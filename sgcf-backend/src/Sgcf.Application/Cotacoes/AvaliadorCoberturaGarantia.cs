@@ -151,20 +151,25 @@ internal static class AvaliadorCoberturaGarantia
             somaFracoes += fracao;
         }
 
-        if (somaFracoes >= 1.0m)
+        // Arredonda a soma antes de comparar para evitar falso-bloqueio por dízimas da
+        // divisão decimal: ex.: três alternativas cobertas em 1/3 cada somam
+        // 0,999…9 (28 noves) e seriam rejeitadas sem o arredondamento. 6 casas alinham
+        // com a escala usada por Money.
+        decimal fracaoCoberta = Math.Round(somaFracoes, 6, MidpointRounding.AwayFromZero);
+
+        if (fracaoCoberta >= 1.0m)
         {
             return null;
         }
 
-        // Emite UMA lacuna para o grupo inteiro, com fracao coberta arredondada para exibição.
-        decimal fracaoCoberta = Math.Round(somaFracoes, 4, MidpointRounding.AwayFromZero);
-
-        // Determina o rótulo do grupo: usa GrupoRotulo se todos os itens concordam,
-        // caso contrário constrói "Grupo: Tipo1 OU Tipo2 …".
+        // Rótulo do grupo: primeiro rótulo não-nulo. GA-05 garante no máximo um distinto;
+        // usar FirstOrDefault sobre os não-nulos é defensivo (não lança se um item vier
+        // com rótulo e outro com null, combinação permitida por GA-05).
         string? grupoRotulo = itensDoGrupo
             .Select(i => i.GrupoRotulo)
+            .Where(r => r is not null)
             .Distinct()
-            .SingleOrDefault(); // null quando ausente ou divergente entre itens do grupo
+            .FirstOrDefault();
 
         List<string> tiposDoGrupo = itensDoGrupo.Select(i => i.Tipo.ToString()).ToList();
 
