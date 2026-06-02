@@ -64,13 +64,13 @@ public sealed class ContratoSnapshotApiFixture : IAsyncLifetime
         await ctx.Database.MigrateAsync();
         await TenantTestSeeder.SeedProxysAsync(Factory.Services);
 
-        // Seed CotacaoFx PTAX D-1 para a data de abertura 2026-05-20.
+        // Seed CotacaoFx PTAX D0 (fechamento) para a data de abertura 2026-05-20.
         // O conversor de cotação depende desse registro para calcular o valor em BRL.
         ICotacaoFxRepository cotacaoFxRepo =
             scope.ServiceProvider.GetRequiredService<ICotacaoFxRepository>();
         CotacaoFx ptax = CotacaoFx.Criar(
             Moeda.Usd,
-            TipoCotacao.PtaxD1,
+            TipoCotacao.PtaxD0,
             new Money(5.15m, Moeda.Brl),
             new Money(5.20m, Moeda.Brl),
             fonte: "BACEN-seed-snapshot-e2e",

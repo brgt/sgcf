@@ -37,7 +37,7 @@ public sealed class RegistrarPropostaRefinimpTests
 
     private static CotacaoFx CriarPtaxFx() =>
         CotacaoFx.Criar(
-            Moeda.Usd, TipoCotacao.PtaxD1,
+            Moeda.Usd, TipoCotacao.PtaxD0,
             new Money(PtaxValida - 0.05m, Moeda.Brl),
             new Money(PtaxValida, Moeda.Brl),
             "BACEN", Agora.Minus(Duration.FromHours(13)));
