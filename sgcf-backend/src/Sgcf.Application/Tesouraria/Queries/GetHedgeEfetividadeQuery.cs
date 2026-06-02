@@ -32,7 +32,7 @@ public sealed class GetHedgeEfetividadeQueryHandler(
     IContratoRepository contratoRepo,
     IHedgeRepository hedgeRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
     : IRequestHandler<GetHedgeEfetividadeQuery, EnvelopeResponse<HedgeEfetividadeDto>>
 {
@@ -197,7 +197,7 @@ public sealed class GetHedgeEfetividadeQueryHandler(
                 continue;
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
             if (ptax is not null)

@@ -55,10 +55,10 @@ public sealed class HedgeEfetividadeTests
     /// <summary>
     /// Configura o repositório FX para retornar null — forçando o fluxo spot-only.
     /// </summary>
-    private static ICotacaoFxRepository CriarFxRepoVazio()
+    private static IResolveTipoCotacaoService CriarFxRepoVazio()
     {
-        ICotacaoFxRepository repo = Substitute.For<ICotacaoFxRepository>();
-        repo.GetMaisRecenteAsync(Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(),
+        IResolveTipoCotacaoService repo = Substitute.For<IResolveTipoCotacaoService>();
+        repo.ResolverFxAsync(Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(),
                                  Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns((CotacaoFx?)null);
         return repo;
@@ -105,13 +105,13 @@ public sealed class HedgeEfetividadeTests
         IContratoRepository contratoRepo,
         IHedgeRepository hedgeRepo,
         ICotacaoSpotCache? spotCache = null,
-        ICotacaoFxRepository? fxRepo = null)
+        IResolveTipoCotacaoService? fxRepo = null)
     {
         return new GetHedgeEfetividadeQueryHandler(
             contratoRepo: contratoRepo,
             hedgeRepo: hedgeRepo,
             spotCache: spotCache ?? CriarSpotCacheUsd(),
-            cotacaoFxRepo: fxRepo ?? CriarFxRepoVazio(),
+            cotacaoResolver: fxRepo ?? CriarFxRepoVazio(),
             clock: CriarClock());
     }
 

@@ -24,7 +24,8 @@ public sealed class RefreshCotacaoMercadoCommandValidator : AbstractValidator<Re
 
 public sealed class RefreshCotacaoMercadoCommandHandler(
     ICotacaoRepository repo,
-    ICotacaoFxRepository fxRepo,
+    ICotacaoSpotCache spotCache,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock) : IRequestHandler<RefreshCotacaoMercadoCommand, CotacaoDto>
 {
     public async Task<CotacaoDto> Handle(RefreshCotacaoMercadoCommand cmd, CancellationToken cancellationToken)
@@ -35,15 +36,30 @@ public sealed class RefreshCotacaoMercadoCommandHandler(
         LocalDate hoje = clock.GetCurrentInstant()
             .InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
-        CotacaoFx novaFx = await fxRepo.GetMaisRecenteAsync(
-            Moeda.Usd,
-            TipoCotacao.PtaxD1,
-            hoje,
-            cancellationToken)
-            ?? throw new InvalidOperationException(
-                "PTAX atualizada não disponível. Cadastre a cotação USD/BRL antes de fazer o refresh.");
+        // Refresh usa a cotação de mercado MAIS RECENTE: spot intraday (Redis) se disponível;
+        // caso contrário, o fechamento PtaxD0 do dia corrente. Antes consultava PtaxD1 (D-1),
+        // mas o refresh manual quer o valor de mercado atual, não o de D-1.
+        decimal novoPtax;
+        Money? spot = await spotCache.GetSpotAsync(Moeda.Usd, cancellationToken);
+        if (spot is not null)
+        {
+            novoPtax = spot.Value.Valor;
+        }
+        else
+        {
+            CotacaoFx d0 = await cotacaoResolver.ResolverFxAsync(
+                Moeda.Usd,
+                TipoCotacao.PtaxD0,
+                hoje,
+                cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "Cotação USD/BRL atual não disponível (sem spot intraday nem fechamento PtaxD0 do dia). " +
+                    "Cadastre a cotação USD/BRL antes de fazer o refresh.");
 
-        cotacao.RefreshSnapshotMercado(novaFx.ValorVenda.Valor, clock);
+            novoPtax = d0.ValorVenda.Valor;
+        }
+
+        cotacao.RefreshSnapshotMercado(novoPtax, clock);
         await repo.SaveChangesAsync(cancellationToken);
 
         return CotacaoDto.From(cotacao);

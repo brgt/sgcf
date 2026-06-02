@@ -40,13 +40,13 @@ public sealed class SensibilidadeIndexadoresQueryTests
         IContratoRepository contratoRepo,
         IEventoCronogramaRepository eventoRepo,
         ICotacaoSpotCache spotCache,
-        ICotacaoFxRepository cotacaoFxRepo)
+        IResolveTipoCotacaoService cotacaoResolver)
     {
         return new GetSensibilidadeIndexadoresQueryHandler(
             contratoRepo,
             eventoRepo,
             spotCache,
-            cotacaoFxRepo,
+            cotacaoResolver,
             CriarClock());
     }
 
@@ -65,10 +65,10 @@ public sealed class SensibilidadeIndexadoresQueryTests
 
         IEventoCronogramaRepository eventoRepo = Substitute.For<IEventoCronogramaRepository>();
         ICotacaoSpotCache spotCache = Substitute.For<ICotacaoSpotCache>();
-        ICotacaoFxRepository cotacaoFxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
 
         GetSensibilidadeIndexadoresQueryHandler handler = CriarHandler(
-            contratoRepo, eventoRepo, spotCache, cotacaoFxRepo);
+            contratoRepo, eventoRepo, spotCache, cotacaoResolver);
 
         // Act
         EnvelopeResponse<SensibilidadeIndexadoresDto> resposta =
@@ -136,10 +136,10 @@ public sealed class SensibilidadeIndexadoresQueryTests
             .GetSpotAsync(Moeda.Usd, Arg.Any<CancellationToken>())
             .Returns(new Money(1m, Moeda.Brl));
 
-        ICotacaoFxRepository cotacaoFxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
 
         GetSensibilidadeIndexadoresQueryHandler handler = CriarHandler(
-            contratoRepo, eventoRepo, spotCache, cotacaoFxRepo);
+            contratoRepo, eventoRepo, spotCache, cotacaoResolver);
 
         // Act
         EnvelopeResponse<SensibilidadeIndexadoresDto> resposta =

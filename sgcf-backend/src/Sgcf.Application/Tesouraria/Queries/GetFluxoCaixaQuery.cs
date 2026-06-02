@@ -25,7 +25,7 @@ public sealed class GetFluxoCaixaQueryHandler(
     IEventoCronogramaRepository cronogramaRepo,
     IEventoFluxoCaixaRepository fluxoRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
     : IRequestHandler<GetFluxoCaixaQuery, EnvelopeResponse<IReadOnlyList<FluxoCaixaDiaDto>>>
 {
@@ -215,7 +215,7 @@ public sealed class GetFluxoCaixaQueryHandler(
             }
             else
             {
-                CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+                CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                     moeda, TipoCotacao.PtaxD1, dataRef, cancellationToken);
 
                 if (ptax is not null)

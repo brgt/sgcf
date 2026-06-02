@@ -30,7 +30,7 @@ public sealed class FluxoCaixaQueryTests
         IEventoCronogramaRepository? cronogramaRepo = null,
         IEventoFluxoCaixaRepository? fluxoRepo = null,
         ICotacaoSpotCache? spotCache = null,
-        ICotacaoFxRepository? cotacaoFxRepo = null)
+        IResolveTipoCotacaoService? cotacaoResolver = null)
     {
         // Cria substitutes com retornos vazios somente quando não fornecidos pelo chamador.
         if (cronogramaRepo is null)
@@ -52,9 +52,9 @@ public sealed class FluxoCaixaQueryTests
         }
 
         spotCache ??= Substitute.For<ICotacaoSpotCache>();
-        cotacaoFxRepo ??= Substitute.For<ICotacaoFxRepository>();
+        cotacaoResolver ??= Substitute.For<IResolveTipoCotacaoService>();
 
-        return new GetFluxoCaixaQueryHandler(cronogramaRepo, fluxoRepo, spotCache, cotacaoFxRepo, clock);
+        return new GetFluxoCaixaQueryHandler(cronogramaRepo, fluxoRepo, spotCache, cotacaoResolver, clock);
     }
 
     [Fact]
