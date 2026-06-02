@@ -72,7 +72,7 @@ internal sealed partial class SnapshotMensalJob(
 
         IContratoRepository contratoRepo = sp.GetRequiredService<IContratoRepository>();
         IEventoCronogramaRepository cronogramaRepo = sp.GetRequiredService<IEventoCronogramaRepository>();
-        ICotacaoFxRepository cotacaoRepo = sp.GetRequiredService<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = sp.GetRequiredService<IResolveTipoCotacaoService>();
         ISnapshotMensalPosicaoRepository snapshotRepo = sp.GetRequiredService<ISnapshotMensalPosicaoRepository>();
 
         LocalDate hoje = clock.GetCurrentInstant().InZone(FusoHorarioBrasilia).Date;
@@ -99,14 +99,14 @@ internal sealed partial class SnapshotMensalJob(
 
         decimal saldoPrincipalBrl = await ConverterParaBrlAsync(
             valoresPrincipais.Select(v => (v.ValorPrincipal, v.Moeda)),
-            hoje, cotacaoRepo, cancellationToken);
+            hoje, cotacaoResolver, cancellationToken);
 
         IReadOnlyList<(decimal Valor, Moeda Moeda)> valoresPendentes =
             await cronogramaRepo.ListValoresPendentesAsync(cancellationToken);
 
         decimal totalParcelasAbertasBrl = await ConverterParaBrlAsync(
             valoresPendentes.Select(v => (v.Valor, v.Moeda)),
-            hoje, cotacaoRepo, cancellationToken);
+            hoje, cotacaoResolver, cancellationToken);
 
         SnapshotMensalPosicao snap = SnapshotMensalPosicao.Criar(
             hoje.Year,
@@ -132,7 +132,7 @@ internal sealed partial class SnapshotMensalJob(
     private async Task<decimal> ConverterParaBrlAsync(
         IEnumerable<(decimal Valor, Moeda Moeda)> itens,
         LocalDate hoje,
-        ICotacaoFxRepository cotacaoRepo,
+        IResolveTipoCotacaoService cotacaoResolver,
         CancellationToken cancellationToken)
     {
         decimal totalBrl = 0m;
@@ -150,7 +150,7 @@ internal sealed partial class SnapshotMensalJob(
 
             if (!taxaCache.TryGetValue(moeda, out decimal? taxa))
             {
-                CotacaoFx? ptax = await cotacaoRepo.GetMaisRecenteAsync(moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
+                CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
                 taxa = ptax is not null
                     ? Math.Round((ptax.ValorCompra.Valor + ptax.ValorVenda.Valor) / 2m, 6, MidpointRounding.AwayFromZero)
                     : (decimal?)null;

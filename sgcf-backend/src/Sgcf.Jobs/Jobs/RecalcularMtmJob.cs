@@ -76,7 +76,7 @@ internal sealed partial class RecalcularMtmJob(
         IServiceProvider sp = scope.ServiceProvider;
         IHedgeRepository hedgeRepo = sp.GetRequiredService<IHedgeRepository>();
         ICotacaoSpotCache spotCache = sp.GetRequiredService<ICotacaoSpotCache>();
-        ICotacaoFxRepository cotacaoRepo = sp.GetRequiredService<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = sp.GetRequiredService<IResolveTipoCotacaoService>();
         LocalDate hoje = agora.InZone(FusoBrasilia).Date;
 
         IReadOnlyList<InstrumentoHedge> hedges = await hedgeRepo.ListAtivosAsync(cancellationToken);
@@ -93,7 +93,7 @@ internal sealed partial class RecalcularMtmJob(
 
             try
             {
-                await ProcessarHedgeAsync(hedge, agora, hoje, hedgeRepo, spotCache, cotacaoRepo, cancellationToken);
+                await ProcessarHedgeAsync(hedge, agora, hoje, hedgeRepo, spotCache, cotacaoResolver, cancellationToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -108,11 +108,11 @@ internal sealed partial class RecalcularMtmJob(
         LocalDate hoje,
         IHedgeRepository hedgeRepo,
         ICotacaoSpotCache spotCache,
-        ICotacaoFxRepository cotacaoRepo,
+        IResolveTipoCotacaoService cotacaoResolver,
         CancellationToken cancellationToken)
     {
         (decimal spotValor, string tipoCotacao)? cotacao =
-            await ResolverCotacaoAsync(hedge, hoje, spotCache, cotacaoRepo, cancellationToken);
+            await ResolverCotacaoAsync(hedge, hoje, spotCache, cotacaoResolver, cancellationToken);
 
         if (cotacao is null)
         {
@@ -139,7 +139,7 @@ internal sealed partial class RecalcularMtmJob(
         InstrumentoHedge hedge,
         LocalDate hoje,
         ICotacaoSpotCache spotCache,
-        ICotacaoFxRepository cotacaoRepo,
+        IResolveTipoCotacaoService cotacaoResolver,
         CancellationToken cancellationToken)
     {
         // Primary: Redis intraday spot cache
@@ -152,7 +152,7 @@ internal sealed partial class RecalcularMtmJob(
         // Fallback: last known PTAX D-1 from the database (BCB API may be unavailable)
         LogUsandoFallbackPtax(logger, hedge.MoedaBase.ToString());
 
-        CotacaoFx? ptax = await cotacaoRepo.GetMaisRecenteAsync(
+        CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
             hedge.MoedaBase, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
         if (ptax is not null)
