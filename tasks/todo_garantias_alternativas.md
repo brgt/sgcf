@@ -27,14 +27,17 @@
 - [x] **RV-GA confirmada = Opção A (normalização por fração)**. Alvos ≤100% sobre o valor contratado (teto (0,100] mantido); enforcement pontual na conversão; over-coverage ao longo do tempo é estado válido (cap em 1,0 + indicadores tolerantes). Ver SPEC §2.2.
 
 ## Fase 2 — Operacionalização
-- [ ] **T5** `CalculadorValorGarantiaExigida` trata alvo de grupo (RF-09) — unit
-- [ ] **T6** `AvaliarCoberturaGrupo` + exceção de grupo (SPEC §4.4) — unit (AC-1..AC-7 fn)
-- [ ] **T7** Enforcement e2e em `ConverterEmContrato` (Testcontainers) — integration (AC-1..AC-7)
+- [x] **T5** `CalculadorValorGarantiaExigida` trata grupo = `min(alvo)` das alternativas (RF-09) ✓ — +4 unit (agent paralelo)
+- [x] **T6** `AvaliadorCoberturaGarantia` (classe pura) — fração `min(coberto/alvo,1.0)` Σ≥1.0; lacuna de grupo em `LacunaGarantia` (campos aditivos); `AvaliarCobertura` delega ✓ — 8 unit AC-1..AC-6 (agent paralelo)
+- [x] **T7** Enforcement e2e em `ConverterEmContrato` + `GlobalExceptionHandler` expõe campos de grupo no 409 ✓ — 2 testes HTTP (bloqueio 0,9 / liberação 1,0); legado EH-01..03 inalterado
 
 ### ✅ Checkpoint Fase 2
-- [ ] Conversão respeita grupos OU ponta a ponta
-- [ ] Sem regressão em políticas legadas (AC-7)
+- [x] Conversão respeita grupos OU ponta a ponta (409 com lacuna de grupo / 201)
+- [x] Sem regressão em políticas legadas (EH-01..03 + AvaliadorCobertura regressão verdes)
+- [x] `dotnet test --filter "Category!=Slow"` verde: Application 473, Domain 763
 - [ ] Revisado com o humano
+
+> Execução: T5 e T6 por **2 agents `dotnet-clean-architect` em paralelo** (worktrees isolados); integrados e re-verificados na branch; T7 (e2e) feito na sequência.
 
 ## Fase 3 — Exposição & Regressão
 - [ ] **T8** `IndicadoresGarantiaDto` reflete grupos sem dupla contagem (RF-14)
