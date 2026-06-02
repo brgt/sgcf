@@ -225,4 +225,76 @@ public sealed class CotacaoResolverServiceTests
         resultado!.ValorMidRate.Valor.Should().Be(5.872m);
         resultado.ValorMidRate.Moeda.Should().Be(Moeda.Brl);
     }
+
+    // ── ResolverFxAsync: tradução de armazenamento PtaxD1 → PtaxD0(D-1) ────────
+
+    [Fact]
+    public async Task ResolverFxAsync_PtaxD1_TraduzParaPtaxD0NoDiaAnterior()
+    {
+        IParametroCotacaoRepository parametroRepo = Substitute.For<IParametroCotacaoRepository>();
+        ICotacaoFxRepository cotacaoRepo = Substitute.For<ICotacaoFxRepository>();
+        ICotacaoSpotCache spotCache = Substitute.For<ICotacaoSpotCache>();
+        IClock clock = CriarClock(new LocalDate(2026, 6, 2));
+
+        LocalDate dataReferencia = new(2026, 6, 2);
+        LocalDate dataEsperada = new(2026, 6, 1); // D-1
+
+        CotacaoFx fechamento = CriarCotacaoFx(Moeda.Usd, TipoCotacao.PtaxD0, 5.0351m, 5.0357m);
+        cotacaoRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD0, dataEsperada, Arg.Any<CancellationToken>())
+            .Returns(fechamento);
+
+        CotacaoResolverService sut = new(parametroRepo, cotacaoRepo, spotCache, clock);
+
+        CotacaoFx? resultado = await sut.ResolverFxAsync(
+            Moeda.Usd, TipoCotacao.PtaxD1, dataReferencia, CancellationToken.None);
+
+        resultado.Should().BeSameAs(fechamento);
+        await cotacaoRepo.Received(1).GetMaisRecenteAsync(
+            Moeda.Usd, TipoCotacao.PtaxD0, dataEsperada, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResolverFxAsync_TipoNaoPtaxD1_ConsultaTipoEDataExatos()
+    {
+        IParametroCotacaoRepository parametroRepo = Substitute.For<IParametroCotacaoRepository>();
+        ICotacaoFxRepository cotacaoRepo = Substitute.For<ICotacaoFxRepository>();
+        ICotacaoSpotCache spotCache = Substitute.For<ICotacaoSpotCache>();
+        IClock clock = CriarClock(new LocalDate(2026, 6, 2));
+
+        LocalDate dataReferencia = new(2026, 6, 1);
+
+        CotacaoFx fechamento = CriarCotacaoFx(Moeda.Eur, TipoCotacao.PtaxD0, 1.0810m, 1.0820m);
+        cotacaoRepo.GetMaisRecenteAsync(Moeda.Eur, TipoCotacao.PtaxD0, dataReferencia, Arg.Any<CancellationToken>())
+            .Returns(fechamento);
+
+        CotacaoResolverService sut = new(parametroRepo, cotacaoRepo, spotCache, clock);
+
+        CotacaoFx? resultado = await sut.ResolverFxAsync(
+            Moeda.Eur, TipoCotacao.PtaxD0, dataReferencia, CancellationToken.None);
+
+        resultado.Should().BeSameAs(fechamento);
+        // Sem deslocamento de data para tipos diferentes de PtaxD1.
+        await cotacaoRepo.Received(1).GetMaisRecenteAsync(
+            Moeda.Eur, TipoCotacao.PtaxD0, dataReferencia, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task ResolverFxAsync_SemCotacao_RetornaNull()
+    {
+        IParametroCotacaoRepository parametroRepo = Substitute.For<IParametroCotacaoRepository>();
+        ICotacaoFxRepository cotacaoRepo = Substitute.For<ICotacaoFxRepository>();
+        ICotacaoSpotCache spotCache = Substitute.For<ICotacaoSpotCache>();
+        IClock clock = CriarClock(new LocalDate(2026, 6, 2));
+
+        cotacaoRepo.GetMaisRecenteAsync(
+            Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns((CotacaoFx?)null);
+
+        CotacaoResolverService sut = new(parametroRepo, cotacaoRepo, spotCache, clock);
+
+        CotacaoFx? resultado = await sut.ResolverFxAsync(
+            Moeda.Usd, TipoCotacao.PtaxD1, new LocalDate(2026, 6, 2), CancellationToken.None);
+
+        resultado.Should().BeNull();
+    }
 }
