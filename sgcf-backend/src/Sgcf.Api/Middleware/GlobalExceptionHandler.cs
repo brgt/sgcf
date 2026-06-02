@@ -79,6 +79,11 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
                 obrigatoria = l.Obrigatoria,
                 valorEsperadoBrl = l.ValorEsperadoBrl,
                 valorCobertoBrl = l.ValorCobertoBrl,
+                // Garantias alternativas (grupos "OU", RF-10): null para lacunas de item.
+                grupoAlternativaId = l.GrupoAlternativaId,
+                grupoRotulo = l.GrupoRotulo,
+                alternativasAceitas = l.AlternativasAceitas,
+                fracaoCoberta = l.FracaoCoberta,
             }).ToArray();
 
             await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
