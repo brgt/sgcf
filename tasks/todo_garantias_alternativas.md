@@ -23,8 +23,8 @@
 - **Dois `__EFMigrationsHistory` (public vs sgcf):** o DB dev tem o histórico real em `public`, mas o DbContext tem `HasDefaultSchema("sgcf")` sem override do history → `dotnet ef database update` via CLI mira `sgcf` (vazio) e não aplica no DB dev. Testes usam `public` (ok). **Não corrigido** (fora do escopo; recomenda configurar `MigrationsHistoryTable(..., "public")` no DbContext). É a raiz do "dois diretórios de migrations".
 - **Flaky:** banco POST 500 intermitente sob carga paralela de Testcontainers (`CotacoesFluxoTests` falhou 1× no full-run, passou isolado). Pré-existente.
 
-## ⛔ GATE
-- [ ] **RV-GA confirmada** (regra de fração default ou Alternativa B) — bloqueia Fase 2
+## ✅ GATE (liberado 02/jun/2026)
+- [x] **RV-GA confirmada = Opção A (normalização por fração)**. Alvos ≤100% sobre o valor contratado (teto (0,100] mantido); enforcement pontual na conversão; over-coverage ao longo do tempo é estado válido (cap em 1,0 + indicadores tolerantes). Ver SPEC §2.2.
 
 ## Fase 2 — Operacionalização
 - [ ] **T5** `CalculadorValorGarantiaExigida` trata alvo de grupo (RF-09) — unit

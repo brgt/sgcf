@@ -66,20 +66,34 @@ Tesouraria (cadastro de políticas de limite e conversão de cotações), Gerent
 | D2 | Valor exigido | **Por alternativa** — cada item mantém seu `PercentualSobreLimite`/`ValorFixoBrl` |
 | D3 | Obrigatoriedade | **Grupo sempre obrigatório** — satisfazer o grupo é condição de liberação |
 | D4 | Escopo desta entrega | **Completo** — enforcement + cálculo em cotação + exposição API/painel |
+| RV-GA | Regra de combinação do grupo | **CONFIRMADA: Opção A — normalização por fração** (sessão de 02/jun/2026) |
 
-### 2.2 Pendência que requer validação de negócio (BLOQUEANTE para implementação)
+### 2.2 RV-GA — Regra de combinação (CONFIRMADA: Opção A — fração)
 
-> **RV-GA — Regra de combinação quando as alternativas têm valores exigidos diferentes.**
+> **Decisão (02/jun/2026): normalização por fração.** Cada garantia do contrato conta como
+> uma fração do alvo da **sua própria** alternativa: `fração_A = min(coberto_A / alvo_A, 1.0)`.
+> O grupo está coberto quando a **soma das frações ≥ 1,0**. O `min(.,1.0)` por alternativa
+> impede que excesso de uma "transborde" para outra. Escolhida por ser economicamente correta:
+> respeita os deságios que o próprio banco define ao exigir alvos diferentes por tipo de garantia.
 >
-> D1 (combinável) + D2 (valor por alternativa) criam uma ambiguidade: se CDB exige R$ 100k e Recebíveis exige R$ 120k, e ambas podem ser combinadas, **qual é o alvo do grupo**?
+> Exemplo: CDB alvo 100% e Recebíveis alvo 120% (do valor contratado). Contrato com 60k de CDB
+> (0,60) + 48k de Recebíveis (0,40) = 1,00 → **coberto**.
 >
-> **Regra proposta (default): normalização por fração.** Cada garantia declarada no contrato conta como uma fração do alvo da **sua própria** alternativa. O grupo está coberto quando a **soma das frações ≥ 1,0**.
+> **Esclarecimentos de negócio (sessão de 02/jun/2026):**
+> - **Base do alvo:** o alvo de cada alternativa é um **percentual sobre o valor contratado/financiado**,
+>   travado no momento da conversão (consistente com o snapshot S34). Em casos reais os alvos são
+>   **≤ 100%** (ex.: 4131 com 30% em boletos), então `PercentualSobreLimite` **mantém o intervalo (0,100]**
+>   por ora. Sobre-colateralização *exigida* (>100%) fica fora desta entrega; relaxar o teto se um
+>   banco realmente exigir.
+> - **Enforcement da conversão é pontual:** avaliado uma vez em `ConverterEmContrato`, contra o valor
+>   financiado naquele instante. Soma das frações ≥ 1,0 libera; excesso é permitido.
+> - **Over-coverage ao longo do tempo é estado válido:** conforme o contrato amortiza, a garantia mantida
+>   pode cobrir mais que o saldo (ex.: quitar 50% da 4131 e manter os boletos por comodidade). Isso
+>   **não é erro** — o `min(fração,1.0)` absorve o excesso no enforcement, e os **indicadores (RF-14)**
+>   devem exibir cobertura possivelmente >100% **sem sinalizar como problema**.
 >
-> Exemplo: CDB exige R$ 100k, Recebíveis exige R$ 120k. Contrato traz R$ 60k de CDB (60k/100k = 0,60) + R$ 48k de Recebíveis (48k/120k = 0,40). Soma = 1,00 → **coberto**.
->
-> **Alternativa B (mais simples):** alvo do grupo = **menor** valor exigido entre as alternativas (a forma mais barata de satisfazer o banco); cobertura = soma dos valores BRL das garantias dos tipos do grupo ≥ alvo.
->
-> **Ação:** confirmar RV-GA antes de iniciar a implementação. O restante deste spec assume a regra de fração; uma mudança aqui altera apenas o algoritmo de `AvaliarCoberturaGrupo` e os casos de teste correspondentes.
+> **Alternativa B (descartada):** alvo do grupo = menor valor exigido entre alternativas. Mais simples,
+> mas sub-colateraliza ao tratar R$1 de qualquer tipo como equivalente, ignorando os deságios.
 
 ---
 
