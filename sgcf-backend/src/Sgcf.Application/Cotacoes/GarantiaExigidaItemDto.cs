@@ -15,7 +15,9 @@ public sealed record GarantiaExigidaItemDto(
     bool Obrigatoria,
     string? Observacoes,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    Guid? GrupoAlternativaId = null,
+    string? GrupoRotulo = null)
 {
     /// <summary>Constrói o DTO a partir da entidade de domínio.</summary>
     public static GarantiaExigidaItemDto From(GarantiaExigidaItem g) => new(
@@ -26,5 +28,7 @@ public sealed record GarantiaExigidaItemDto(
         g.Obrigatoria,
         g.Observacoes,
         g.CreatedAt.ToDateTimeOffset(),
-        g.UpdatedAt.ToDateTimeOffset());
+        g.UpdatedAt.ToDateTimeOffset(),
+        g.GrupoAlternativaId,
+        g.GrupoRotulo);
 }

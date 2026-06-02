@@ -340,4 +340,111 @@ public sealed class ConverterEmContratoEnforcementHttpTests(CotacoesApiFixture f
         lacunaAval.GetProperty("valorCobertoBrl").ValueKind.Should().Be(expectedKind,
             "Aval puro sem cobertura — valorCobertoBrl deve ser null");
     }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // EH-GRP-01: grupo "OU" com fração combinada < 1,0 → 409 com lacuna de grupo
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Garantias Alternativas (RV-GA): banco exige "CdbCativo 100% OU BoletoBancario 100%"
+    /// (grupo). Principal = 200k USD × 5,20 = 1.040.000 BRL → alvo de cada alternativa 1.040.000.
+    /// Conversão declarando 520k Cdb (0,5) + 416k Boleto (0,4) = fração 0,9 &lt; 1,0 →
+    /// 409 com UMA lacuna de grupo (grupoAlternativaId, alternativasAceitas, fracaoCoberta 0,9).
+    /// </summary>
+    [Fact]
+    public async Task Converter_GrupoOuFracaoInsuficiente_Retorna409ComLacunaDeGrupo()
+    {
+        using HttpClient client = fixture.CreateAuthenticatedClient();
+
+        Guid bancoId = await CriarBancoAsync(client);
+        await SeedParametrosMercadoAsync(client, bancoId);
+
+        string grupo = Guid.NewGuid().ToString();
+        await CriarLimiteBancoAsync(client, bancoId,
+        [
+            new { tipo = "CdbCativo", percentualSobreLimite = 100m, grupoAlternativaId = grupo, grupoRotulo = "Colateral FINIMP" },
+            new { tipo = "BoletoBancario", percentualSobreLimite = 100m, grupoAlternativaId = grupo, grupoRotulo = "Colateral FINIMP" }
+        ]);
+
+        Guid cotacaoId = await CriarCotacaoProntaParaConversaoAsync(client, bancoId);
+
+        // 520k/1.04M = 0,5 ; 416k/1.04M = 0,4 ; soma = 0,9 < 1,0 → bloqueado.
+        HttpResponseMessage convertRes = await client.PostAsJsonAsync(
+            $"/api/v1/cotacoes/{cotacaoId}/converter-em-contrato",
+            new
+            {
+                cotacaoId,
+                numeroExternoContrato = "GRP-01",
+                dataContratacao = "2026-05-20",
+                dataVencimento = "2027-05-20",
+                taxaAa = 6.0m,
+                garantiasContrato = new[]
+                {
+                    new { tipo = "CdbCativo", valorBrl = 520_000m, dataConstituicao = "2026-05-20" },
+                    new { tipo = "BoletoBancario", valorBrl = 416_000m, dataConstituicao = "2026-05-20" }
+                }
+            });
+
+        convertRes.StatusCode.Should().Be(HttpStatusCode.Conflict,
+            $"fração de grupo < 1,0 deve bloquear. Body: {await convertRes.Content.ReadAsStringAsync()}");
+
+        JsonElement body = JsonSerializer.Deserialize<JsonElement>(
+            await convertRes.Content.ReadAsStringAsync(), JsonOpts);
+        JsonElement lacunas = body.GetProperty("lacunas");
+        lacunas.GetArrayLength().Should().Be(1, "uma única lacuna por grupo não coberto");
+
+        JsonElement lacuna = lacunas[0];
+        lacuna.GetProperty("grupoAlternativaId").GetGuid().Should().Be(Guid.Parse(grupo));
+        lacuna.GetProperty("grupoRotulo").GetString().Should().Be("Colateral FINIMP");
+        lacuna.GetProperty("fracaoCoberta").GetDecimal().Should().Be(0.9m);
+        lacuna.GetProperty("alternativasAceitas").EnumerateArray()
+            .Select(a => a.GetString())
+            .Should().BeEquivalentTo(["CdbCativo", "BoletoBancario"]);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // EH-GRP-02: grupo "OU" coberto por combinação (Σ fração ≥ 1,0) → 201
+    // ──────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Mesmo grupo "CdbCativo 100% OU BoletoBancario 100%". Conversão declarando
+    /// 624k Cdb (0,6) + 416k Boleto (0,4) = 1,0 → liberada (201 Created).
+    /// </summary>
+    [Fact]
+    public async Task Converter_GrupoOuCobertoPorCombinacao_Retorna201()
+    {
+        using HttpClient client = fixture.CreateAuthenticatedClient();
+
+        Guid bancoId = await CriarBancoAsync(client);
+        await SeedParametrosMercadoAsync(client, bancoId);
+
+        string grupo = Guid.NewGuid().ToString();
+        await CriarLimiteBancoAsync(client, bancoId,
+        [
+            new { tipo = "CdbCativo", percentualSobreLimite = 100m, grupoAlternativaId = grupo, grupoRotulo = "Colateral FINIMP" },
+            new { tipo = "BoletoBancario", percentualSobreLimite = 100m, grupoAlternativaId = grupo, grupoRotulo = "Colateral FINIMP" }
+        ]);
+
+        Guid cotacaoId = await CriarCotacaoProntaParaConversaoAsync(client, bancoId);
+
+        // 624k/1.04M = 0,6 ; 416k/1.04M = 0,4 ; soma = 1,0 → liberado.
+        HttpResponseMessage convertRes = await client.PostAsJsonAsync(
+            $"/api/v1/cotacoes/{cotacaoId}/converter-em-contrato",
+            new
+            {
+                cotacaoId,
+                numeroExternoContrato = "GRP-02",
+                dataContratacao = "2026-05-20",
+                dataVencimento = "2027-05-20",
+                taxaAa = 6.0m,
+                garantiasContrato = new[]
+                {
+                    new { tipo = "CdbCativo", valorBrl = 624_000m, dataConstituicao = "2026-05-20" },
+                    new { tipo = "BoletoBancario", valorBrl = 416_000m, dataConstituicao = "2026-05-20" }
+                }
+            });
+
+        convertRes.StatusCode.Should().Be(HttpStatusCode.Created,
+            $"combinação cobrindo o grupo deve liberar. Body: {await convertRes.Content.ReadAsStringAsync()}");
+    }
 }

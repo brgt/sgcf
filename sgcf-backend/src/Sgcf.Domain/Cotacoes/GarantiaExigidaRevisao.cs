@@ -108,7 +108,44 @@ public sealed class GarantiaExigidaRevisao : Entity, IAuditable, ITenantScoped
             revisao.AdicionarItemInterno(spec, momento);
         }
 
+        revisao.ValidarGrupos();
+
         return revisao;
+    }
+
+    /// <summary>
+    /// Valida as invariantes de grupos de alternativas "OU" no nível do agregado:
+    /// GA-02 (grupo com ≥ 2 itens) e GA-05 (rótulo consistente entre os itens do grupo).
+    /// GA-03 (tipos distintos no grupo) e GA-07 (um tipo em no máximo um grupo) são
+    /// consequências diretas de SR-06 (sem Tipo duplicado na revisão) e não exigem
+    /// verificação adicional. GA-06 (imutabilidade pós-encerramento) é coberta por SR-05.
+    /// </summary>
+    private void ValidarGrupos()
+    {
+        foreach (var grupo in _itens
+            .Where(i => i.GrupoAlternativaId.HasValue)
+            .GroupBy(i => i.GrupoAlternativaId!.Value))
+        {
+            // GA-02
+            if (grupo.Count() < 2)
+            {
+                throw new InvalidOperationException(
+                    $"Grupo de alternativas {grupo.Key} deve conter ao menos 2 itens (GA-02).");
+            }
+
+            // GA-05: no máximo um rótulo não-nulo distinto por grupo.
+            var rotulosDistintos = grupo
+                .Select(i => i.GrupoRotulo)
+                .Where(r => r is not null)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+
+            if (rotulosDistintos.Count > 1)
+            {
+                throw new InvalidOperationException(
+                    $"Grupo {grupo.Key} tem rótulos inconsistentes (GA-05): {string.Join(" | ", rotulosDistintos)}.");
+            }
+        }
     }
 
     /// <summary>
@@ -177,6 +214,8 @@ public sealed class GarantiaExigidaRevisao : Entity, IAuditable, ITenantScoped
             valorFixoBrl: spec.ValorFixoBrl,
             obrigatoria: spec.Obrigatoria,
             observacoes: spec.Observacoes,
-            momento: momento));
+            momento: momento,
+            grupoAlternativaId: spec.GrupoAlternativaId,
+            grupoRotulo: spec.GrupoRotulo));
     }
 }

@@ -71,6 +71,18 @@ internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguratio
             .HasColumnType("text")
             .IsRequired(false);
 
+        // Garantias alternativas (grupos "OU") — colunas aditivas nullable (S36).
+        builder.Property(g => g.GrupoAlternativaId)
+            .HasColumnName("grupo_alternativa_id")
+            .HasColumnType("uuid")
+            .IsRequired(false);
+
+        builder.Property(g => g.GrupoRotulo)
+            .HasColumnName("grupo_rotulo")
+            .HasColumnType("varchar(120)")
+            .HasMaxLength(GarantiaExigidaItem.MaxGrupoRotuloLength)
+            .IsRequired(false);
+
         builder.Property(g => g.CreatedAt)
             .HasColumnName("created_at")
             .HasColumnType("timestamptz")
@@ -87,6 +99,11 @@ internal sealed class GarantiaExigidaItemConfiguration : IEntityTypeConfiguratio
         builder.HasIndex(g => new { g.RevisaoId, g.Tipo })
             .IsUnique()
             .HasDatabaseName("ux_garantia_exigida_item_revisao_tipo");
+
+        // Índice parcial para avaliação de cobertura por grupo (apenas itens agrupados).
+        builder.HasIndex(g => new { g.RevisaoId, g.GrupoAlternativaId })
+            .HasDatabaseName("ix_garantia_exigida_item_revisao_grupo")
+            .HasFilter("grupo_alternativa_id IS NOT NULL");
 
         // Propriedade computada não persiste.
         builder.Ignore(g => g.ValorFixoBrl);

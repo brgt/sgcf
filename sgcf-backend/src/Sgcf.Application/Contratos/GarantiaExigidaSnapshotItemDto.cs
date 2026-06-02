@@ -17,9 +17,13 @@ namespace Sgcf.Application.Contratos;
 /// </param>
 /// <param name="Obrigatoria">Indica se a garantia é obrigatória (não-negociável).</param>
 /// <param name="Observacoes">Texto livre adicional — pode ser null.</param>
+/// <param name="GrupoAlternativaId">Grupo de alternativas "OU" do item (null = item independente).</param>
+/// <param name="GrupoRotulo">Rótulo do grupo (null quando sem grupo).</param>
 public sealed record GarantiaExigidaSnapshotItemDto(
     string Tipo,
     decimal? PercentualSobreLimite,
     decimal? ValorFixoBrl,
     bool Obrigatoria,
-    string? Observacoes);
+    string? Observacoes,
+    Guid? GrupoAlternativaId = null,
+    string? GrupoRotulo = null);

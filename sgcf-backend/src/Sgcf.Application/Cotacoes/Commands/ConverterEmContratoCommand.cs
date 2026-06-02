@@ -451,48 +451,8 @@ public sealed class ConverterEmContratoCommandHandler(
                     g => g.ValorBrl)
                 .ToDictionary(grp => grp.Key, grp => grp.Sum());
 
-        var lacunas = new List<LacunaGarantia>();
-
-        foreach (GarantiaExigidaItem item in itensObrigatorios)
-        {
-            bool ehAvalPuro = item.Tipo == TipoGarantia.Aval
-                && !item.PercentualSobreLimite.HasValue
-                && !item.ValorFixoBrl.HasValue;
-
-            if (ehAvalPuro)
-            {
-                // Aval sem parâmetros monetários: cobertura satisfeita se há ao menos 1 Aval declarado.
-                bool temAval = valorCobertoPorTipo.ContainsKey(TipoGarantia.Aval);
-                if (!temAval)
-                {
-                    lacunas.Add(new LacunaGarantia(
-                        Tipo: item.Tipo.ToString(),
-                        Obrigatoria: true,
-                        ValorEsperadoBrl: null,
-                        ValorCobertoBrl: null));
-                }
-                continue;
-            }
-
-            // Para itens com percentual ou valor fixo: usa CalculadorValorGarantiaExigida
-            // para calcular o valor esperado (mesma fórmula do preenchimento automático em cotações).
-            Money valorEsperado = CalculadorValorGarantiaExigida.Calcular(
-                [item],
-                valorPrincipalBrl);
-
-            decimal valorCoberto = valorCobertoPorTipo.GetValueOrDefault(item.Tipo, 0m);
-
-            if (valorCoberto < valorEsperado.Valor)
-            {
-                lacunas.Add(new LacunaGarantia(
-                    Tipo: item.Tipo.ToString(),
-                    Obrigatoria: true,
-                    ValorEsperadoBrl: valorEsperado.Valor,
-                    ValorCobertoBrl: valorCoberto));
-            }
-        }
-
-        return lacunas;
+        // Delega a avaliação (itens independentes + grupos "OU" por fração) ao avaliador puro.
+        return AvaliadorCoberturaGarantia.Avaliar(itensObrigatorios, valorCobertoPorTipo, valorPrincipalBrl);
     }
 
     private static async Task<string> GerarCodigoInternoContratoAsync(

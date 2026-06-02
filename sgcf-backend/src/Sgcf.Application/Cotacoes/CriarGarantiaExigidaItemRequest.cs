@@ -14,7 +14,11 @@ public sealed record CriarGarantiaExigidaItemRequest(
     decimal? PercentualSobreLimite = null,
     decimal? ValorFixoBrl = null,
     bool Obrigatoria = true,
-    string? Observacoes = null)
+    string? Observacoes = null,
+    /// <summary>Grupo de alternativas "OU" (opcional). Itens com o mesmo Id formam um grupo.</summary>
+    Guid? GrupoAlternativaId = null,
+    /// <summary>Rótulo opcional do grupo (≤ 120 chars).</summary>
+    string? GrupoRotulo = null)
 {
     /// <summary>
     /// Converte o request em <see cref="GarantiaExigidaItemSpec"/> para passar ao domínio.
@@ -35,6 +39,8 @@ public sealed record CriarGarantiaExigidaItemRequest(
             ? new Money(ValorFixoBrl.Value, Moeda.Brl)
             : null;
 
-        return new GarantiaExigidaItemSpec(tipo, PercentualSobreLimite, valorFixo, Obrigatoria, Observacoes);
+        return new GarantiaExigidaItemSpec(
+            tipo, PercentualSobreLimite, valorFixo, Obrigatoria, Observacoes,
+            GrupoAlternativaId, GrupoRotulo);
     }
 }

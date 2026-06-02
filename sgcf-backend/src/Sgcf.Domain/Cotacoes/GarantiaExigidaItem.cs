@@ -38,6 +38,19 @@ public sealed class GarantiaExigidaItem : Entity, IAuditable
     public bool Obrigatoria { get; private set; }
     public string? Observacoes { get; private set; }
 
+    /// <summary>
+    /// Identificador do grupo de alternativas "OU" a que este item pertence. Null = item
+    /// independente (comportamento legado, GA-01). Itens com o mesmo valor formam um grupo
+    /// cuja exigência é satisfeita por uma alternativa OU pela combinação (SPEC §3, GA-02/03/07).
+    /// </summary>
+    public Guid? GrupoAlternativaId { get; private set; }
+
+    /// <summary>Rótulo opcional do grupo (≤ 120 chars, GA-05). Ex.: "Colateral mínimo FINIMP".</summary>
+    public string? GrupoRotulo { get; private set; }
+
+    /// <summary>Tamanho máximo de <see cref="GrupoRotulo"/> (GA-05).</summary>
+    public const int MaxGrupoRotuloLength = 120;
+
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
 
@@ -55,7 +68,9 @@ public sealed class GarantiaExigidaItem : Entity, IAuditable
         Money? valorFixoBrl,
         bool obrigatoria,
         string? observacoes,
-        Instant momento)
+        Instant momento,
+        Guid? grupoAlternativaId = null,
+        string? grupoRotulo = null)
     {
         if (revisaoId == Guid.Empty)
         {
@@ -63,6 +78,7 @@ public sealed class GarantiaExigidaItem : Entity, IAuditable
         }
 
         ValidarCamposExclusivos(tipo, percentualSobreLimite, valorFixoBrl);
+        ValidarGrupo(grupoAlternativaId, grupoRotulo);
 
         return new GarantiaExigidaItem
         {
@@ -70,8 +86,12 @@ public sealed class GarantiaExigidaItem : Entity, IAuditable
             Tipo = tipo,
             PercentualSobreLimite = percentualSobreLimite,
             ValorFixoBrlDecimal = valorFixoBrl?.Valor,
-            Obrigatoria = obrigatoria,
+            // GA-04: item agrupado é sempre obrigatório; o flag por item não decide enforcement.
+            Obrigatoria = grupoAlternativaId.HasValue || obrigatoria,
             Observacoes = observacoes,
+            GrupoAlternativaId = grupoAlternativaId,
+            // GA-01: rótulo só faz sentido com grupo; sem grupo é normalizado para null.
+            GrupoRotulo = grupoAlternativaId.HasValue ? grupoRotulo : null,
             CreatedAt = momento,
             UpdatedAt = momento,
         };
@@ -88,24 +108,50 @@ public sealed class GarantiaExigidaItem : Entity, IAuditable
         Money? valorFixoBrl,
         bool obrigatoria,
         string? observacoes,
-        IClock clock)
+        IClock clock,
+        Guid? grupoAlternativaId = null,
+        string? grupoRotulo = null)
         => Criar(revisaoId, tipo, percentualSobreLimite, valorFixoBrl, obrigatoria, observacoes,
-            clock.GetCurrentInstant());
+            clock.GetCurrentInstant(), grupoAlternativaId, grupoRotulo);
 
     internal void Atualizar(
         decimal? percentualSobreLimite,
         Money? valorFixoBrl,
         bool obrigatoria,
         string? observacoes,
-        IClock clock)
+        IClock clock,
+        Guid? grupoAlternativaId = null,
+        string? grupoRotulo = null)
     {
         ValidarCamposExclusivos(Tipo, percentualSobreLimite, valorFixoBrl);
+        ValidarGrupo(grupoAlternativaId, grupoRotulo);
 
         PercentualSobreLimite = percentualSobreLimite;
         ValorFixoBrlDecimal = valorFixoBrl?.Valor;
-        Obrigatoria = obrigatoria;
+        Obrigatoria = grupoAlternativaId.HasValue || obrigatoria; // GA-04
         Observacoes = observacoes;
+        GrupoAlternativaId = grupoAlternativaId;
+        GrupoRotulo = grupoAlternativaId.HasValue ? grupoRotulo : null; // GA-01
         UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    private static void ValidarGrupo(Guid? grupoAlternativaId, string? grupoRotulo)
+    {
+        if (grupoAlternativaId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "GrupoAlternativaId não pode ser Guid.Empty; use null para item independente.",
+                nameof(grupoAlternativaId));
+        }
+
+        // GA-05 (parte item): comprimento do rótulo. A consistência entre itens do mesmo
+        // grupo é validada no agregado GarantiaExigidaRevisao.
+        if (grupoRotulo is not null && grupoRotulo.Length > MaxGrupoRotuloLength)
+        {
+            throw new ArgumentException(
+                $"GrupoRotulo deve ter no máximo {MaxGrupoRotuloLength} caracteres.",
+                nameof(grupoRotulo));
+        }
     }
 
     private static void ValidarCamposExclusivos(
