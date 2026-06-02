@@ -23,7 +23,7 @@ public sealed class GetSaldoPorBancoAtualQueryHandler(
     IContratoRepository contratoRepo,
     IBancoRepository bancoRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
     : IRequestHandler<GetSaldoPorBancoAtualQuery, SaldoPorBancoAtualDto>
 {
@@ -144,7 +144,7 @@ public sealed class GetSaldoPorBancoAtualQueryHandler(
                 continue;
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
             if (ptax is not null)

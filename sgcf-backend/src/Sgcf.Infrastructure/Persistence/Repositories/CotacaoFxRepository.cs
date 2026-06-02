@@ -25,6 +25,30 @@ public sealed class CotacaoFxRepository(SgcfDbContext context) : ICotacaoFxRepos
         }
     }
 
+    public async Task RegistrarOuAtualizarAsync(CotacaoFx cotacao, CancellationToken cancellationToken = default)
+    {
+        // Checagem alinhada à unique key (moeda_base, moeda_quote, momento, tipo).
+        CotacaoFx? existente = await context.CotacoesFx
+            .FirstOrDefaultAsync(
+                c => c.MoedaBase == cotacao.MoedaBase
+                  && c.MoedaQuote == cotacao.MoedaQuote
+                  && c.Momento == cotacao.Momento
+                  && c.Tipo == cotacao.Tipo,
+                cancellationToken);
+
+        if (existente is null)
+        {
+            context.CotacoesFx.Add(cotacao);
+        }
+        else
+        {
+            // Correção: atualiza valores in-place, preservando a chave e o Id.
+            existente.AtualizarValores(cotacao.ValorCompra, cotacao.ValorVenda, cotacao.Fonte);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     public Task<CotacaoFx?> GetMaisRecenteAsync(
         Moeda moeda,
         TipoCotacao tipo,

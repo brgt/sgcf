@@ -71,8 +71,8 @@ public sealed class BreakdownModalidadeTests(PainelDbFixture fixture)
         spotCache.GetSpotAsync(Arg.Any<Moeda>(), Arg.Any<CancellationToken>())
                  .Returns((Money?)null);
 
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
-        fxRepo.GetMaisRecenteAsync(Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(),
+        IResolveTipoCotacaoService fxRepo = Substitute.For<IResolveTipoCotacaoService>();
+        fxRepo.ResolverFxAsync(Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(),
                                    Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
               .Returns((CotacaoFx?)null);
 

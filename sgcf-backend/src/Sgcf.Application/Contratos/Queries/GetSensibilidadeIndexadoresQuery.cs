@@ -37,7 +37,7 @@ public sealed class GetSensibilidadeIndexadoresQueryHandler(
     IContratoRepository contratoRepo,
     IEventoCronogramaRepository eventoRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
     : IRequestHandler<GetSensibilidadeIndexadoresQuery, EnvelopeResponse<SensibilidadeIndexadoresDto>>
 {
@@ -194,7 +194,7 @@ public sealed class GetSensibilidadeIndexadoresQueryHandler(
                 continue;
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
             if (ptax is not null)

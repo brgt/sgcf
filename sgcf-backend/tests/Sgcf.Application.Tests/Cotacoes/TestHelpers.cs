@@ -61,7 +61,7 @@ internal static class TestHelpers
     {
         return CotacaoFx.Criar(
             Moeda.Usd,
-            TipoCotacao.PtaxD1,
+            TipoCotacao.PtaxD0,
             new Money(venda - 0.05m, Moeda.Brl),
             new Money(venda, Moeda.Brl),
             "BACEN",

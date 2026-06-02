@@ -47,13 +47,13 @@ public sealed class DividaToolsTests
     private static DividaTools CriarTools(
         IMediator mediator,
         ICotacaoSpotCache? spotCache = null,
-        ICotacaoFxRepository? cotacaoRepo = null,
+        IResolveTipoCotacaoService? cotacaoResolver = null,
         IClock? clock = null)
     {
         spotCache ??= Substitute.For<ICotacaoSpotCache>();
-        cotacaoRepo ??= Substitute.For<ICotacaoFxRepository>();
+        cotacaoResolver ??= Substitute.For<IResolveTipoCotacaoService>();
         clock ??= CriarClock(Instant.FromUtc(2026, 5, 12, 8, 0));
-        return new DividaTools(mediator, spotCache, cotacaoRepo, clock);
+        return new DividaTools(mediator, spotCache, cotacaoResolver, clock);
     }
 
     // ── GetPosicaoDivida ───────────────────────────────────────────────────
@@ -191,23 +191,23 @@ public sealed class DividaToolsTests
         spotCache.GetSpotAsync(Moeda.Usd, Arg.Any<CancellationToken>())
             .Returns((Money?)null);
 
-        ICotacaoFxRepository cotacaoRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         Instant momento = Instant.FromUtc(2026, 5, 11, 18, 0);
         CotacaoFx ptax = CotacaoFx.Criar(
             moedaBase: Moeda.Usd,
-            tipo: TipoCotacao.PtaxD1,
+            tipo: TipoCotacao.PtaxD0,
             valorCompra: new Money(5.08m, Moeda.Brl),
             valorVenda: new Money(5.12m, Moeda.Brl),
             fonte: "BCB",
             momento: momento);
-        cotacaoRepo.GetMaisRecenteAsync(
+        cotacaoResolver.ResolverFxAsync(
             Moeda.Usd, TipoCotacao.PtaxD1,
             Arg.Any<LocalDate>(),
             Arg.Any<CancellationToken>())
             .Returns(ptax);
 
         IClock clock = CriarClock(Instant.FromUtc(2026, 5, 12, 8, 0));
-        DividaTools tools = CriarTools(mediator, spotCache, cotacaoRepo, clock);
+        DividaTools tools = CriarTools(mediator, spotCache, cotacaoResolver, clock);
 
         // Act
         string resultado = await tools.GetCotacaoFxAsync("USD", CancellationToken.None);
@@ -229,13 +229,13 @@ public sealed class DividaToolsTests
         spotCache.GetSpotAsync(Arg.Any<Moeda>(), Arg.Any<CancellationToken>())
             .Returns((Money?)null);
 
-        ICotacaoFxRepository cotacaoRepo = Substitute.For<ICotacaoFxRepository>();
-        cotacaoRepo.GetMaisRecenteAsync(
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
+        cotacaoResolver.ResolverFxAsync(
             Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(),
             Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns((CotacaoFx?)null);
 
-        DividaTools tools = CriarTools(mediator, spotCache, cotacaoRepo);
+        DividaTools tools = CriarTools(mediator, spotCache, cotacaoResolver);
 
         // Act
         string resultado = await tools.GetCotacaoFxAsync("EUR", CancellationToken.None);

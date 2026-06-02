@@ -34,8 +34,8 @@ public sealed class GetCalendarioVencimentosQueryHandlerTests
         ICotacaoSpotCache spotCache = Substitute.For<ICotacaoSpotCache>();
         spotCache.GetSpotAsync(default, default).ReturnsForAnyArgs((Money?)null);
 
-        ICotacaoFxRepository cotacaoFxRepo = Substitute.For<ICotacaoFxRepository>();
-        cotacaoFxRepo.GetMaisRecenteAsync(default, default, default, default)
+        IResolveTipoCotacaoService cotacaoFxRepo = Substitute.For<IResolveTipoCotacaoService>();
+        cotacaoFxRepo.ResolverFxAsync(default, default, default, default)
                      .ReturnsForAnyArgs((CotacaoFx?)null);
 
         IClock clock = Substitute.For<IClock>();

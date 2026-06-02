@@ -36,10 +36,7 @@ internal sealed class CotacaoResolverService(
             }
         }
 
-        LocalDate dataConsulta = tipo == TipoCotacao.PtaxD1 ? dataRef.PlusDays(-1) : dataRef;
-        TipoCotacao tipoConsulta = tipo == TipoCotacao.PtaxD1 ? TipoCotacao.PtaxD0 : tipo;
-
-        CotacaoFx? cotacao = await cotacaoRepo.GetMaisRecenteAsync(moeda, tipoConsulta, dataConsulta, cancellationToken);
+        CotacaoFx? cotacao = await ResolverFxAsync(moeda, tipo, dataRef, cancellationToken);
         if (cotacao is null)
         {
             return null;
@@ -47,5 +44,19 @@ internal sealed class CotacaoResolverService(
 
         decimal midRate = Math.Round((cotacao.ValorCompra.Valor + cotacao.ValorVenda.Valor) / 2m, 6, MidpointRounding.AwayFromZero);
         return new ResultadoCotacao(new Money(midRate, Moeda.Brl), tipo, cotacao.Momento);
+    }
+
+    public Task<CotacaoFx?> ResolverFxAsync(
+        Moeda moeda,
+        TipoCotacao tipoLogico,
+        LocalDate dataReferencia,
+        CancellationToken cancellationToken = default)
+    {
+        // PtaxD1 é um tipo lógico: o fechamento de D-1. O ingestor grava apenas PtaxD0,
+        // então traduzimos a consulta para PtaxD0 no dia anterior à referência.
+        LocalDate dataConsulta = tipoLogico == TipoCotacao.PtaxD1 ? dataReferencia.PlusDays(-1) : dataReferencia;
+        TipoCotacao tipoConsulta = tipoLogico == TipoCotacao.PtaxD1 ? TipoCotacao.PtaxD0 : tipoLogico;
+
+        return cotacaoRepo.GetMaisRecenteAsync(moeda, tipoConsulta, dataConsulta, cancellationToken);
     }
 }

@@ -15,7 +15,7 @@ namespace Sgcf.Mcp.Tools;
 public sealed class DividaTools(
     IMediator mediator,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
 {
     // "hoje" here is a BR calendar date (PTAX D-1 boundary, vencimento context).
@@ -91,7 +91,7 @@ public sealed class DividaTools(
         }
 
         LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
-        CotacaoFx? ptax = await cotacaoRepo.GetMaisRecenteAsync(moedaEnum, TipoCotacao.PtaxD1, hoje, cancellationToken);
+        CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(moedaEnum, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
         if (ptax is not null)
         {

@@ -25,7 +25,7 @@ public sealed class GetPosicaoCaixaQueryHandler(
     ISaldoCaixaRepository saldoRepo,
     IContaBancariaRepository contaRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
     : IRequestHandler<GetPosicaoCaixaQuery, EnvelopeResponse<PosicaoCaixaDto>>
 {
@@ -157,7 +157,7 @@ public sealed class GetPosicaoCaixaQueryHandler(
             }
             else
             {
-                CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+                CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                     moeda, TipoCotacao.PtaxD1, dataRef, cancellationToken);
 
                 if (ptax is not null)

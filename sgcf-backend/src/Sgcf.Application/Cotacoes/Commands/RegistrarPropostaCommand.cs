@@ -79,7 +79,7 @@ public sealed class RegistrarPropostaCommandValidator : AbstractValidator<Regist
 
 public sealed class RegistrarPropostaCommandHandler(
     ICotacaoRepository repo,
-    ICotacaoFxRepository fxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock,
     IContratoRepository? contratoRepo = null) : IRequestHandler<RegistrarPropostaCommand, PropostaDto>
 {
@@ -204,7 +204,7 @@ public sealed class RegistrarPropostaCommandHandler(
             .InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;
 
         // Para moedas não-USD/BRL: obter cross-rate explícito para uso no CET (SPEC §5.1 e aviso Onda 1)
-        decimal ptaxEfetiva = await ObterPtaxEfetivaAsync(moeda, cotacao, fxRepo, cancellationToken);
+        decimal ptaxEfetiva = await ObterPtaxEfetivaAsync(moeda, cotacao, cotacaoResolver, cancellationToken);
 
         // Cria proposta via método do agregado (construtor de Proposta é internal)
         Proposta proposta = cotacao.AdicionarProposta(
@@ -243,7 +243,7 @@ public sealed class RegistrarPropostaCommandHandler(
     internal static async Task<decimal> ObterPtaxEfetivaAsync(
         Moeda moeda,
         Cotacao cotacao,
-        ICotacaoFxRepository fxRepo,
+        IResolveTipoCotacaoService cotacaoResolver,
         CancellationToken cancellationToken)
     {
         if (moeda == Moeda.Brl)
@@ -260,10 +260,11 @@ public sealed class RegistrarPropostaCommandHandler(
         }
 
         // Cross-rate: obtém cotação moeda/USD mais recente e multiplica pela PTAX USD/BRL.
-        // DataPtaxReferencia é garantidamente não-null aqui (mesma razão — modalidade cambial).
-        CotacaoFx crossRate = await fxRepo.GetMaisRecenteAsync(
+        // DataPtaxReferencia já é a data do fechamento (D-1) travada na criação da cotação,
+        // então resolvemos PtaxD0 nessa data exata (sem novo deslocamento de D-1).
+        CotacaoFx crossRate = await cotacaoResolver.ResolverFxAsync(
             moeda,
-            TipoCotacao.PtaxD1,
+            TipoCotacao.PtaxD0,
             cotacao.DataPtaxReferencia!.Value,
             cancellationToken)
             ?? throw new InvalidOperationException(

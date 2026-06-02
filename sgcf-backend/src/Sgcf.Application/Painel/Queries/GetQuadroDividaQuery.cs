@@ -66,7 +66,7 @@ public sealed class GetQuadroDividaQueryHandler(
     IEventoCronogramaRepository cronogramaRepo,
     IBancoRepository bancoRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock,
     ICenarioSimulacaoRepository cenarioRepo,
     ICronogramaSimulacaoCache cronogramaCache,
@@ -480,7 +480,7 @@ public sealed class GetQuadroDividaQueryHandler(
                 continue;
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, hoje, ct);
 
             if (ptax is not null)

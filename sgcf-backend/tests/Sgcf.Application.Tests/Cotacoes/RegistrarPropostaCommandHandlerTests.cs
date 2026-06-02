@@ -38,12 +38,12 @@ public sealed class RegistrarPropostaCommandHandlerTests
         // Arrange
         Cotacao cotacao = TestHelpers.CriarCotacaoEmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = TestHelpers.CriarClock();
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoUsd(cotacao.Id, Guid.NewGuid());
 
         // Act
@@ -64,12 +64,12 @@ public sealed class RegistrarPropostaCommandHandlerTests
         // Arrange — verifica que CET > taxa nominal bruta (IOF e spread estão inclusos)
         Cotacao cotacao = TestHelpers.CriarCotacaoEmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = TestHelpers.CriarClock();
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoUsd(cotacao.Id, Guid.NewGuid());
 
         PropostaDto resultado = await handler.Handle(cmd, default);
@@ -84,7 +84,7 @@ public sealed class RegistrarPropostaCommandHandlerTests
         // Arrange — CNY não é USD nem BRL, exige cross-rate via fxRepo
         Cotacao cotacao = TestHelpers.CriarCotacaoEmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = TestHelpers.CriarClock();
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
@@ -92,17 +92,17 @@ public sealed class RegistrarPropostaCommandHandlerTests
         // Cross-rate CNY/USD: 1 CNY = 0.14 USD
         CotacaoFx cnyUsd = CotacaoFx.Criar(
             Moeda.Cny,
-            TipoCotacao.PtaxD1,
+            TipoCotacao.PtaxD0,
             new Money(0.13m, Moeda.Usd),
             new Money(0.14m, Moeda.Usd),
             "BACEN",
             TestHelpers.AgentInstant.Minus(NodaTime.Duration.FromHours(2)));
 
-        // DataPtaxReferencia é LocalDate? — FINIMP sempre tem valor não-null (invariante de domínio).
-        fxRepo.GetMaisRecenteAsync(Moeda.Cny, TipoCotacao.PtaxD1, cotacao.DataPtaxReferencia!.Value, default)
+        // DataPtaxReferencia é a data de fechamento já travada; resolvemos PtaxD0 nessa data exata.
+        cotacaoResolver.ResolverFxAsync(Moeda.Cny, TipoCotacao.PtaxD0, cotacao.DataPtaxReferencia!.Value, default)
             .Returns(cnyUsd);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = new(
             cotacao.Id, Guid.NewGuid(),
             MoedaOriginal: "Cny",
@@ -124,7 +124,7 @@ public sealed class RegistrarPropostaCommandHandlerTests
         PropostaDto resultado = await handler.Handle(cmd, default);
 
         // Assert — cross-rate foi consultado. DataPtaxReferencia é LocalDate? — FINIMP sempre tem valor.
-        await fxRepo.Received(1).GetMaisRecenteAsync(Moeda.Cny, TipoCotacao.PtaxD1, cotacao.DataPtaxReferencia!.Value, default);
+        await cotacaoResolver.Received(1).ResolverFxAsync(Moeda.Cny, TipoCotacao.PtaxD0, cotacao.DataPtaxReferencia!.Value, default);
         resultado.CetCalculadoAaPercentual.Should().NotBeNull();
         await repo.Received(1).SaveChangesAsync(default);
     }
@@ -135,14 +135,14 @@ public sealed class RegistrarPropostaCommandHandlerTests
         // Arrange
         Cotacao cotacao = TestHelpers.CriarCotacaoEmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = TestHelpers.CriarClock();
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
-        fxRepo.GetMaisRecenteAsync(Moeda.Cny, TipoCotacao.PtaxD1, Arg.Any<NodaTime.LocalDate>(), default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Cny, TipoCotacao.PtaxD0, Arg.Any<NodaTime.LocalDate>(), default)
             .Returns((CotacaoFx?)null);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = new(
             cotacao.Id, Guid.NewGuid(),
             MoedaOriginal: "Cny",

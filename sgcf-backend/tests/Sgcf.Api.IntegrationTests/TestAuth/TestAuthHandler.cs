@@ -35,6 +35,15 @@ public sealed class TestAuthHandler(
     /// </summary>
     public const string TenantIdHeader = "X-Test-Tenant-Id";
 
+    /// <summary>
+    /// Optional header to override the roles claimed by the test principal
+    /// (comma-separated). Falls back to <c>admin,tesouraria</c> when absent,
+    /// preserving backward compatibility with all existing tests.
+    /// </summary>
+    public const string RolesHeader = "X-Test-Roles";
+
+    private static readonly string[] DefaultRoles = ["admin", "tesouraria"];
+
     /// <inheritdoc/>
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
@@ -51,15 +60,21 @@ public sealed class TestAuthHandler(
         string tenantId = Request.Headers[TenantIdHeader].FirstOrDefault()
             ?? ProxysDevTenant.Id.ToString();
 
-        Claim[] claims =
+        // X-Test-Roles lets authorization tests impersonate non-admin principals.
+        // Header ABSENT → default roles (admin,tesouraria). Header PRESENT but empty/blank
+        // → zero roles (intentional: lets a test assert 403 for a role-less principal).
+        string[] roles = Request.Headers[RolesHeader].FirstOrDefault()
+                ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            ?? DefaultRoles;
+
+        List<Claim> claims =
         [
-            new Claim("sub",                                           sub),
-            new Claim(ClaimTypes.NameIdentifier,                       sub),
-            new Claim(ClaimTypes.Name,                                 "test-user"),
-            new Claim("tenant_id",                                     tenantId),
-            new Claim(ClaimTypes.Role,                                 "admin"),
-            new Claim(ClaimTypes.Role,                                 "tesouraria"),
+            new Claim("sub",                     sub),
+            new Claim(ClaimTypes.NameIdentifier, sub),
+            new Claim(ClaimTypes.Name,           "test-user"),
+            new Claim("tenant_id",               tenantId),
         ];
+        claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
         ClaimsIdentity identity  = new(claims, SchemeName);
         ClaimsPrincipal principal = new(identity);

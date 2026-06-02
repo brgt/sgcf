@@ -30,7 +30,7 @@ public sealed class GetInadimplenciaQueryHandler(
     IEventoCronogramaRepository cronogramaRepo,
     IBancoRepository bancoRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
     : IRequestHandler<GetInadimplenciaQuery, EnvelopeResponse<InadimplenciaDto>>
 {
@@ -183,7 +183,7 @@ public sealed class GetInadimplenciaQueryHandler(
                 continue;
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
             if (ptax is not null)

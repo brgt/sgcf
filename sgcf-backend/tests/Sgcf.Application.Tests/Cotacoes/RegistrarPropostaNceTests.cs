@@ -78,13 +78,13 @@ public sealed class RegistrarPropostaNceTests
     {
         Cotacao cotacao = CriarCotacaoNceEmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(AgentInstant);
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoNceBrl(
             cotacaoId: cotacao.Id,
             bancoId: Guid.NewGuid(),
@@ -105,13 +105,13 @@ public sealed class RegistrarPropostaNceTests
     {
         Cotacao cotacao = CriarCotacaoNceEmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(AgentInstant);
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoNceBrl(
             cotacaoId: cotacao.Id,
             bancoId: Guid.NewGuid(),
@@ -132,13 +132,13 @@ public sealed class RegistrarPropostaNceTests
     {
         Cotacao cotacao = CriarCotacaoNceEmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(AgentInstant);
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoNceBrl(
             cotacaoId: cotacao.Id,
             bancoId: Guid.NewGuid());
@@ -167,13 +167,13 @@ public sealed class RegistrarPropostaNceTests
     {
         Cotacao cotacao = CriarCotacaoNceEmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(AgentInstant);
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = new(
             cotacao.Id, Guid.NewGuid(),
             MoedaOriginal: "Brl",

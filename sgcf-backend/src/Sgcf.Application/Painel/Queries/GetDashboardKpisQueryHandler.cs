@@ -20,7 +20,7 @@ public sealed class GetDashboardKpisQueryHandler(
     IContratoRepository contratoRepo,
     IHedgeRepository hedgeRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IEbitdaMensalRepository ebitdaRepo,
     IClock clock)
     : IRequestHandler<GetDashboardKpisQuery, KpiDto>
@@ -300,7 +300,7 @@ public sealed class GetDashboardKpisQueryHandler(
                 }
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, dataReferencia, cancellationToken);
 
             if (ptax is not null)

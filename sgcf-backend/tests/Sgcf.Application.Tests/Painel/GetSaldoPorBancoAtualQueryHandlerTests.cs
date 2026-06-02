@@ -24,14 +24,14 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
         IContratoRepository contratoRepo,
         IBancoRepository? bancoRepo = null,
         ICotacaoSpotCache? spotCache = null,
-        ICotacaoFxRepository? cotacaoFxRepo = null)
+        IResolveTipoCotacaoService? cotacaoFxRepo = null)
     {
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(InstanteFixo);
 
         bancoRepo ??= Substitute.For<IBancoRepository>();
         spotCache ??= Substitute.For<ICotacaoSpotCache>();
-        cotacaoFxRepo ??= Substitute.For<ICotacaoFxRepository>();
+        cotacaoFxRepo ??= Substitute.For<IResolveTipoCotacaoService>();
 
         return new GetSaldoPorBancoAtualQueryHandler(
             contratoRepo,
@@ -97,7 +97,7 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
     private static CotacaoFx CriarPtaxUsd(decimal compra, decimal venda)
         => CotacaoFx.Criar(
             moedaBase: Moeda.Usd,
-            tipo: TipoCotacao.PtaxD1,
+            tipo: TipoCotacao.PtaxD0,
             valorCompra: new Money(compra, Moeda.Brl),
             valorVenda: new Money(venda, Moeda.Brl),
             fonte: "BCB",
@@ -140,7 +140,7 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
             new List<Contrato> { contrato }.AsReadOnly());
 
         ICotacaoSpotCache spotCache = Substitute.For<ICotacaoSpotCache>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService fxRepo = Substitute.For<IResolveTipoCotacaoService>();
 
         GetSaldoPorBancoAtualQueryHandler handler = CriarHandler(repo, bancoRepo, spotCache, fxRepo);
 
@@ -161,7 +161,7 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
 
         // Para BRL não deve consultar spot ou PTAX
         await spotCache.DidNotReceiveWithAnyArgs().GetSpotAsync(default, default);
-        await fxRepo.DidNotReceiveWithAnyArgs().GetMaisRecenteAsync(default, default, default, default);
+        await fxRepo.DidNotReceiveWithAnyArgs().ResolverFxAsync(default, default, default, default);
     }
 
     // ── Teste 3: contrato USD converte via PTAX quando spot ausente ────────────
@@ -186,8 +186,8 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
 
         // PTAX D-1: compra = 5,20 / venda = 5,22 → midrate = 5,21
         CotacaoFx ptax = CriarPtaxUsd(compra: 5.20m, venda: 5.22m);
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
-        fxRepo.GetMaisRecenteAsync(
+        IResolveTipoCotacaoService fxRepo = Substitute.For<IResolveTipoCotacaoService>();
+        fxRepo.ResolverFxAsync(
                   Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(),
                   Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
               .Returns(ptax);
@@ -333,7 +333,7 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
         spotCache.GetSpotAsync(Arg.Any<Moeda>(), Arg.Any<CancellationToken>())
                  .Returns(new Money(5.50m, Moeda.Brl));
 
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService fxRepo = Substitute.For<IResolveTipoCotacaoService>();
 
         GetSaldoPorBancoAtualQueryHandler handler = CriarHandler(repo, bancoRepo, spotCache, fxRepo);
 
@@ -347,6 +347,6 @@ public sealed class GetSaldoPorBancoAtualQueryHandlerTests
 
         // PTAX não deve ter sido consultada quando spot disponível
         await fxRepo.DidNotReceiveWithAnyArgs()
-                    .GetMaisRecenteAsync(default, default, default, default);
+                    .ResolverFxAsync(default, default, default, default);
     }
 }

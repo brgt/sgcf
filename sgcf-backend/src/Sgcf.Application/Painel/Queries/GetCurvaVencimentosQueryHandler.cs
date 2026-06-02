@@ -24,7 +24,7 @@ public sealed class GetCurvaVencimentosQueryHandler(
     IContratoRepository contratoRepo,
     IEventoCronogramaRepository cronogramaRepo,
     ICotacaoSpotCache spotCache,
-    ICotacaoFxRepository cotacaoFxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock)
     : IRequestHandler<GetCurvaVencimentosQuery, EnvelopeResponse<CurvaVencimentosDto>>
 {
@@ -207,7 +207,7 @@ public sealed class GetCurvaVencimentosQueryHandler(
                 continue;
             }
 
-            CotacaoFx? ptax = await cotacaoFxRepo.GetMaisRecenteAsync(
+            CotacaoFx? ptax = await cotacaoResolver.ResolverFxAsync(
                 moeda, TipoCotacao.PtaxD1, hoje, cancellationToken);
 
             if (ptax is not null)

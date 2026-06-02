@@ -69,16 +69,17 @@ public sealed class CotacoesApiFixture : IAsyncLifetime
         await ctx.Database.MigrateAsync();
         await TenantTestSeeder.SeedProxysAsync(Factory.Services);
 
-        // Seed CotacaoFx PTAX D-1 para dataAbertura 2026-05-16.
-        // CriarCotacaoCommand busca PTAX com dataMaxima = dataAbertura - 1 dia útil.
-        // Não existe endpoint HTTP para criar CotacaoFx — PtaxIngestor é o único produtor
-        // em produção. Em testes, semeamos diretamente via repositório.
-        // Momento 2026-05-15T23:00Z satisfaz GetMaisRecenteAsync(dataMaxima = 2026-05-15).
+        // Seed CotacaoFx PTAX D0 (fechamento) de 2026-05-15 — formato que o PtaxIngestor
+        // do BCB realmente grava. CriarCotacao resolve PtaxD1→PtaxD0(D-1): para abertura
+        // 2026-05-16 (R), busca o fechamento PtaxD0 de R-1 (2026-05-15).
+        // Não existe outro produtor de CotacaoFx em produção além do ingestor; em testes
+        // semeamos diretamente via repositório (formato PtaxD0, nunca PtaxD1).
+        // Momento 2026-05-15T23:00Z satisfaz GetMaisRecenteAsync(PtaxD0, dataMaxima = 2026-05-15).
         ICotacaoFxRepository cotacaoFxRepo =
             scope.ServiceProvider.GetRequiredService<ICotacaoFxRepository>();
         CotacaoFx ptax = CotacaoFx.Criar(
             Moeda.Usd,
-            TipoCotacao.PtaxD1,
+            TipoCotacao.PtaxD0,
             new Money(5.15m, Moeda.Brl),
             new Money(5.20m, Moeda.Brl),
             fonte: "BACEN-seed-e2e",

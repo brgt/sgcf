@@ -42,8 +42,8 @@ public sealed class DividaToolsTimezoneTests
         spotCache.GetSpotAsync(Moeda.Usd, Arg.Any<CancellationToken>())
             .Returns((Money?)null); // força fallback PTAX para exercitar a query com dataRef
 
-        ICotacaoFxRepository cotacaoRepo = Substitute.For<ICotacaoFxRepository>();
-        cotacaoRepo.GetMaisRecenteAsync(
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
+        cotacaoResolver.ResolverFxAsync(
                 Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(),
                 Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns((CotacaoFx?)null); // resultado não importa — verificamos a data passada
@@ -51,14 +51,14 @@ public sealed class DividaToolsTimezoneTests
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(InstandeViraNoiteBrt);
 
-        DividaTools sut = new(mediator, spotCache, cotacaoRepo, clock);
+        DividaTools sut = new(mediator, spotCache, cotacaoResolver, clock);
 
         // Act
         await sut.GetCotacaoFxAsync("USD", CancellationToken.None);
 
         // Assert — a dataRef passada ao repositório deve ser 2026-05-19 (BRT), não 2026-05-20 (UTC)
         LocalDate dataEsperada = InstandeViraNoiteBrt.InZone(FusoBrasilia).Date; // 2026-05-19
-        await cotacaoRepo.Received(1).GetMaisRecenteAsync(
+        await cotacaoResolver.Received(1).ResolverFxAsync(
             Moeda.Usd,
             TipoCotacao.PtaxD1,
             Arg.Is<LocalDate>(d => d == dataEsperada),
@@ -76,8 +76,8 @@ public sealed class DividaToolsTimezoneTests
         spotCache.GetSpotAsync(Moeda.Usd, Arg.Any<CancellationToken>())
             .Returns((Money?)null);
 
-        ICotacaoFxRepository cotacaoRepo = Substitute.For<ICotacaoFxRepository>();
-        cotacaoRepo.GetMaisRecenteAsync(
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
+        cotacaoResolver.ResolverFxAsync(
                 Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(),
                 Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns((CotacaoFx?)null);
@@ -85,14 +85,14 @@ public sealed class DividaToolsTimezoneTests
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(instante);
 
-        DividaTools sut = new(mediator, spotCache, cotacaoRepo, clock);
+        DividaTools sut = new(mediator, spotCache, cotacaoResolver, clock);
 
         // Act
         await sut.GetCotacaoFxAsync("USD", CancellationToken.None);
 
         // Assert — 10:00 BRT = 2026-05-19 (igual em UTC também)
         LocalDate dataEsperada = new LocalDate(2026, 5, 19);
-        await cotacaoRepo.Received(1).GetMaisRecenteAsync(
+        await cotacaoResolver.Received(1).ResolverFxAsync(
             Moeda.Usd,
             TipoCotacao.PtaxD1,
             Arg.Is<LocalDate>(d => d == dataEsperada),
