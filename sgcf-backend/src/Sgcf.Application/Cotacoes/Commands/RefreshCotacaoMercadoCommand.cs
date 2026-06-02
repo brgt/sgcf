@@ -39,6 +39,9 @@ public sealed class RefreshCotacaoMercadoCommandHandler(
         // Refresh usa a cotação de mercado MAIS RECENTE: spot intraday (Redis) se disponível;
         // caso contrário, o fechamento PtaxD0 do dia corrente. Antes consultava PtaxD1 (D-1),
         // mas o refresh manual quer o valor de mercado atual, não o de D-1.
+        // `PtaxUsadaUsdBrl` guarda a "taxa de mercado efetivamente usada", não estritamente a
+        // venda PTAX: o spot intraday é uma taxa única (sem spread compra/venda), então usamos
+        // seu valor direto; o fallback PtaxD0 usa a venda, mantendo a convenção de CriarCotacao.
         decimal novoPtax;
         Money? spot = await spotCache.GetSpotAsync(Moeda.Usd, cancellationToken);
         if (spot is not null)

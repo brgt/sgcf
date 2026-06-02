@@ -7,11 +7,12 @@ using Sgcf.Domain.Common;
 namespace Sgcf.Application.Cambio.Commands;
 
 /// <summary>
-/// Registra manualmente uma cotação cambial (PTAX). Uso administrativo / contingência
-/// quando a ingestão automática do BCB não está disponível. Grava preferencialmente
-/// <see cref="TipoCotacao.PtaxD0"/> (coerente com o ingestor); a leitura D-1 resolve a
-/// partir dele. Idempotente pela chave única (moeda_base, moeda_quote, momento, tipo).
-/// SPEC §4.2 (RF-06/07/08).
+/// Registra ou corrige manualmente uma cotação cambial (PTAX). Uso administrativo /
+/// contingência quando a ingestão automática do BCB não está disponível. Grava
+/// preferencialmente <see cref="TipoCotacao.PtaxD0"/> (coerente com o ingestor); a
+/// leitura D-1 resolve a partir dele. Re-enviar a mesma chave única
+/// (moeda_base, moeda_quote, momento, tipo) <b>atualiza</b> os valores (correção, RF-06),
+/// sem duplicar. SPEC §4.2 (RF-06/07/08).
 /// </summary>
 public sealed record RegistrarCotacaoFxCommand(
     string MoedaBase,
@@ -74,8 +75,9 @@ public sealed class RegistrarCotacaoFxCommandHandler(ICotacaoFxRepository repo)
             cmd.Fonte,
             momento);
 
-        // UpsertAsync é idempotente pela unique key (moeda_base, moeda_quote, momento, tipo).
-        await repo.UpsertAsync(cotacao, cancellationToken);
+        // Registra ou atualiza pela unique key (moeda_base, moeda_quote, momento, tipo):
+        // re-enviar a mesma chave corrige os valores (RF-06), sem duplicar.
+        await repo.RegistrarOuAtualizarAsync(cotacao, cancellationToken);
 
         return CotacaoFxDto.From(cotacao);
     }

@@ -61,6 +61,8 @@ public sealed class TestAuthHandler(
             ?? ProxysDevTenant.Id.ToString();
 
         // X-Test-Roles lets authorization tests impersonate non-admin principals.
+        // Header ABSENT → default roles (admin,tesouraria). Header PRESENT but empty/blank
+        // → zero roles (intentional: lets a test assert 403 for a role-less principal).
         string[] roles = Request.Headers[RolesHeader].FirstOrDefault()
                 ?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             ?? DefaultRoles;

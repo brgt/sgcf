@@ -10,10 +10,14 @@ using Xunit;
 namespace Sgcf.Application.Tests.Cotacoes;
 
 /// <summary>
-/// RF-11 — regressão de off-by-one consolidada. Garante que o Perfil A (CriarCotacao,
-/// que passa <c>dataAbertura</c>) e o Perfil B (Painel/Tesouraria, que passam a data
-/// corrente <c>hoje</c>) resolvem a <b>mesma</b> data de fechamento <c>PtaxD0</c> para
-/// a mesma referência R — o fechamento de R-1, nunca R-2 nem null.
+/// RF-11 — regressão de off-by-one consolidada. Após a correção, Perfil A (CriarCotacao)
+/// e Perfil B (Painel/Tesouraria) passam ambos a <b>data de referência R</b> ao resolver
+/// (sem pré-subtrair) e dependem da <b>mesma</b> regra única de tradução
+/// <c>PtaxD1 → PtaxD0(R-1)</c>. Este teste fixa essa regra: para a referência R, o resolver
+/// consulta <c>PtaxD0</c> em R-1 (nunca R nem R-2) e retorna o fechamento correspondente,
+/// garantindo que os dois perfis resolvam o mesmo fechamento.
+/// Os off-by-one específicos de cada chamador são cobertos por
+/// <c>CriarCotacaoCommandHandlerTests</c> (unit) e <c>CriarCotacaoPtaxD0Tests</c> (integração).
 /// </summary>
 [Trait("Category", "Domain")]
 public sealed class CotacaoResolverParidadePerfilTests

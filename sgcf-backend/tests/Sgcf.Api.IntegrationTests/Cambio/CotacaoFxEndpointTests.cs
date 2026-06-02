@@ -143,7 +143,7 @@ public sealed class CotacaoFxEndpointTests(CotacaoFxApiFixture fixture)
     }
 
     [Fact]
-    public async Task Post_RepetidoMesmaChave_Idempotente_NaoDuplicaNemAltera()
+    public async Task Post_RepetidoMesmaChave_CorrigeValor_SemDuplicar()
     {
         using HttpClient client = fixture.CreateAdminClient();
 
@@ -159,7 +159,7 @@ public sealed class CotacaoFxEndpointTests(CotacaoFxApiFixture fixture)
         });
         primeiro.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        // Segundo POST com a MESMA chave (moeda+momento+tipo) e valores diferentes.
+        // Segundo POST com a MESMA chave (moeda+momento+tipo) e valores corrigidos.
         HttpResponseMessage segundo = await client.PostAsJsonAsync("/api/v1/cotacoes-fx", new
         {
             moedaBase = "Usd",
@@ -169,14 +169,17 @@ public sealed class CotacaoFxEndpointTests(CotacaoFxApiFixture fixture)
         });
         segundo.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        // A leitura deve refletir o PRIMEIRO valor: upsert idempotente (insert-if-not-exists)
-        // não duplica e não sobrescreve a linha existente.
+        // A resposta do POST de correção reflete o valor realmente persistido.
+        JsonElement segundoBody = await segundo.Content.ReadFromJsonAsync<JsonElement>(JsonOpts);
+        segundoBody.GetProperty("valorVenda").GetDecimal().Should().Be(9.95m);
+
+        // A leitura confirma a CORREÇÃO (RF-06): a chave única não duplica; o valor é atualizado.
         HttpResponseMessage getRes = await client.GetAsync(
             "/api/v1/cotacoes-fx?moeda=Usd&tipo=PtaxD0&ate=2026-05-14");
         getRes.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement getBody = await getRes.Content.ReadFromJsonAsync<JsonElement>(JsonOpts);
-        getBody.GetProperty("valorVenda").GetDecimal().Should().Be(4.95m,
-            "idempotência por chave preserva a primeira gravação");
+        getBody.GetProperty("valorVenda").GetDecimal().Should().Be(9.95m,
+            "re-enviar a mesma chave corrige o valor (true upsert), sem duplicar");
     }
 
     // ── AC-7: autorização e validação ─────────────────────────────────────────

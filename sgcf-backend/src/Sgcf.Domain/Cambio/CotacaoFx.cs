@@ -33,6 +33,45 @@ public sealed class CotacaoFx : Entity
             throw new ArgumentException("MoedaBase não pode ser BRL.", nameof(moedaBase));
         }
 
+        ValidarValores(valorCompra, valorVenda, fonte);
+
+        return new CotacaoFx
+        {
+            MoedaBase = moedaBase,
+            MoedaQuote = valorCompra.Moeda,
+            Momento = momento,
+            Tipo = tipo,
+            ValorCompraDecimal = valorCompra.Valor,
+            ValorVendaDecimal = valorVenda.Valor,
+            Fonte = fonte
+        };
+    }
+
+    /// <summary>
+    /// Atualiza os valores (compra/venda/fonte) de uma cotação existente, preservando a
+    /// chave (moeda base/quote, momento, tipo). Usado na correção manual de PTAX
+    /// (endpoint admin) — o "upsert que atualiza". As mesmas invariantes de <see cref="Criar"/>
+    /// se aplicam.
+    /// </summary>
+    public void AtualizarValores(Money valorCompra, Money valorVenda, string fonte)
+    {
+        ValidarValores(valorCompra, valorVenda, fonte);
+
+        // MoedaQuote permanece a mesma chave; a moeda dos valores deve coincidir.
+        if (valorCompra.Moeda != MoedaQuote)
+        {
+            throw new ArgumentException(
+                $"MoedaQuote dos valores ({valorCompra.Moeda}) difere da cotação ({MoedaQuote}).",
+                nameof(valorCompra));
+        }
+
+        ValorCompraDecimal = valorCompra.Valor;
+        ValorVendaDecimal = valorVenda.Valor;
+        Fonte = fonte;
+    }
+
+    private static void ValidarValores(Money valorCompra, Money valorVenda, string fonte)
+    {
         if (valorCompra.Moeda != valorVenda.Moeda)
         {
             throw new ArgumentException("ValorCompra e ValorVenda devem ter a mesma moeda.");
@@ -52,16 +91,5 @@ public sealed class CotacaoFx : Entity
         {
             throw new ArgumentException("Fonte não pode ser vazia.", nameof(fonte));
         }
-
-        return new CotacaoFx
-        {
-            MoedaBase = moedaBase,
-            MoedaQuote = valorCompra.Moeda,
-            Momento = momento,
-            Tipo = tipo,
-            ValorCompraDecimal = valorCompra.Valor,
-            ValorVendaDecimal = valorVenda.Valor,
-            Fonte = fonte
-        };
     }
 }

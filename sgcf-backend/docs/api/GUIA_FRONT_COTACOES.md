@@ -81,7 +81,7 @@ O job `IngestaoPtaxJob` consome a API PTAX do BCB a cada 15 minutos e grava `Pta
 
 ### 3.2 Cadastro manual — `POST /api/v1/cotacoes-fx` (policy **Admin**)
 
-Para contingência (BCB indisponível) ou correção, use o endpoint admin de cadastro manual. Ele grava preferencialmente `PtaxD0` (coerente com o ingestor) e é **idempotente** pela chave `(moedaBase, moedaQuote, momento, tipo)`.
+Para contingência (BCB indisponível) ou correção, use o endpoint admin de cadastro manual. Ele grava preferencialmente `PtaxD0` (coerente com o ingestor). Re-enviar a **mesma chave** `(moedaBase, moedaQuote, momento, tipo)` **atualiza** os valores (correção) — não duplica a linha.
 
 **Request:**
 
