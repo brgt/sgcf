@@ -22,19 +22,10 @@ public sealed class CapitalDeGiroFluxoTests(CotacoesApiFixture fixture)
 
     // ─── Seed Helpers ─────────────────────────────────────────────────────────
 
-    // Contador determinístico iniciando em 900 evita colisões com outros testes na mesma fixture
-    // (Refinimp 100-299, FGI 300-499, Lei4131 500-699; CapitalDeGiro 900-999).
-    private static int _codigoCounter = 899;
-
-    /// <summary>
-    /// Cria banco com codigoCompe único e retorna o bancoId.
-    /// Range 900–999 evita colisão com outros testes nesta mesma fixture.
-    /// </summary>
+    /// <summary>Cria banco com codigoCompe único (via <see cref="TestBancoCodigo"/>) e retorna o bancoId.</summary>
     private static async Task<Guid> SeedBancoAsync(HttpClient client)
     {
-        int next = System.Threading.Interlocked.Increment(ref _codigoCounter);
-        if (next > 999) { System.Threading.Interlocked.Exchange(ref _codigoCounter, 899); next = 900; }
-        string codigo = next.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string codigo = TestBancoCodigo.Next();
         HttpResponseMessage res = await client.PostAsJsonAsync("/api/v1/bancos", new
         {
             codigoCompe = codigo,
