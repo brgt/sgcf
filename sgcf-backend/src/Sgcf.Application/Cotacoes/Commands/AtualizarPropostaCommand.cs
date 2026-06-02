@@ -60,7 +60,7 @@ public sealed class AtualizarPropostaCommandValidator : AbstractValidator<Atuali
 
 public sealed class AtualizarPropostaCommandHandler(
     ICotacaoRepository repo,
-    ICotacaoFxRepository fxRepo) : IRequestHandler<AtualizarPropostaCommand, PropostaDto>
+    IResolveTipoCotacaoService cotacaoResolver) : IRequestHandler<AtualizarPropostaCommand, PropostaDto>
 {
     public async Task<PropostaDto> Handle(AtualizarPropostaCommand cmd, CancellationToken cancellationToken)
     {
@@ -88,7 +88,7 @@ public sealed class AtualizarPropostaCommandHandler(
         LocalDate dataCaptura = propostaExistente.DataCaptura;
 
         decimal ptaxEfetiva = await RegistrarPropostaCommandHandler.ObterPtaxEfetivaAsync(
-            moeda, cotacao, fxRepo, cancellationToken);
+            moeda, cotacao, cotacaoResolver, cancellationToken);
 
         Proposta novaProsta = cotacao.AdicionarProposta(
             propostaExistente.BancoId,

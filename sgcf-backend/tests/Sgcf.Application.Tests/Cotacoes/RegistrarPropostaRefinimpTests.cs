@@ -117,7 +117,7 @@ public sealed class RegistrarPropostaRefinimpTests
     {
         IClock clock = CriarClock();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
 
         Cotacao cotacao = CriarCotacaoRefinimp(clock);
@@ -126,7 +126,7 @@ public sealed class RegistrarPropostaRefinimpTests
         Contrato mae = CriarContratoMaeUsd(clock);
         contratoRepo.GetByIdAsync(ContratoMaeId, default).Returns(mae);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
         RegistrarPropostaCommand cmd = CriarCmd(cotacao.Id, "Usd");
 
         // Act — não deve lançar
@@ -142,7 +142,7 @@ public sealed class RegistrarPropostaRefinimpTests
     {
         IClock clock = CriarClock();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
 
         Cotacao cotacao = CriarCotacaoRefinimp(clock);
@@ -150,17 +150,17 @@ public sealed class RegistrarPropostaRefinimpTests
 
         // Faz cross-rate EUR fictício para não bloquear no fxRepo
         CotacaoFx eurUsd = CotacaoFx.Criar(
-            Moeda.Eur, TipoCotacao.PtaxD1,
+            Moeda.Eur, TipoCotacao.PtaxD0,
             new Money(1.08m, Moeda.Usd),
             new Money(1.09m, Moeda.Usd),
             "BACEN", Agora.Minus(Duration.FromHours(13)));
-        fxRepo.GetMaisRecenteAsync(Moeda.Eur, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Eur, TipoCotacao.PtaxD0, DataPtax, default)
             .Returns(eurUsd);
 
         Contrato mae = CriarContratoMaeUsd(clock);
         contratoRepo.GetByIdAsync(ContratoMaeId, default).Returns(mae);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
         RegistrarPropostaCommand cmd = CriarCmd(cotacao.Id, "Eur");
 
         Func<Task> act = () => handler.Handle(cmd, default);
@@ -176,7 +176,7 @@ public sealed class RegistrarPropostaRefinimpTests
     {
         IClock clock = CriarClock();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
 
         Cotacao cotacao = CriarCotacaoFinimp(clock);
@@ -185,7 +185,7 @@ public sealed class RegistrarPropostaRefinimpTests
         // Para FINIMP/USD, o handler usa cotacao.PtaxUsadaUsdBrl diretamente (sem fxRepo)
         // IContratoRepository NÃO deve ser chamado para modalidade FINIMP.
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
         RegistrarPropostaCommand cmd = CriarCmd(cotacao.Id, "Usd");
 
         PropostaDto resultado = await handler.Handle(cmd, default);

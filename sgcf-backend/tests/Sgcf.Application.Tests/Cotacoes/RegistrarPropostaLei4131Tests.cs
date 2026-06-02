@@ -82,12 +82,12 @@ public sealed class RegistrarPropostaLei4131Tests
     {
         Cotacao cotacao = CriarCotacaoLei4131EmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = CriarClock();
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoLei4131(
             cotacaoId: cotacao.Id,
             bancoId: Guid.NewGuid(),
@@ -108,12 +108,12 @@ public sealed class RegistrarPropostaLei4131Tests
     {
         Cotacao cotacao = CriarCotacaoLei4131EmCaptacao();
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = CriarClock();
 
         repo.GetByIdWithPropostasAsync(cotacao.Id, default).Returns(cotacao);
 
-        RegistrarPropostaCommandHandler handler = new(repo, fxRepo, clock);
+        RegistrarPropostaCommandHandler handler = new(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoLei4131(
             cotacaoId: cotacao.Id,
             bancoId: Guid.NewGuid(),

@@ -62,7 +62,7 @@ public sealed class CriarCotacaoCommandValidator : AbstractValidator<CriarCotaca
 
 public sealed class CriarCotacaoCommandHandler(
     ICotacaoRepository repo,
-    ICotacaoFxRepository fxRepo,
+    IResolveTipoCotacaoService cotacaoResolver,
     IClock clock,
     IContratoRepository? contratoRepo = null) : IRequestHandler<CriarCotacaoCommand, CotacaoDto>
 {
@@ -79,14 +79,17 @@ public sealed class CriarCotacaoCommandHandler(
 
         if (Cotacao.ExigeMoedaEstrangeira(modalidade))
         {
-            LocalDate dataPtax = dataAbertura.PlusDays(-1);
-            CotacaoFx cotacaoFx = await fxRepo.GetMaisRecenteAsync(
+            // PTAX D-1 relativa à data de abertura: o resolver traduz PtaxD1 → PtaxD0 do
+            // fechamento do dia anterior (formato que o ingestor do BCB realmente grava).
+            // Passamos dataAbertura (não dataAbertura-1); o deslocamento de D-1 é do resolver.
+            CotacaoFx cotacaoFx = await cotacaoResolver.ResolverFxAsync(
                 Moeda.Usd,
                 TipoCotacao.PtaxD1,
-                dataPtax,
+                dataAbertura,
                 cancellationToken)
                 ?? throw new InvalidOperationException(
-                    $"PTAX D-1 não disponível para a data {dataPtax}. Cadastre a cotação USD/BRL antes de criar a cotação.");
+                    $"PTAX D-1 não disponível (fechamento {dataAbertura.PlusDays(-1)}). " +
+                    "Cadastre a cotação USD/BRL antes de criar a cotação.");
 
             ptax = cotacaoFx.ValorVenda.Valor;
             dataPtaxReferencia = cotacaoFx.Momento.InZone(DateTimeZoneProviders.Tzdb["America/Sao_Paulo"]).Date;

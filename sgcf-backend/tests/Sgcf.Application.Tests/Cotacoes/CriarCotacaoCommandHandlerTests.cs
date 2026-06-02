@@ -18,7 +18,6 @@ public sealed class CriarCotacaoCommandHandlerTests
 {
     private static readonly Instant Agora = Instant.FromUtc(2026, 5, 16, 9, 0);
     private static readonly LocalDate DataAbertura = new(2026, 5, 16);
-    private static readonly LocalDate DataPtax = new(2026, 5, 15);
     private const decimal PtaxUsdBrl = 5.20m;
 
     private static IClock CriarClock()
@@ -32,7 +31,7 @@ public sealed class CriarCotacaoCommandHandlerTests
     {
         return CotacaoFx.Criar(
             Moeda.Usd,
-            TipoCotacao.PtaxD1,
+            TipoCotacao.PtaxD0,
             new Money(PtaxUsdBrl - 0.05m, Moeda.Brl),
             new Money(PtaxUsdBrl, Moeda.Brl),
             "BACEN",
@@ -46,15 +45,15 @@ public sealed class CriarCotacaoCommandHandlerTests
     {
         // Arrange
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarCotacaoFx());
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-00001");
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock);
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
             Modalidade: "Finimp",
@@ -78,13 +77,13 @@ public sealed class CriarCotacaoCommandHandlerTests
     public async Task Handle_ComCodigoInternoInformado_UsaCodigoInformado()
     {
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarCotacaoFx());
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock);
         CriarCotacaoCommand cmd = new(
             CodigoInterno: "COT-MANUAL-001",
             Modalidade: "Finimp",
@@ -103,14 +102,14 @@ public sealed class CriarCotacaoCommandHandlerTests
     public async Task Handle_QuandoPtaxIndisponivel_LancaInvalidOperationException()
     {
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = CriarClock();
 
         // PTAX não disponível
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns((CotacaoFx?)null);
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock);
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
             Modalidade: "Finimp",
@@ -131,15 +130,15 @@ public sealed class CriarCotacaoCommandHandlerTests
     {
         // FINIMP é modalidade cambial — repositório de FX deve ser consultado.
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarCotacaoFx());
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-00001");
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock);
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
             Modalidade: "Finimp",
@@ -151,8 +150,8 @@ public sealed class CriarCotacaoCommandHandlerTests
 
         // PTAX deve ter sido buscada e persistida na cotação
         resultado.PtaxUsadaUsdBrl.Should().Be(PtaxUsdBrl);
-        await fxRepo.Received(1)
-            .GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default);
+        await cotacaoResolver.Received(1)
+            .ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default);
     }
 
     [Fact]
@@ -160,13 +159,13 @@ public sealed class CriarCotacaoCommandHandlerTests
     {
         // NCE é operação BRL — repositório FX NÃO deve ser consultado.
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = CriarClock();
 
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-00002");
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock);
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
             Modalidade: "Nce",
@@ -178,8 +177,8 @@ public sealed class CriarCotacaoCommandHandlerTests
 
         // PTAX não deve ser buscada nem persistida
         resultado.PtaxUsadaUsdBrl.Should().BeNull();
-        await fxRepo.DidNotReceive()
-            .GetMaisRecenteAsync(Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>());
+        await cotacaoResolver.DidNotReceive()
+            .ResolverFxAsync(Arg.Any<Moeda>(), Arg.Any<TipoCotacao>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -187,14 +186,14 @@ public sealed class CriarCotacaoCommandHandlerTests
     {
         // FINIMP sem PTAX no repositório deve lançar exceção (operação cambial exige cotação).
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = CriarClock();
 
         // Repositório retorna null — PTAX não cadastrada
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns((CotacaoFx?)null);
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock);
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
             Modalidade: "Finimp",

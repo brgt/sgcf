@@ -22,7 +22,6 @@ public sealed class CriarCotacaoRefinimpTests
 {
     private static readonly Instant Agora = Instant.FromUtc(2026, 6, 1, 12, 0);
     private static readonly LocalDate DataAbertura = new(2026, 6, 1);
-    private static readonly LocalDate DataPtax = new(2026, 5, 31);
     private const decimal PtaxValida = 5.20m;
 
     private static readonly Guid ContratoMaeValido = Guid.NewGuid();
@@ -34,9 +33,10 @@ public sealed class CriarCotacaoRefinimpTests
         return clock;
     }
 
+    // Ingestor real grava PtaxD0; o resolver traduz PtaxD1 → PtaxD0(D-1) ao consultar.
     private static CotacaoFx CriarPtaxFx() =>
         CotacaoFx.Criar(
-            Moeda.Usd, TipoCotacao.PtaxD1,
+            Moeda.Usd, TipoCotacao.PtaxD0,
             new Money(PtaxValida - 0.05m, Moeda.Brl),
             new Money(PtaxValida, Moeda.Brl),
             "BACEN",
@@ -65,11 +65,11 @@ public sealed class CriarCotacaoRefinimpTests
     {
         // Arrange
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarPtaxFx());
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-R0001");
@@ -77,7 +77,7 @@ public sealed class CriarCotacaoRefinimpTests
         Contrato mae = CriarContratoMaeAtivo();
         contratoRepo.GetByIdAsync(ContratoMaeValido, default).Returns(mae);
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
 
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
@@ -100,11 +100,11 @@ public sealed class CriarCotacaoRefinimpTests
     public async Task Handle_Refinimp_mae_RefinanciadoParcial_sucesso()
     {
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarPtaxFx());
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-R0002");
@@ -113,7 +113,7 @@ public sealed class CriarCotacaoRefinimpTests
         mae.MarcarRefinanciadoParcial(clock);
         contratoRepo.GetByIdAsync(ContratoMaeValido, default).Returns(mae);
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
 
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
@@ -135,18 +135,18 @@ public sealed class CriarCotacaoRefinimpTests
     public async Task Handle_Refinimp_mae_inexistente_lanca_KeyNotFound()
     {
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarPtaxFx());
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-R0001");
 
         contratoRepo.GetByIdAsync(ContratoMaeValido, default).Returns((Contrato?)null);
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
 
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
@@ -166,11 +166,11 @@ public sealed class CriarCotacaoRefinimpTests
     public async Task Handle_Refinimp_mae_Cancelado_lanca_InvalidOperation_409()
     {
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarPtaxFx());
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-R0001");
@@ -181,7 +181,7 @@ public sealed class CriarCotacaoRefinimpTests
             .SetValue(mae, StatusContrato.Cancelado);
         contratoRepo.GetByIdAsync(ContratoMaeValido, default).Returns(mae);
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
 
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
@@ -201,11 +201,11 @@ public sealed class CriarCotacaoRefinimpTests
     public async Task Handle_Refinimp_mae_Liquidado_lanca_InvalidOperation_409()
     {
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarPtaxFx());
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-R0001");
@@ -214,7 +214,7 @@ public sealed class CriarCotacaoRefinimpTests
         mae.Liquidar(clock);  // StatusContrato.Liquidado = "quitado" no negócio
         contratoRepo.GetByIdAsync(ContratoMaeValido, default).Returns(mae);
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
 
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,
@@ -234,11 +234,11 @@ public sealed class CriarCotacaoRefinimpTests
     public async Task Handle_Refinimp_mae_RefinanciadoTotal_lanca_InvalidOperation_409()
     {
         ICotacaoRepository repo = Substitute.For<ICotacaoRepository>();
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IContratoRepository contratoRepo = Substitute.For<IContratoRepository>();
         IClock clock = CriarClock();
 
-        fxRepo.GetMaisRecenteAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataPtax, default)
+        cotacaoResolver.ResolverFxAsync(Moeda.Usd, TipoCotacao.PtaxD1, DataAbertura, default)
             .Returns(CriarPtaxFx());
         repo.GerarProximoCodigoInternoAsync(DataAbertura.Year, default)
             .Returns("COT-2026-R0001");
@@ -247,7 +247,7 @@ public sealed class CriarCotacaoRefinimpTests
         mae.MarcarRefinanciadoTotal(clock);
         contratoRepo.GetByIdAsync(ContratoMaeValido, default).Returns(mae);
 
-        CriarCotacaoCommandHandler handler = new(repo, fxRepo, clock, contratoRepo);
+        CriarCotacaoCommandHandler handler = new(repo, cotacaoResolver, clock, contratoRepo);
 
         CriarCotacaoCommand cmd = new(
             CodigoInterno: null,

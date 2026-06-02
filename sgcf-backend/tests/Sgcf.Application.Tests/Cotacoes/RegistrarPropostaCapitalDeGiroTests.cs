@@ -77,11 +77,11 @@ public sealed class RegistrarPropostaCapitalDeGiroTests
         repo.GetByIdWithPropostasAsync(cotacao.Id, Arg.Any<CancellationToken>())
             .Returns(cotacao);
 
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(AgentInstant);
 
-        var handler = new RegistrarPropostaCommandHandler(repo, fxRepo, clock);
+        var handler = new RegistrarPropostaCommandHandler(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoCdgBrl(
             cotacao.Id, Guid.NewGuid(), moedaOriginal: "Usd");
 
@@ -106,11 +106,11 @@ public sealed class RegistrarPropostaCapitalDeGiroTests
         repo.GetByIdWithPropostasAsync(cotacao.Id, Arg.Any<CancellationToken>())
             .Returns(cotacao);
 
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(AgentInstant);
 
-        var handler = new RegistrarPropostaCommandHandler(repo, fxRepo, clock);
+        var handler = new RegistrarPropostaCommandHandler(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoCdgBrl(
             cotacao.Id, Guid.NewGuid(), exigeNdf: true, custoNdfAa: 1.5m);
 
@@ -134,11 +134,11 @@ public sealed class RegistrarPropostaCapitalDeGiroTests
         repo.GetByIdWithPropostasAsync(cotacao.Id, Arg.Any<CancellationToken>())
             .Returns(cotacao);
 
-        ICotacaoFxRepository fxRepo = Substitute.For<ICotacaoFxRepository>();
+        IResolveTipoCotacaoService cotacaoResolver = Substitute.For<IResolveTipoCotacaoService>();
         IClock clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(AgentInstant);
 
-        var handler = new RegistrarPropostaCommandHandler(repo, fxRepo, clock);
+        var handler = new RegistrarPropostaCommandHandler(repo, cotacaoResolver, clock);
         RegistrarPropostaCommand cmd = CriarComandoCdgBrl(cotacao.Id, Guid.NewGuid());
 
         PropostaDto result = await handler.Handle(cmd, CancellationToken.None);
