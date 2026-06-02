@@ -39,12 +39,13 @@
 
 > Execução: T5 e T6 por **2 agents `dotnet-clean-architect` em paralelo** (worktrees isolados); integrados e re-verificados na branch; T7 (e2e) feito na sequência.
 
-## Fase 3 — Exposição & Regressão
-- [ ] **T8** `IndicadoresGarantiaDto` reflete grupos sem dupla contagem (RF-14)
-- [ ] **T9** Snapshot S34 preserva `GrupoAlternativaId`/`GrupoRotulo` na conversão (RF-13)
-- [ ] **T10** Golden dataset (CDB OU Recebíveis) + docs `limites-banco.md`
+## Fase 3 — Exposição & Regressão (3 agents em paralelo, base da branch)
+- [x] **T8** Indicadores com grupo (RF-14) ✓ — teste de verificação: cobertura reflete o **real declarado** (1.04M), não a soma dos alvos (~2.08M). RF-14 já satisfeito por T5 + indicador cobertura-real-based; sem mudança de produção
+- [x] **T9** Snapshot S34 preserva grupo (RF-13) ✓ — teste round-trip; snapshot é por-referência, T1+T4 já carregam os campos; sem mudança de produção
+- [x] **T10** Docs `limites-banco.md` (grupos OU + lacuna de grupo no 409) ✓ — **golden NÃO estendido** (harness sem auto-discovery e sem acesso aos tipos internal; regra já coberta por unit/domínio/integração). Desvio justificado do plano
 
 ### ✅ Checkpoint Completo
-- [ ] `dotnet test` completo verde (inclui `Category=Slow` + golden)
-- [ ] API expõe grupos por limite e por contrato; snapshot preserva histórico
-- [ ] Pronto para `/review` e PR
+- [x] API expõe grupos por limite e por contrato; snapshot preserva histórico (T4/T9)
+- [x] Não-slow verde: Domain 763, Application 475; integração de grupo verde (T8/T9/LimitesBancoGrupos/Enforcement)
+- [~] `dotnet test` Slow completo: testes de grupo verdes; **flaky pré-existente** do banco POST 500 sob carga paralela (atinge teste aleatório, passa isolado) — infra, não-garantias
+- [ ] Pronto para `/review` e PR (pós-revisão humana)
