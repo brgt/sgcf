@@ -117,7 +117,8 @@ Autorização: Admin
   "codigoCompe": "341",
   "razaoSocial": "Itaú Unibanco S.A.",
   "apelido": "Itaú",
-  "padraoAntecipacao": "D"
+  "padraoAntecipacao": "D",
+  "regimeLimite": "GlobalPuro"
 }
 ```
 
@@ -127,6 +128,7 @@ Autorização: Admin
 | `razaoSocial` | string | Sim | Razão social completa |
 | `apelido` | string | Sim | Nome curto para exibição |
 | `padraoAntecipacao` | string | Sim | `A` \| `B` \| `C` \| `D` \| `E` (ver tabela abaixo) |
+| `regimeLimite` | string | Não | `PerModalidade` (default) \| `GlobalPuro`. Ver [Regime de Limite](#regime-de-limite). |
 
 #### Padrões de Antecipação
 
@@ -184,6 +186,50 @@ Atualiza exclusivamente as regras comerciais de antecipação do banco. Não alt
 - `400 Bad Request` — Validação falhou
 - `404 Not Found` — Banco não encontrado
 - `403 Forbidden` — Role insuficiente
+
+---
+
+### Definir Regime de Limite
+
+> **Adicionado em [0.11.0]. Spec:** `docs/specs/limites-banco/SPEC_REGIME_LIMITE_EXPLICITO.md` (emenda à SPEC_LIMITE_GLOBAL §4.3).
+
+```
+PUT /api/v1/bancos/{id}/regime-limite
+Autorização: Admin
+```
+
+Define explicitamente o regime de controle de limite do banco. O `BancoDto` passa a expor o campo `regimeLimite`.
+
+**Request Body:**
+```json
+{ "regimeLimite": "GlobalPuro" }
+```
+
+| Campo | Tipo | Obrigatório | Descrição |
+|-------|------|-------------|-----------|
+| `regimeLimite` | string | Sim | `PerModalidade` \| `GlobalPuro` |
+
+**Responses:**
+- `200 OK` — [BancoDto](./schemas.md#bancodto) com `regimeLimite` atualizado
+- `400 Bad Request` — Valor de regime inválido
+- `404 Not Found` — Banco não encontrado
+- `409 Conflict` — Tentativa de mudar para `GlobalPuro` enquanto existem `LimiteBanco` por modalidade ativos (REG-02). Encerre-os primeiro.
+- `403 Forbidden` — Role insuficiente
+
+#### Regime de Limite
+
+Cada banco opera em um de dois regimes, definido explicitamente no cadastro:
+
+| Regime | Significado | Enforcement |
+|--------|-------------|-------------|
+| `PerModalidade` (default) | O banco concede limites por modalidade (`LimiteBanco`). O `LimiteGlobalBanco`, quando existe, atua como teto agregado (guarda-chuva). | Cotação e contrato exigem `LimiteBanco` na modalidade; quando há limite global vigente, respeitam também o teto agregado (LG-09, LG-11). |
+| `GlobalPuro` | O banco concede uma linha única; qualquer modalidade consome o `LimiteGlobalBanco`. É o caso de bancos como o Itaú. | Não admite `LimiteBanco` por modalidade (REG-01). Cotação e contrato exigem limite global vigente (REG-03) e respeitam o teto (LG-12). |
+
+Regras de coerência:
+- **REG-01** — Banco `GlobalPuro` não admite criação/atualização de `LimiteBanco` por modalidade (`409`).
+- **REG-02** — Não é possível migrar um banco para `GlobalPuro` enquanto houver `LimiteBanco` ativo (`409`).
+- **REG-03** — Banco `GlobalPuro` só opera (cotação/contrato) com `LimiteGlobalBanco` vigente cadastrado.
+- **REG-04** — Migrar de `GlobalPuro` para `PerModalidade` é sempre permitido.
 
 ---
 

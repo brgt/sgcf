@@ -308,7 +308,14 @@ Implementação concreta vive em `Sgcf.Infrastructure.Persistence.Repositories.C
 
 ### 4.3. Regra de seleção de regime (Cenário A vs B)
 
-Avaliada via `IConsultaSaldoBanco.BancoEmRegimePerModalityAsync(bancoId)`:
+> **⚠️ EMENDADO em [0.11.0] por `SPEC_REGIME_LIMITE_EXPLICITO.md`.** A seleção de regime
+> deixou de ser implícita (presença de `LimiteBanco`) e passou a ser **explícita** via flag
+> `Banco.RegimeLimite` (`PerModalidade` | `GlobalPuro`). `BancoEmRegimePerModalityAsync` agora
+> lê a flag. A regra implícita abaixo permanece apenas como registro histórico. Consulte a
+> spec de emenda para as invariantes de coerência REG-01..REG-04 e o enforcement em cotação
+> (§4.3 da emenda) e conversão (§4.4 da emenda — LG-11/LG-12).
+
+Regra histórica (≤ [0.10.x], substituída):
 
 ```
 SE existe LimiteBanco WHERE banco_id = X AND data_vigencia_fim IS NULL
