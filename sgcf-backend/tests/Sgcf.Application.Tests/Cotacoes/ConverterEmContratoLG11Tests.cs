@@ -162,6 +162,11 @@ public sealed class ConverterEmContratoLG11Tests
 
         tenantContext.TenantId.Returns(Guid.NewGuid());
 
+        // Regime PerModalidade → BancoEmRegimePerModalityAsync retorna true.
+        saldo
+            .BancoEmRegimePerModalityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(true);
+
         saldo
             .CalcularUtilizadoAgregadoModalidadesAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new Money(utilizadoAgregadoBrl, Moeda.Brl));

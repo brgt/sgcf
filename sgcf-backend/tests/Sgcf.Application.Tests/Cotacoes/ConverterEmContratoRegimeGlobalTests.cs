@@ -138,6 +138,11 @@ public sealed class ConverterEmContratoRegimeGlobalTests
 
         tenantContext.TenantId.Returns(Guid.NewGuid());
 
+        // Regime GlobalPuro → BancoEmRegimePerModalityAsync retorna false.
+        saldo
+            .BancoEmRegimePerModalityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(false);
+
         saldo
             .CalcularSaldoDevedorBancoAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new Money(saldoDevedorBrl, Moeda.Brl));

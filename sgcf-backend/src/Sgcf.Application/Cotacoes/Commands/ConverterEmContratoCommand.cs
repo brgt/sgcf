@@ -241,12 +241,17 @@ public sealed class ConverterEmContratoCommandHandler(
         // ── 1c. Enforcement de teto por regime (LG-11 / LG-12) ─────────────────
         // SPEC_REGIME_LIMITE_EXPLICITO §4.4. Roda ANTES de Contrato.Criar para não
         // persistir estado parcial. Banco inexistente (apenas em testes mockados) → pulado.
+        // O Banco é carregado para uso do Apelido nas mensagens; a detecção de regime usa
+        // IConsultaSaldoBanco.BancoEmRegimePerModalityAsync (fonte única — mesma usada pelos
+        // handlers de limite global e por AdicionarBancoNaCotacao).
         Banco? banco = await bancoRepo.GetByIdAsync(propostaAceita.BancoId, cancellationToken);
         if (banco is not null)
         {
             Guid tenantId = tenantContext.TenantId;
+            bool perModalidade = await saldo.BancoEmRegimePerModalityAsync(
+                propostaAceita.BancoId, tenantId, cancellationToken);
 
-            if (banco.RegimeLimite == RegimeLimiteBanco.GlobalPuro)
+            if (!perModalidade)
             {
                 // LG-12: consumo do teto global. O global é calculado dinamicamente a partir
                 // dos contratos ativos; criar o contrato já consome — não há RegistrarUso.
