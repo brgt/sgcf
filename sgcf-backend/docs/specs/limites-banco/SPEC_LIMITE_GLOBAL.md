@@ -1,11 +1,14 @@
 # SPEC — LimiteGlobalBanco (Limite Guarda-Chuva por Banco)
 
-> **Status:** Draft para aprovação
+> **Status:** Aprovado — implementado em produção
 > **Data:** 2026-05-23
+> **Última revisão:** 2026-06-03
 > **Autor:** Engenharia de Requisitos (SGCF Backend)
-> **Versão:** v1.0
+> **Versão:** v1.1
 > **Escopo:** Domain + Application + Infrastructure + Api + Tests
 > **Dependências:** SPEC §3 (Cotacoes — `LimiteBanco`, `LimiteBancoHistorico`), `Banco`, `ModalidadeContrato`, `Contrato`.
+>
+> **Alteração v1.1 (2026-06-03):** Seção §3.2 e §5.2 atualizadas para refletir a semântica correta de "vigente" (Opção A). A definição anterior ("vigente = sem data fim") foi substituída pela definição baseada em janela de datas. Consulte §3.2-A para detalhes.
 
 ---
 
@@ -131,6 +134,43 @@ Relação com LimiteBanco (existente, SPEC §3.1 de Cotacoes):
        Σ LimiteBanco.ValorLimiteBrl  ≤  LimiteGlobalBanco.ValorLimiteBrl
        (invariante validado em create/update de LimiteBanco)
 ```
+
+### 3.2-A. Definição de Limite Vigente (Opção A — semântica correta)
+
+> **Nota:** a definição abaixo substitui qualquer referência anterior a "vigente = sem data fim" que possa existir neste documento ou em código de versões anteriores. A semântica correta é baseada em janela de datas e está em vigor desde [0.10.1].
+
+Um `LimiteGlobalBanco` é considerado **vigente** em uma data de referência `D` quando:
+
+```
+DataVigenciaInicio ≤ D
+    E
+(DataVigenciaFim == null OR DataVigenciaFim ≥ D)
+```
+
+Consequências diretas:
+- `DataVigenciaFim == null` significa vigência em aberto (sem encerramento programado) — o registro é vigente para qualquer data futura.
+- `DataVigenciaFim` preenchido com data anterior a `D` torna o registro **encerrado** para aquela data de referência, mesmo que seja o único registro do banco.
+- O endpoint `GET /api/v1/bancos/{bancoId}/limite-global-vigente` usa `D = hoje` (data corrente no fuso horário de Brasília, `America/Sao_Paulo`) para determinar vigência.
+- A query de listagem `GET /api/v1/limites-globais-banco?vigentesEm=YYYY-MM-DD` aceita `D` arbitrária para consultas históricas.
+
+**Impacto no repositório:**
+
+O método `GetVigenteByBancoAsync` deve aplicar a condição completa de janela, não apenas `DataVigenciaFim == null`. A implementação correta (Opção A) é:
+
+```csharp
+// Opção A — filtra por janela de datas contendo hoje
+LocalDate hoje = clock.GetCurrentInstant().InZone(fusoHorarioBrasilia).Date;
+
+context.LimitesGlobaisBanco
+    .Where(l => l.BancoId == bancoId
+             && l.DataVigenciaInicio <= hoje
+             && (l.DataVigenciaFim == null || l.DataVigenciaFim >= hoje))
+    .FirstOrDefaultAsync(ct);
+```
+
+A versão anterior (`DataVigenciaFim == null`) era uma simplificação que ignorava limites com data de fim explícita ainda dentro do período de validade. A Opção A é a semântica correta e está sendo aplicada pela correção de bug em andamento.
+
+---
 
 ### 3.2. Entidade `LimiteGlobalBanco`
 
@@ -300,7 +340,7 @@ Convenção: prefixo `/api/v1/limites-globais-banco`. Autorização: `Admin` par
 | -------- | ------------------------------------------------------------- | ------------------------------------------------------------------- | -------- |
 | `GET`    | `/api/v1/limites-globais-banco?bancoId=&vigentesEm=YYYY-MM-DD` | Lista (filtra por banco e/ou data de vigência)                       | Operador |
 | `GET`    | `/api/v1/limites-globais-banco/{id}`                           | Detalhe de um registro com histórico                                 | Operador |
-| `GET`    | `/api/v1/bancos/{bancoId}/limite-global-vigente`               | Retorna o registro vigente do banco com `valorUtilizado`/`disponivel` computados | Operador |
+| `GET`    | `/api/v1/bancos/{bancoId}/limite-global-vigente`               | Retorna o registro vigente do banco (janela `[DataVigenciaInicio, DataVigenciaFim]` contém hoje) com `valorUtilizado`/`disponivel` computados | Operador |
 | `POST`   | `/api/v1/limites-globais-banco`                                | Cria novo limite global                                              | Admin    |
 | `PATCH`  | `/api/v1/limites-globais-banco/{id}`                           | Atualiza valor / vigência / observações                              | Admin    |
 | `POST`   | `/api/v1/limites-globais-banco/{id}/encerrar-vigencia`         | Encerra vigência (define `DataVigenciaFim`)                          | Admin    |
@@ -356,23 +396,36 @@ Response `200 OK`: `LimiteGlobalBancoDto` com `dataVigenciaFim` preenchido.
 
 **`GET /api/v1/bancos/{bancoId}/limite-global-vigente`**
 
+Retorna o limite global cujo período `[DataVigenciaInicio, DataVigenciaFim]` contém a data de hoje (ver §3.2-A para a definição formal de vigente). Utilização e disponibilidade são calculadas dinamicamente conforme o regime do banco (§4.3 e §4.4).
+
 Response `200 OK`:
 ```json
 {
   "id": "uuid",
   "bancoId": "uuid",
-  "valorLimiteBrl": "1500000.00",
-  "valorUtilizadoBrl": "720000.00",
-  "valorDisponivelBrl": "780000.00",
-  "regime": "PerModalidade",   // ou "GlobalPuro"
+  "valorLimiteBrl": 1500000.00,
+  "valorUtilizadoBrl": 720000.00,
+  "valorDisponivelBrl": 780000.00,
+  "regime": "PerModalidade",
   "dataVigenciaInicio": "2026-06-01",
   "dataVigenciaFim": null,
-  "observacoes": "...",
-  "historico": [ ... ]
+  "observacoes": "Linha aprovada em comitê BB de 21/05",
+  "createdAt": "2026-06-01T00:00:00+00:00",
+  "updatedAt": "2026-06-01T00:00:00+00:00",
+  "historico": [
+    {
+      "id": "uuid",
+      "limiteGlobalBancoId": "uuid",
+      "valorAnteriorBrl": null,
+      "valorNovoBrl": 1500000.00,
+      "registradoEm": "2026-06-01T00:00:00+00:00",
+      "observacoes": "Criação do limite global"
+    }
+  ]
 }
 ```
 
-`404` se não houver vigente.
+`404` se não houver limite com janela de datas contendo hoje. Consulte a seção de Troubleshooting em `docs/api/bancos.md` para os casos mais frequentes.
 
 ---
 
@@ -818,3 +871,4 @@ Nenhuma. Todos os requisitos de negócio foram fornecidos pelo PO e estão conso
 | Data       | Versão | Mudança                                                                |
 | ---------- | ------ | ---------------------------------------------------------------------- |
 | 2026-05-23 | v1.0   | Draft inicial — definição completa do agregado `LimiteGlobalBanco`.    |
+| 2026-06-03 | v1.1   | Adicionada seção §3.2-A com a definição formal de "vigente" (Opção A — janela de datas contém hoje). Corrigida §5.2 (`GET /bancos/{bancoId}/limite-global-vigente`): resposta de exemplo atualizada com tipos corretos (`decimal`, não `string`) e referência à nova seção. Atualizada §5.1: descrição do endpoint inclui a semântica de janela. Discrepância com a implementação anterior de `GetVigenteByBancoAsync` (que filtrava apenas por `DataVigenciaFim == null`) está sendo corrigida em correção de bug paralela; esta SPEC registra a semântica correta (Opção A). |

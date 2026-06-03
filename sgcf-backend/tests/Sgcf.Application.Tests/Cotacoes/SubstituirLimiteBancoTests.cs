@@ -255,7 +255,7 @@ public sealed class SubstituirLimiteBancoTests
         repo.FindOverlappingAsync(BancoId, ModalidadeContrato.Finimp,
             Arg.Any<LocalDate>(), Arg.Any<LocalDate?>(), Arg.Any<Guid?>(), default)
             .Returns((LimiteBanco?)null);
-        globalRepo.GetVigenteByBancoAsync(BancoId, default).Returns(limiteGlobal);
+        globalRepo.GetVigenteByBancoAsync(BancoId, new LocalDate(2026, 5, 28), default).Returns(limiteGlobal);
 
         var handler = CriarHandler(repo, globalRepo);
         var cmd = new SubstituirLimiteBancoCommand(

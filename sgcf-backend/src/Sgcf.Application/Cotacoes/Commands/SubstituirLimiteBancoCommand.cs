@@ -58,6 +58,9 @@ public sealed class SubstituirLimiteBancoCommandHandler(
     IClock clock)
     : IRequestHandler<SubstituirLimiteBancoCommand, LimiteBancoDto>
 {
+    private static readonly DateTimeZone FusoBrasilia =
+        DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     public async Task<LimiteBancoDto> Handle(SubstituirLimiteBancoCommand cmd, CancellationToken cancellationToken)
     {
         LimiteBanco anterior = await repo.GetByIdTrackingAsync(cmd.LimiteId, cancellationToken)
@@ -94,8 +97,10 @@ public sealed class SubstituirLimiteBancoCommandHandler(
                 $"(vigência: {conflito.DataVigenciaInicio:uuuu-MM-dd} – {fimConflito}). [RV-02-D]");
         }
 
+        LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
+
         // LG-09: verificar limite global para o novo valor.
-        LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(anterior.BancoId, cancellationToken);
+        LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(anterior.BancoId, hoje, cancellationToken);
         if (limiteGlobal is not null)
         {
             Money novoValorVerificacao = new(cmd.NovoValorLimiteBrl, Moeda.Brl);

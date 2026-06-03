@@ -447,3 +447,65 @@ Autorização: Escrita
 - `404 Not Found` — Contrato não encontrado
 - `422 Unprocessable Entity` — Regra de negócio violada
 - `403 Forbidden` — Role insuficiente
+
+---
+
+## Snapshot da Política de Garantias do Banco (S34)
+
+> **Adicionado em [0.11.0] (S34) — 2026-05-25.**
+
+A partir de S34, o `ContratoDto` inclui quatro novos campos opcionais que registram a política de garantias vigente no **momento da conversão** da cotação em contrato. Contratos criados antes de S34 retornam `null` nesses campos sem erro.
+
+### Novos campos no ContratoDto
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `limiteBancoId` | guid \| null | ID do `LimiteBanco` vinculado ao contrato no momento da conversão |
+| `limiteGlobalBancoId` | guid \| null | ID do `LimiteGlobalBanco` vinculado (rastreabilidade) |
+| `garantiasExigidasRevisaoId` | guid \| null | ID da `GarantiaExigidaRevisao` vigente no `LimiteBanco` no momento da conversão |
+| `garantiasExigidasSnapshot` | [GarantiaExigidaSnapshotItemDto](#garantiaexigidasnapshotitemdto)[] \| null | Itens congelados da revisão de garantias **(somente no detalhe; omitido na listagem)** |
+
+---
+
+### Enforcement na Conversão (SC-04)
+
+Ao converter uma cotação em contrato via `POST /api/v1/cotacoes/{id}/converter-em-contrato`, o sistema verifica se as **garantias obrigatórias** do `LimiteBanco` estão cobertas pelas garantias registradas na cotação. Se alguma não estiver coberta:
+
+```http
+HTTP 409 Conflict
+Content-Type: application/problem+json
+```
+
+```json
+{
+  "type": "https://sgcf.nordware.io/errors/garantia-nao-coberta",
+  "title": "Garantia exigida não coberta",
+  "status": 409,
+  "detail": "A garantia obrigatória 'CdbCativo' não está coberta pelas garantias da cotação.",
+  "garantiasNaoCobertasTipos": ["CdbCativo"]
+}
+```
+
+Bancos sem `LimiteBanco` configurado, ou cujo `LimiteBanco` não possui revisão de garantias vigente, **não são bloqueados** pelo enforcement SC-04.
+
+---
+
+### GarantiaExigidaSnapshotItemDto
+
+Representa um item de garantia congelado no contrato no momento da conversão. Imutável após a conversão mesmo que o `LimiteBanco` seja atualizado posteriormente.
+
+```json
+{
+  "tipo": "CdbCativo | Sblc | Aval | AlienacaoFiduciaria | Duplicatas | RecebiveisCartao | BoletoBancario | Fgi",
+  "percentualSobreLimite": 20.0,
+  "valorFixoBrl": null,
+  "obrigatoria": true
+}
+```
+
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `tipo` | string | [TipoGarantia](./limites-banco.md#tipogarantia) |
+| `percentualSobreLimite` | decimal \| null | Percentual sobre o limite; exclusivo com `valorFixoBrl` |
+| `valorFixoBrl` | decimal \| null | Valor fixo em BRL; exclusivo com `percentualSobreLimite` |
+| `obrigatoria` | bool | `true` = era obrigatória no momento da conversão |

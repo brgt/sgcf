@@ -229,7 +229,7 @@ public sealed class AtualizarLimiteVigenciaTests
         var repo = NSubstitute.Substitute.For<ILimiteBancoRepository>();
         var globalRepo = NSubstitute.Substitute.For<ILimiteGlobalBancoRepository>();
         repo.GetByIdTrackingAsync(limite.Id, default).Returns(limite);
-        globalRepo.GetVigenteByBancoAsync(BancoId, default).Returns(limiteGlobal);
+        globalRepo.GetVigenteByBancoAsync(BancoId, new LocalDate(2026, 5, 28), default).Returns(limiteGlobal);
 
         var handler = CriarHandler(repo, globalRepo);
         var cmd = new UpdateLimiteBancoCommand(

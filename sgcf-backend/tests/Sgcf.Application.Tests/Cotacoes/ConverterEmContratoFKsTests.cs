@@ -148,7 +148,7 @@ public sealed class ConverterEmContratoFKsTests
 
         // Lookup de LimiteGlobal vigente (SC-02).
         limiteGlobalRepo
-            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(limiteGlobal);
 
         // CDI — necessário para CalcularCet no handler.

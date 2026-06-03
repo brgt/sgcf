@@ -131,7 +131,7 @@ public sealed class ConverterEmContratoEnforcementTests
             .Returns(limiteBanco);
 
         limiteGlobalRepo
-            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns((LimiteGlobalBanco?)null);
 
         CdiSnapshot cdi = CdiSnapshot.Criar(

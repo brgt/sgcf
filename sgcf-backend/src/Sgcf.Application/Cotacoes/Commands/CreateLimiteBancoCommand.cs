@@ -67,6 +67,9 @@ public sealed class CreateLimiteBancoCommandHandler(
     IClock clock)
     : IRequestHandler<CreateLimiteBancoCommand, LimiteBancoDto>
 {
+    private static readonly DateTimeZone FusoBrasilia =
+        DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     public async Task<LimiteBancoDto> Handle(CreateLimiteBancoCommand cmd, CancellationToken cancellationToken)
     {
         ModalidadeContrato modalidade = Enum.Parse<ModalidadeContrato>(cmd.Modalidade, true);
@@ -91,8 +94,10 @@ public sealed class CreateLimiteBancoCommandHandler(
                 $"que se sobrepõe ao período solicitado.");
         }
 
+        LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
+
         // LG-09: o valor do limite por modalidade não pode superar o limite global vigente do banco.
-        LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(cmd.BancoId, cancellationToken);
+        LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(cmd.BancoId, hoje, cancellationToken);
         if (limiteGlobal is not null)
         {
             Money valorProposto = new(cmd.ValorLimiteBrl, Moeda.Brl);

@@ -18,8 +18,11 @@ public interface ILimiteGlobalBancoRepository
     /// <summary>Retorna o limite global por id, com tracking habilitado e Historico carregado. Usar em comandos de atualização.</summary>
     public Task<LimiteGlobalBanco?> GetByIdTrackingAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Retorna o limite vigente (DataVigenciaFim == null) para o banco, sem tracking.</summary>
-    public Task<LimiteGlobalBanco?> GetVigenteByBancoAsync(Guid bancoId, CancellationToken ct = default);
+    /// <summary>
+    /// Retorna o limite cujo período [DataVigenciaInicio, DataVigenciaFim] contém <paramref name="hoje"/>,
+    /// sem tracking. Caso não exista registro vigente na data informada, retorna <see langword="null"/>.
+    /// </summary>
+    public Task<LimiteGlobalBanco?> GetVigenteByBancoAsync(Guid bancoId, LocalDate hoje, CancellationToken ct = default);
 
     /// <summary>
     /// Retorna o primeiro limite que se sobrepõe ao período [inicio, fim] para o banco.

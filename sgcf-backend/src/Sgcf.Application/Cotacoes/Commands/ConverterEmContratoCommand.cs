@@ -198,9 +198,10 @@ public sealed class ConverterEmContratoCommandHandler(
             dataReferencia: dataContratacao,
             cancellationToken);
 
-        // SC-02: LimiteGlobalBanco vigente para o banco (DataVigenciaFim == null).
+        // SC-02: LimiteGlobalBanco vigente para o banco na data de contratação.
         LimiteGlobalBanco? limiteGlobalVigente = await limiteGlobalRepo.GetVigenteByBancoAsync(
             bancoId: propostaAceita.BancoId,
+            hoje: dataContratacao,
             ct: cancellationToken);
 
         // SC-04: Enforcement — bloqueia conversão se garantias obrigatórias não estão cobertas.

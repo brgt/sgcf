@@ -1,4 +1,5 @@
 using MediatR;
+using NodaTime;
 using Sgcf.Application.Tenancy;
 using Sgcf.Domain.Cotacoes;
 
@@ -16,14 +17,20 @@ public sealed record GetLimiteGlobalVigenteBancoQuery(Guid BancoId) : IRequest<L
 public sealed class GetLimiteGlobalVigenteBancoQueryHandler(
     ILimiteGlobalBancoRepository repo,
     IConsultaSaldoBanco saldo,
-    ITenantContext tenantContext)
+    ITenantContext tenantContext,
+    IClock clock)
     : IRequestHandler<GetLimiteGlobalVigenteBancoQuery, LimiteGlobalBancoVigenteDto>
 {
+    private static readonly DateTimeZone FusoBrasilia =
+        DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     public async Task<LimiteGlobalBancoVigenteDto> Handle(
         GetLimiteGlobalVigenteBancoQuery query,
         CancellationToken cancellationToken)
     {
-        LimiteGlobalBanco limite = await repo.GetVigenteByBancoAsync(query.BancoId, cancellationToken)
+        LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
+
+        LimiteGlobalBanco limite = await repo.GetVigenteByBancoAsync(query.BancoId, hoje, cancellationToken)
             ?? throw new KeyNotFoundException(
                 $"Nenhum LimiteGlobalBanco vigente encontrado para o banco {query.BancoId}.");
 

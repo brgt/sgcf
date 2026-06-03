@@ -74,6 +74,9 @@ public sealed class UpdateLimiteBancoCommandHandler(
     IClock clock)
     : IRequestHandler<UpdateLimiteBancoCommand, AtualizarLimiteBancoResponse>
 {
+    private static readonly DateTimeZone FusoBrasilia =
+        DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     public async Task<AtualizarLimiteBancoResponse> Handle(UpdateLimiteBancoCommand cmd, CancellationToken cancellationToken)
     {
         LimiteBanco limite = await repo.GetByIdTrackingAsync(cmd.LimiteId, cancellationToken)
@@ -81,8 +84,10 @@ public sealed class UpdateLimiteBancoCommandHandler(
 
         if (cmd.NovoValorLimiteBrl.HasValue)
         {
+            LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
+
             // LG-09: o novo valor do limite por modalidade não pode superar o limite global vigente do banco.
-            LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(limite.BancoId, cancellationToken);
+            LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(limite.BancoId, hoje, cancellationToken);
             if (limiteGlobal is not null)
             {
                 Money novoValorVerificacao = new(cmd.NovoValorLimiteBrl.Value, Moeda.Brl);

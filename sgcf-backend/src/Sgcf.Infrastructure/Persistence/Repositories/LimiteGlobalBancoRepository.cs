@@ -26,16 +26,18 @@ internal sealed class LimiteGlobalBancoRepository(SgcfDbContext context) : ILimi
             .FirstOrDefaultAsync(l => l.Id == id, ct);
 
     /// <summary>
-    /// Retorna o limite vigente (sem DataVigenciaFim) para o banco.
-    /// "Vigente" é definido como DataVigenciaFim == null (sem encerramento programado).
+    /// Retorna o limite cujo período [DataVigenciaInicio, DataVigenciaFim] contém <paramref name="hoje"/>.
+    /// "Vigente" = início &lt;= hoje &amp;&amp; (fim == null || fim &gt;= hoje).
     /// Historico é carregado eagerly para que operações de leitura funcionem sem lazy-loading.
     /// </summary>
-    public Task<LimiteGlobalBanco?> GetVigenteByBancoAsync(Guid bancoId, CancellationToken ct = default) =>
+    public Task<LimiteGlobalBanco?> GetVigenteByBancoAsync(Guid bancoId, LocalDate hoje, CancellationToken ct = default) =>
         context.LimitesGlobaisBanco
             .Include(l => l.Historico)
             .AsNoTracking()
             .FirstOrDefaultAsync(
-                l => l.BancoId == bancoId && l.DataVigenciaFim == null,
+                l => l.BancoId == bancoId
+                  && l.DataVigenciaInicio <= hoje
+                  && (l.DataVigenciaFim == null || l.DataVigenciaFim >= hoje),
                 ct);
 
     /// <summary>
