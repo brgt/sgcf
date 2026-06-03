@@ -1,7 +1,9 @@
 using FluentAssertions;
+using NodaTime;
 using NSubstitute;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Commands;
+using Sgcf.Application.Tenancy;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -12,6 +14,29 @@ namespace Sgcf.Application.Tests.Cotacoes;
 [Trait("Category", "Unit")]
 public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
 {
+    /// <summary>
+    /// Monta o handler no regime PerModalidade (comportamento histórico destes testes).
+    /// O construtor ganhou dependências de regime (SPEC_REGIME_LIMITE_EXPLICITO §4.3);
+    /// aqui BancoEmRegimePerModalityAsync retorna true e não há limite global vigente.
+    /// </summary>
+    private static AdicionarBancoNaCotacaoCommandHandler CriarHandler(
+        ICotacaoRepository cotacaoRepo, ILimiteBancoRepository limiteRepo)
+    {
+        var limiteGlobalRepo = Substitute.For<ILimiteGlobalBancoRepository>();
+        var saldo = Substitute.For<IConsultaSaldoBanco>();
+        saldo.BancoEmRegimePerModalityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+             .Returns(true);
+
+        var tenant = Substitute.For<ITenantContext>();
+        tenant.TenantId.Returns(Guid.NewGuid());
+
+        var clock = Substitute.For<IClock>();
+        clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 5, 23, 13, 0));
+
+        return new AdicionarBancoNaCotacaoCommandHandler(
+            cotacaoRepo, limiteRepo, limiteGlobalRepo, saldo, tenant, clock);
+    }
+
     [Fact]
     public async Task Handle_ComLimiteSuficiente_AdicionaBanco()
     {
@@ -26,7 +51,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         cotacaoRepo.GetByIdAsync(cotacao.Id, default).Returns(cotacao);
         limiteRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, default).Returns(limite);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         AdicionarBancoNaCotacaoCommand cmd = new(cotacao.Id, bancoId);
 
         // Act
@@ -54,7 +79,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         limiteRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, default)
             .Returns((LimiteBanco?)null);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         AdicionarBancoNaCotacaoCommand cmd = new(cotacao.Id, bancoId);
 
         Func<Task> act = () => handler.Handle(cmd, default);
@@ -76,7 +101,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         cotacaoRepo.GetByIdAsync(cotacao.Id, default).Returns(cotacao);
         limiteRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, default).Returns(limite);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         AdicionarBancoNaCotacaoCommand cmd = new(cotacao.Id, bancoId);
 
         Func<Task> act = () => handler.Handle(cmd, default);
@@ -92,7 +117,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
 
         cotacaoRepo.GetByIdAsync(Arg.Any<Guid>(), default).Returns((Cotacao?)null);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         AdicionarBancoNaCotacaoCommand cmd = new(Guid.NewGuid(), Guid.NewGuid());
 
         Func<Task> act = () => handler.Handle(cmd, default);
@@ -130,7 +155,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         cotacaoRepo.GetByIdAsync(cotacao.Id, default).Returns(cotacao);
         limiteRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, default).Returns(limite);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         AdicionarBancoNaCotacaoCommand cmd = new(
             cotacao.Id,
             bancoId,
@@ -175,7 +200,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         cotacaoRepo.GetByIdAsync(cotacao.Id, default).Returns(cotacao);
         limiteRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, default).Returns(limite);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         // RendimentoCdbAaPercentual ausente — deve falhar (SPEC §3.3)
         AdicionarBancoNaCotacaoCommand cmd = new(
             cotacao.Id,
@@ -200,7 +225,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         cotacaoRepo.GetByIdAsync(cotacao.Id, default).Returns(cotacao);
         limiteRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, default).Returns(limite);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         AdicionarBancoNaCotacaoCommand cmd = new(cotacao.Id, bancoId);
 
         AdicionarBancoNaCotacaoResponse resultado = await handler.Handle(cmd, default);
@@ -236,7 +261,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         cotacaoRepo.GetByIdAsync(cotacao.Id, default).Returns(cotacao);
         limiteRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, default).Returns(limite);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         AdicionarBancoNaCotacaoCommand cmd = new(cotacao.Id, bancoId);
 
         AdicionarBancoNaCotacaoResponse resultado = await handler.Handle(cmd, default);
@@ -277,7 +302,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         cotacaoRepo.GetByIdAsync(cotacao.Id, default).Returns(cotacao);
         limiteRepo.GetByBancoModalidadeAsync(bancoId, ModalidadeContrato.Finimp, default).Returns(limite);
 
-        AdicionarBancoNaCotacaoCommandHandler handler = new(cotacaoRepo, limiteRepo);
+        AdicionarBancoNaCotacaoCommandHandler handler = CriarHandler(cotacaoRepo, limiteRepo);
         AdicionarBancoNaCotacaoCommand cmd = new(
             cotacao.Id,
             bancoId,
