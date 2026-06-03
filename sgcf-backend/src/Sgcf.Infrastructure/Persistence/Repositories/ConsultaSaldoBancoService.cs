@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -83,17 +84,24 @@ internal sealed class ConsultaSaldoBancoService(SgcfDbContext context) : IConsul
 
     /// <summary>
     /// Indica se o banco está em regime per-modality (Cenário B).
-    /// Retorna <c>true</c> quando existe ao menos um <c>LimiteBanco</c> vigente para o banco.
+    /// A partir de SPEC_REGIME_LIMITE_EXPLICITO §4.1 o regime é uma decisão explícita de
+    /// cadastro (<see cref="Banco.RegimeLimite"/>), não mais inferida da presença de
+    /// <c>LimiteBanco</c>. Retorna <c>true</c> quando o regime é <see cref="RegimeLimiteBanco.PerModalidade"/>.
+    /// <c>Banco</c> não é tenant-scoped, portanto <paramref name="tenantId"/> não é usado aqui
+    /// (mantido na assinatura por consistência com os demais métodos do contrato).
     /// </summary>
-    public Task<bool> BancoEmRegimePerModalityAsync(
+    public async Task<bool> BancoEmRegimePerModalityAsync(
         Guid bancoId,
         Guid tenantId,
-        CancellationToken ct = default) =>
-        context.LimitesBanco
+        CancellationToken ct = default)
+    {
+        RegimeLimiteBanco regime = await context.Bancos
             .IgnoreQueryFilters()
-            .AnyAsync(l =>
-                l.TenantId == tenantId
-                && l.BancoId == bancoId
-                && l.DataVigenciaFim == null,
-                ct);
+            .Where(b => b.Id == bancoId)
+            .Select(b => b.RegimeLimite)
+            .FirstOrDefaultAsync(ct);
+
+        // Banco inexistente → default PerModalidade (preserva o comportamento histórico).
+        return regime == RegimeLimiteBanco.PerModalidade;
+    }
 }

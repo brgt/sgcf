@@ -29,7 +29,7 @@ public sealed class ConsultaSaldoBancoServiceTests(CotacoesDbFixture fixture)
     /// Insere uma linha em sgcf.banco_config diretamente via SQL para satisfazer a FK
     /// sem depender do BancoRepository. Usa ON CONFLICT DO NOTHING para idempotência.
     /// </summary>
-    private async Task SeedBancoAsync(Guid bancoId, string codigoCompe, string apelido)
+    private async Task SeedBancoAsync(Guid bancoId, string codigoCompe, string apelido, int regimeLimite = 0)
     {
         string razaoSocial = "Banco Seed " + apelido;
         await fixture.Context.Database.ExecuteSqlAsync(
@@ -37,10 +37,10 @@ public sealed class ConsultaSaldoBancoServiceTests(CotacoesDbFixture fixture)
              INSERT INTO sgcf.banco_config (id, codigo_compe, razao_social, apelido,
                aceita_liquidacao_total, aceita_liquidacao_parcial, exige_anuencia_expressa,
                exige_parcela_inteira, aceita_refinimp, aviso_previo_min_dias_uteis,
-               created_at, updated_at)
+               regime_limite, created_at, updated_at)
              VALUES ({bancoId}, {codigoCompe}, {razaoSocial}, {apelido},
                true, true, false, false, true, 0,
-               '2026-01-01 00:00:00+00', '2026-01-01 00:00:00+00')
+               {regimeLimite}, '2026-01-01 00:00:00+00', '2026-01-01 00:00:00+00')
              ON CONFLICT DO NOTHING
              """);
     }
@@ -270,16 +270,16 @@ public sealed class ConsultaSaldoBancoServiceTests(CotacoesDbFixture fixture)
     // ─── BancoEmRegimePerModalityAsync ────────────────────────────────────────
 
     /// <summary>
-    /// TC-08: BancoA com ao menos 1 LimiteBanco vigente (DataVigenciaFim = null)
-    /// → deve retornar true.
+    /// TC-08: Banco com regime PerModalidade (flag = 0) → deve retornar true.
+    /// SPEC_REGIME_LIMITE_EXPLICITO §4.1: o regime é lido da flag Banco.RegimeLimite,
+    /// não mais inferido da presença de LimiteBanco.
     /// </summary>
     [Fact]
-    public async Task BancoEmRegimePerModalityAsync_ComLimiteVigente_RetornaTrue()
+    public async Task BancoEmRegimePerModalityAsync_RegimePerModalidade_RetornaTrue()
     {
-        // Arrange
+        // Arrange — banco em regime PerModalidade (default)
         Guid bancoId = Guid.NewGuid();
-        await SeedBancoAsync(bancoId, "S09", "BS09");
-        await SeedLimiteBancoAsync(bancoId, 500_000m);
+        await SeedBancoAsync(bancoId, "S09", "BS09", regimeLimite: 0);
 
         ConsultaSaldoBancoService sut = CreateService();
 
@@ -288,19 +288,19 @@ public sealed class ConsultaSaldoBancoServiceTests(CotacoesDbFixture fixture)
 
         // Assert
         resultado.Should().BeTrue(
-            because: "banco com LimiteBanco vigente opera em regime per-modality");
+            because: "banco com RegimeLimite = PerModalidade opera em regime per-modality");
     }
 
     /// <summary>
-    /// TC-09: BancoA sem nenhum LimiteBanco cadastrado
-    /// → deve retornar false.
+    /// TC-09: Banco com regime GlobalPuro (flag = 1) → deve retornar false,
+    /// independentemente de existir ou não LimiteBanco.
     /// </summary>
     [Fact]
-    public async Task BancoEmRegimePerModalityAsync_SemLimites_RetornaFalse()
+    public async Task BancoEmRegimePerModalityAsync_RegimeGlobalPuro_RetornaFalse()
     {
-        // Arrange — banco sem LimiteBanco
+        // Arrange — banco explicitamente em regime GlobalPuro
         Guid bancoId = Guid.NewGuid();
-        await SeedBancoAsync(bancoId, "S10", "BS10");
+        await SeedBancoAsync(bancoId, "S10", "BS10", regimeLimite: 1);
 
         ConsultaSaldoBancoService sut = CreateService();
 
@@ -309,6 +309,6 @@ public sealed class ConsultaSaldoBancoServiceTests(CotacoesDbFixture fixture)
 
         // Assert
         resultado.Should().BeFalse(
-            because: "banco sem LimiteBanco não opera em regime per-modality");
+            because: "banco com RegimeLimite = GlobalPuro não opera em regime per-modality");
     }
 }
