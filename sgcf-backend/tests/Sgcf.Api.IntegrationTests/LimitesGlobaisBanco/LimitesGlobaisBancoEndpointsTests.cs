@@ -75,8 +75,10 @@ public sealed class LimitesGlobaisBancoEndpointsTests(LimitesGlobaisBancoApiFixt
         using HttpClient client = fixture.CreateAuthenticatedClient();
         Guid bancoId = await CriarBancoAsync(client, "G01");
 
+        // Início <= hoje (instante fixo 2026-05-16) para que o limite seja vigente sob a
+        // semântica de janela de datas (Opção A — SPEC_LIMITE_GLOBAL §3.2-A).
         (HttpResponseMessage res, string raw, JsonElement body) = await CriarLimiteGlobalAsync(
-            client, bancoId, inicio: "2099-01-01", valorLimiteBrl: 15_000_000m,
+            client, bancoId, inicio: "2026-01-01", valorLimiteBrl: 15_000_000m,
             observacoes: "Limite inicial teste");
 
         res.StatusCode.Should().Be(HttpStatusCode.Created, raw);
@@ -85,7 +87,7 @@ public sealed class LimitesGlobaisBancoEndpointsTests(LimitesGlobaisBancoApiFixt
         body.GetProperty("id").GetGuid().Should().NotBeEmpty();
         body.GetProperty("bancoId").GetGuid().Should().Be(bancoId);
         body.GetProperty("valorLimiteBrl").GetDecimal().Should().Be(15_000_000m);
-        body.GetProperty("dataVigenciaInicio").GetString().Should().Be("2099-01-01");
+        body.GetProperty("dataVigenciaInicio").GetString().Should().Be("2026-01-01");
         body.TryGetProperty("dataVigenciaFim", out JsonElement fimEl).Should().BeTrue();
         fimEl.ValueKind.Should().Be(JsonValueKind.Null, "dataVigenciaFim deve ser null quando não informado");
         body.GetProperty("historico").GetArrayLength().Should().BeGreaterThanOrEqualTo(1,
@@ -210,18 +212,20 @@ public sealed class LimitesGlobaisBancoEndpointsTests(LimitesGlobaisBancoApiFixt
         vigenteAntes.StatusCode.Should().Be(HttpStatusCode.OK,
             "limite deve aparecer como vigente antes do encerramento");
 
-        // DELETE /vigencia: encerra com dataFim = data atual (instante fixo = 2026-05-16)
+        // DELETE /vigencia: sob a semântica de janela (Opção A — SPEC_LIMITE_GLOBAL §3.2-A) o fim
+        // é inclusivo (vigente enquanto fim >= hoje). Para que o limite deixe de ser vigente HOJE
+        // (instante fixo 2026-05-16), encerra-se com dataFim = 2026-05-15 (véspera).
         HttpResponseMessage deleteRes = await client.SendAsync(new HttpRequestMessage(
             HttpMethod.Delete,
             $"/api/v1/limites-globais-banco/{limiteId}/vigencia")
         {
-            Content = JsonContent.Create(new { dataFim = "2026-05-16" })
+            Content = JsonContent.Create(new { dataFim = "2026-05-15" })
         });
 
         deleteRes.StatusCode.Should().Be(HttpStatusCode.NoContent,
             $"encerramento de vigência válido deve retornar 204 — corpo: {await deleteRes.Content.ReadAsStringAsync()}");
 
-        // Após encerramento, GET vigente deve retornar 404 (sem limite aberto para este banco)
+        // Após encerramento (fim < hoje), GET vigente deve retornar 404 para este banco
         HttpResponseMessage vigenteDepois = await client.GetAsync($"/api/v1/bancos/{bancoId}/limite-global-vigente");
         vigenteDepois.StatusCode.Should().Be(HttpStatusCode.NotFound,
             "após encerrar vigência, banco não deve ter limite vigente");
