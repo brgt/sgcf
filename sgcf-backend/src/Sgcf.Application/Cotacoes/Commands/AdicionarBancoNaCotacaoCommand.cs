@@ -1,7 +1,9 @@
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Bancos;
 using Sgcf.Application.Tenancy;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -62,6 +64,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandler(
     ILimiteBancoRepository limiteRepo,
     ILimiteGlobalBancoRepository limiteGlobalRepo,
     IConsultaSaldoBanco saldo,
+    IBancoRepository bancoRepo,
     ITenantContext tenantContext,
     IClock clock) : IRequestHandler<AdicionarBancoNaCotacaoCommand, AdicionarBancoNaCotacaoResponse>
 {
@@ -75,6 +78,9 @@ public sealed class AdicionarBancoNaCotacaoCommandHandler(
         Cotacao cotacao = await cotacaoRepo.GetByIdAsync(cmd.CotacaoId, cancellationToken)
             ?? throw new KeyNotFoundException($"Cotação '{cmd.CotacaoId}' não encontrada.");
 
+        Banco banco = await bancoRepo.GetByIdAsync(cmd.BancoId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Banco '{cmd.BancoId}' não encontrado.");
+
         Guid tenantId = tenantContext.TenantId;
         LocalDate hoje = clock.GetCurrentInstant().InZone(FusoHorarioBrasilia).Date;
 
@@ -83,18 +89,18 @@ public sealed class AdicionarBancoNaCotacaoCommandHandler(
         bool perModalidade = await saldo.BancoEmRegimePerModalityAsync(cmd.BancoId, tenantId, cancellationToken);
 
         return perModalidade
-            ? await AdicionarEmRegimePerModalidade(cmd, cotacao, tenantId, hoje, cancellationToken)
-            : await AdicionarEmRegimeGlobalPuro(cmd, cotacao, tenantId, hoje, cancellationToken);
+            ? await AdicionarEmRegimePerModalidade(cmd, cotacao, banco, tenantId, hoje, cancellationToken)
+            : await AdicionarEmRegimeGlobalPuro(cmd, cotacao, banco, tenantId, hoje, cancellationToken);
     }
 
     /// <summary>Regime GlobalPuro (§4.3): valida contra o limite global vigente; sem garantia pré-preenchida.</summary>
     private async Task<AdicionarBancoNaCotacaoResponse> AdicionarEmRegimeGlobalPuro(
-        AdicionarBancoNaCotacaoCommand cmd, Cotacao cotacao, Guid tenantId,
+        AdicionarBancoNaCotacaoCommand cmd, Cotacao cotacao, Banco banco, Guid tenantId,
         LocalDate hoje, CancellationToken ct)
     {
         LimiteGlobalBanco limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(cmd.BancoId, hoje, ct)
             ?? throw new InvalidOperationException(
-                $"Banco '{cmd.BancoId}' opera em regime de limite global, " +
+                $"Banco '{banco.Apelido}' opera em regime de limite global, " +
                 "mas não possui limite global vigente cadastrado. " +
                 "Cadastre o limite global antes de operar. [REG-03]");
 
@@ -104,7 +110,7 @@ public sealed class AdicionarBancoNaCotacaoCommandHandler(
         if (disponivelGlobal < cotacao.ValorAlvoBrl.Valor)
         {
             throw new InvalidOperationException(
-                $"Banco '{cmd.BancoId}' não possui limite global disponível suficiente. " +
+                $"Banco '{banco.Apelido}' não possui limite global disponível suficiente. " +
                 $"Disponível: BRL {disponivelGlobal:F2}, " +
                 $"necessário: BRL {cotacao.ValorAlvoBrl.Valor:F2}.");
         }
@@ -121,14 +127,14 @@ public sealed class AdicionarBancoNaCotacaoCommandHandler(
 
     /// <summary>Regime PerModalidade (§4.3): min(disponível modalidade, disponível global); mantém garantia.</summary>
     private async Task<AdicionarBancoNaCotacaoResponse> AdicionarEmRegimePerModalidade(
-        AdicionarBancoNaCotacaoCommand cmd, Cotacao cotacao, Guid tenantId,
+        AdicionarBancoNaCotacaoCommand cmd, Cotacao cotacao, Banco banco, Guid tenantId,
         LocalDate hoje, CancellationToken ct)
     {
         // SPEC §3.2 regra 8: banco precisa ter limite disponível >= ValorAlvoBRL
         LimiteBanco limite = await limiteRepo.GetByBancoModalidadeAsync(
             cmd.BancoId, cotacao.Modalidade, ct)
             ?? throw new InvalidOperationException(
-                $"Banco '{cmd.BancoId}' não possui limite cadastrado para a modalidade '{cotacao.Modalidade}'. " +
+                $"Banco '{banco.Apelido}' não possui limite cadastrado para a modalidade '{cotacao.Modalidade}'. " +
                 "Cadastre o limite operacional antes de adicionar o banco à cotação.");
 
         decimal disponivelModalidade = limite.ValorDisponivelBrl.Valor;
@@ -150,13 +156,13 @@ public sealed class AdicionarBancoNaCotacaoCommandHandler(
                       $"necessário: BRL {cotacao.ValorAlvoBrl.Valor:F2}.";
 
                 throw new InvalidOperationException(
-                    $"Banco '{cmd.BancoId}' não possui limite disponível suficiente. " + detalhe);
+                    $"Banco '{banco.Apelido}' não possui limite disponível suficiente. " + detalhe);
             }
         }
         else if (disponivelModalidade < cotacao.ValorAlvoBrl.Valor)
         {
             throw new InvalidOperationException(
-                $"Banco '{cmd.BancoId}' não possui limite disponível suficiente. " +
+                $"Banco '{banco.Apelido}' não possui limite disponível suficiente. " +
                 $"Disponível: BRL {disponivelModalidade:F2}, " +
                 $"necessário: BRL {cotacao.ValorAlvoBrl.Valor:F2}.");
         }

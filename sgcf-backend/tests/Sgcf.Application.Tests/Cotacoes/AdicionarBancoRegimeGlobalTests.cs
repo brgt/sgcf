@@ -1,9 +1,11 @@
 using FluentAssertions;
 using NodaTime;
 using NSubstitute;
+using Sgcf.Application.Bancos;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Commands;
 using Sgcf.Application.Tenancy;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -48,11 +50,16 @@ public sealed class AdicionarBancoRegimeGlobalTests
         saldo.BancoEmRegimePerModalityAsync(BancoId, TenantId, Arg.Any<CancellationToken>())
              .Returns(isPerModalidade);
 
+        // Banco real (carregado para o Apelido nas mensagens).
+        var banco = Banco.Criar("341", "Itaú Unibanco S.A.", "Itaú", CriarClock());
+        var bancoRepo = Substitute.For<IBancoRepository>();
+        bancoRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(banco);
+
         ITenantContext tenant = Substitute.For<ITenantContext>();
         tenant.TenantId.Returns(TenantId);
 
         return new AdicionarBancoNaCotacaoCommandHandler(
-            cotacaoRepo, limiteRepo, limiteGlobalRepo, saldo, tenant, CriarClock());
+            cotacaoRepo, limiteRepo, limiteGlobalRepo, saldo, bancoRepo, tenant, CriarClock());
     }
 
     // ── GlobalPuro ────────────────────────────────────────────────────────────

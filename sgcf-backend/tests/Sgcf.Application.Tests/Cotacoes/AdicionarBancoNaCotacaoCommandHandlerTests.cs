@@ -27,14 +27,19 @@ public sealed class AdicionarBancoNaCotacaoCommandHandlerTests
         saldo.BancoEmRegimePerModalityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
              .Returns(true);
 
-        var tenant = Substitute.For<ITenantContext>();
-        tenant.TenantId.Returns(Guid.NewGuid());
-
         var clock = Substitute.For<IClock>();
         clock.GetCurrentInstant().Returns(Instant.FromUtc(2026, 5, 23, 13, 0));
 
+        // Banco real (carregado para o Apelido nas mensagens); regime detectado pelo serviço.
+        var banco = Sgcf.Domain.Bancos.Banco.Criar("999", "Banco Teste S.A.", "BT", clock);
+        var bancoRepo = Substitute.For<Sgcf.Application.Bancos.IBancoRepository>();
+        bancoRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(banco);
+
+        var tenant = Substitute.For<ITenantContext>();
+        tenant.TenantId.Returns(Guid.NewGuid());
+
         return new AdicionarBancoNaCotacaoCommandHandler(
-            cotacaoRepo, limiteRepo, limiteGlobalRepo, saldo, tenant, clock);
+            cotacaoRepo, limiteRepo, limiteGlobalRepo, saldo, bancoRepo, tenant, clock);
     }
 
     [Fact]
