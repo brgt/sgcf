@@ -1,6 +1,8 @@
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Bancos;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -64,6 +66,7 @@ public sealed class CreateLimiteBancoCommandValidator : AbstractValidator<Create
 public sealed class CreateLimiteBancoCommandHandler(
     ILimiteBancoRepository repo,
     ILimiteGlobalBancoRepository limiteGlobalRepo,
+    IBancoRepository bancoRepo,
     IClock clock)
     : IRequestHandler<CreateLimiteBancoCommand, LimiteBancoDto>
 {
@@ -72,6 +75,14 @@ public sealed class CreateLimiteBancoCommandHandler(
 
     public async Task<LimiteBancoDto> Handle(CreateLimiteBancoCommand cmd, CancellationToken cancellationToken)
     {
+        // REG-01: banco em regime de limite global puro não admite LimiteBanco por modalidade.
+        Banco? banco = await bancoRepo.GetByIdAsync(cmd.BancoId, cancellationToken);
+        if (banco is { RegimeLimite: RegimeLimiteBanco.GlobalPuro })
+        {
+            throw new InvalidOperationException(
+                $"Banco '{banco.Apelido}' opera em regime de limite global e não admite limite por modalidade. [REG-01]");
+        }
+
         ModalidadeContrato modalidade = Enum.Parse<ModalidadeContrato>(cmd.Modalidade, true);
         LocalDate inicio = new(cmd.DataVigenciaInicio.Year, cmd.DataVigenciaInicio.Month, cmd.DataVigenciaInicio.Day);
         LocalDate? fim = cmd.DataVigenciaFim.HasValue

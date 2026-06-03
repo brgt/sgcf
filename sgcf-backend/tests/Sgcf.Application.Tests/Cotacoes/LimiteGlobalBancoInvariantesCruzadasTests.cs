@@ -56,6 +56,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         return new CreateLimiteBancoCommandHandler(
             repo ?? Substitute.For<ILimiteBancoRepository>(),
             limiteGlobalRepo ?? Substitute.For<ILimiteGlobalBancoRepository>(),
+            Substitute.For<Sgcf.Application.Bancos.IBancoRepository>(),
             clock ?? CriarClock());
     }
 
@@ -67,6 +68,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         return new UpdateLimiteBancoCommandHandler(
             repo ?? Substitute.For<ILimiteBancoRepository>(),
             limiteGlobalRepo ?? Substitute.For<ILimiteGlobalBancoRepository>(),
+            Substitute.For<Sgcf.Application.Bancos.IBancoRepository>(),
             clock ?? CriarClock());
     }
 

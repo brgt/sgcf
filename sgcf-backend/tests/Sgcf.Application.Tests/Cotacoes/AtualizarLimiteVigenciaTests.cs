@@ -49,6 +49,7 @@ public sealed class AtualizarLimiteVigenciaTests
         return new UpdateLimiteBancoCommandHandler(
             repo ?? NSubstitute.Substitute.For<ILimiteBancoRepository>(),
             limiteGlobal ?? NSubstitute.Substitute.For<ILimiteGlobalBancoRepository>(),
+            NSubstitute.Substitute.For<Sgcf.Application.Bancos.IBancoRepository>(),
             clock ?? CriarClock());
     }
 
