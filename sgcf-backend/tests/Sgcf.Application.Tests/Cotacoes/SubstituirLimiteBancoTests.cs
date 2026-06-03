@@ -53,6 +53,7 @@ public sealed class SubstituirLimiteBancoTests
         return new SubstituirLimiteBancoCommandHandler(
             repo ?? NSubstitute.Substitute.For<ILimiteBancoRepository>(),
             limiteGlobal ?? NSubstitute.Substitute.For<ILimiteGlobalBancoRepository>(),
+            NSubstitute.Substitute.For<Sgcf.Application.Bancos.IBancoRepository>(),
             clock ?? CriarClock());
     }
 

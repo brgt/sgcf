@@ -1,7 +1,9 @@
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Bancos;
 using Sgcf.Application.Common;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -55,6 +57,7 @@ public sealed class SubstituirLimiteBancoCommandValidator : AbstractValidator<Su
 public sealed class SubstituirLimiteBancoCommandHandler(
     ILimiteBancoRepository repo,
     ILimiteGlobalBancoRepository limiteGlobalRepo,
+    IBancoRepository bancoRepo,
     IClock clock)
     : IRequestHandler<SubstituirLimiteBancoCommand, LimiteBancoDto>
 {
@@ -65,6 +68,15 @@ public sealed class SubstituirLimiteBancoCommandHandler(
     {
         LimiteBanco anterior = await repo.GetByIdTrackingAsync(cmd.LimiteId, cancellationToken)
             ?? throw new KeyNotFoundException($"Limite '{cmd.LimiteId}' não encontrado.");
+
+        // REG-01: banco em regime de limite global puro não admite LimiteBanco por modalidade
+        // (defesa em profundidade — consistente com Create/Update).
+        Banco? banco = await bancoRepo.GetByIdAsync(anterior.BancoId, cancellationToken);
+        if (banco is { RegimeLimite: RegimeLimiteBanco.GlobalPuro })
+        {
+            throw new InvalidOperationException(
+                $"Banco '{banco.Apelido}' opera em regime de limite global e não admite limite por modalidade. [REG-01]");
+        }
 
         LocalDate novoInicio = cmd.NovoInicio.ToLocalDate();
 

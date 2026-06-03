@@ -105,6 +105,11 @@ public sealed class BancosController(IMediator mediator) : ControllerBase
         {
             return NotFound();
         }
+        catch (InvalidOperationException ex)
+        {
+            // REG-02: mudança para GlobalPuro com LimiteBanco ativo → 409.
+            return Conflict(new { error = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}/config-antecipacao")]
