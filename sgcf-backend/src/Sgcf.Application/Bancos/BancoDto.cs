@@ -12,6 +12,7 @@ public sealed record BancoDto(
     bool ExigeAnuenciaExpressa,
     bool ExigeParcelaInteira,
     int AvisoPrevioMinDiasUteis,
+    string RegimeLimite,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt)
 {
@@ -26,6 +27,7 @@ public sealed record BancoDto(
             banco.ExigeAnuenciaExpressa,
             banco.ExigeParcelaInteira,
             banco.AvisoPrevioMinDiasUteis,
+            banco.RegimeLimite.ToString(),
             banco.CreatedAt.ToDateTimeOffset(),
             banco.UpdatedAt.ToDateTimeOffset());
 }
