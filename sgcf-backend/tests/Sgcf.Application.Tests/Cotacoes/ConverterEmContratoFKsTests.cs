@@ -198,6 +198,10 @@ public sealed class ConverterEmContratoFKsTests
                 return Task.FromResult<(Domain.Common.Entity, Domain.Common.Entity?)>((detail, null));
             });
 
+        var bancoRepo = Substitute.For<Sgcf.Application.Bancos.IBancoRepository>();
+        var saldo = Substitute.For<IConsultaSaldoBanco>();
+        var tenantContext = Substitute.For<Sgcf.Application.Tenancy.ITenantContext>();
+
         return new ConverterEmContratoCommandHandler(
             cotacaoRepo,
             contratoRepo,
@@ -206,6 +210,9 @@ public sealed class ConverterEmContratoFKsTests
             limiteGlobalRepo,
             cdiRepo,
             garantiaRepoMock,
+            bancoRepo,
+            saldo,
+            tenantContext,
             [conversorFinimp],
             clock);
     }

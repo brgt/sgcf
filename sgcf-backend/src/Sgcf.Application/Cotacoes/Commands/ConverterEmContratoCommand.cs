@@ -2,9 +2,12 @@ using System.Text.Json;
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Exceptions;
+using Sgcf.Application.Tenancy;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -151,6 +154,9 @@ public sealed class ConverterEmContratoCommandHandler(
     ILimiteGlobalBancoRepository limiteGlobalRepo,
     ICdiSnapshotRepository cdiRepo,
     IGarantiaRepository garantiaRepo,
+    IBancoRepository bancoRepo,
+    IConsultaSaldoBanco saldo,
+    ITenantContext tenantContext,
     IEnumerable<IConversorModalidade> conversores,
     IClock clock) : IRequestHandler<ConverterEmContratoCommand, ContratoDto>
 {
@@ -229,6 +235,70 @@ public sealed class ConverterEmContratoCommandHandler(
                     limiteBancoId: limiteBancoVigente!.Id,
                     garantiasExigidasRevisaoId: revisaoVigente.Id,
                     lacunas: lacunas);
+            }
+        }
+
+        // ── 1c. Enforcement de teto por regime (LG-11 / LG-12) ─────────────────
+        // SPEC_REGIME_LIMITE_EXPLICITO §4.4. Roda ANTES de Contrato.Criar para não
+        // persistir estado parcial. Banco inexistente (apenas em testes mockados) → pulado.
+        Banco? banco = await bancoRepo.GetByIdAsync(propostaAceita.BancoId, cancellationToken);
+        if (banco is not null)
+        {
+            Guid tenantId = tenantContext.TenantId;
+
+            if (banco.RegimeLimite == RegimeLimiteBanco.GlobalPuro)
+            {
+                // LG-12: consumo do teto global. O global é calculado dinamicamente a partir
+                // dos contratos ativos; criar o contrato já consome — não há RegistrarUso.
+                if (limiteGlobalVigente is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Banco '{banco.Apelido}' opera em regime de limite global, " +
+                        "mas não possui limite global vigente cadastrado. [REG-03]");
+                }
+
+                Money saldoDevedor = await saldo.CalcularSaldoDevedorBancoAsync(
+                    propostaAceita.BancoId, tenantId, cancellationToken);
+
+                if (saldoDevedor.Valor + valorPrincipalBrl.Valor > limiteGlobalVigente.ValorLimiteBrl.Valor)
+                {
+                    throw new InvalidOperationException(
+                        $"Contratação excede o limite global do banco '{banco.Apelido}'. " +
+                        $"Saldo devedor: BRL {saldoDevedor.Valor:F2}, principal: BRL {valorPrincipalBrl.Valor:F2}, " +
+                        $"limite: BRL {limiteGlobalVigente.ValorLimiteBrl.Valor:F2}. [LG-12]");
+                }
+            }
+            else
+            {
+                // PerModalidade — LG-11: exige LimiteBanco na modalidade e respeita o teto global agregado.
+                if (limiteBancoVigente is null)
+                {
+                    throw new InvalidOperationException(
+                        $"Modalidade '{cotacao.Modalidade}' requer LimiteBanco registrado neste banco " +
+                        "— regime per-modalidade. [LG-11]");
+                }
+
+                if (limiteBancoVigente.ValorDisponivelBrl.Valor < valorPrincipalBrl.Valor)
+                {
+                    throw new InvalidOperationException(
+                        $"Banco '{banco.Apelido}' não possui limite disponível suficiente na modalidade " +
+                        $"'{cotacao.Modalidade}'. Disponível: BRL {limiteBancoVigente.ValorDisponivelBrl.Valor:F2}, " +
+                        $"necessário: BRL {valorPrincipalBrl.Valor:F2}. [LG-11]");
+                }
+
+                if (limiteGlobalVigente is not null)
+                {
+                    Money utilizadoAgregado = await saldo.CalcularUtilizadoAgregadoModalidadesAsync(
+                        propostaAceita.BancoId, tenantId, cancellationToken);
+
+                    if (utilizadoAgregado.Valor + valorPrincipalBrl.Valor > limiteGlobalVigente.ValorLimiteBrl.Valor)
+                    {
+                        throw new InvalidOperationException(
+                            $"Contratação excede o teto global agregado do banco '{banco.Apelido}'. " +
+                            $"Utilizado: BRL {utilizadoAgregado.Valor:F2}, principal: BRL {valorPrincipalBrl.Valor:F2}, " +
+                            $"limite global: BRL {limiteGlobalVigente.ValorLimiteBrl.Valor:F2}. [LG-11]");
+                    }
+                }
             }
         }
 

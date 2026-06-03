@@ -176,6 +176,12 @@ public sealed class ConverterEmContratoEnforcementTests
                 return Task.FromResult<(Domain.Common.Entity, Domain.Common.Entity?)>((detail, null));
             });
 
+        // Regime: bancoRepo retorna null → enforcement de regime (LG-11/LG-12) é pulado,
+        // preservando a semântica SC-07 destes testes (foco em garantias).
+        var bancoRepo = Substitute.For<Sgcf.Application.Bancos.IBancoRepository>();
+        var saldo = Substitute.For<IConsultaSaldoBanco>();
+        var tenantContext = Substitute.For<Sgcf.Application.Tenancy.ITenantContext>();
+
         return new ConverterEmContratoCommandHandler(
             cotacaoRepo,
             contratoRepo,
@@ -184,6 +190,9 @@ public sealed class ConverterEmContratoEnforcementTests
             limiteGlobalRepo,
             cdiRepo,
             garantiaRepo,
+            bancoRepo,
+            saldo,
+            tenantContext,
             [conversorFinimp],
             clock);
     }
