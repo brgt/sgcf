@@ -26,6 +26,14 @@ public sealed class Banco : Entity, IAuditable
     public Money? LimiteCreditoBrl =>
         LimiteCreditoBrlDecimal.HasValue ? new(LimiteCreditoBrlDecimal.Value, Moeda.Brl) : null;
 
+    /// <summary>
+    /// Regime de controle de limite do banco. Determina se o enforcement de cotação/contrato
+    /// usa <c>LimiteBanco</c> por modalidade (PerModalidade) ou somente o <c>LimiteGlobalBanco</c>
+    /// (GlobalPuro). Default: PerModalidade (comportamento histórico).
+    /// SPEC_REGIME_LIMITE_EXPLICITO §3.2.
+    /// </summary>
+    public RegimeLimiteBanco RegimeLimite { get; private set; } = RegimeLimiteBanco.PerModalidade;
+
     public Instant CreatedAt { get; private set; }
     public Instant UpdatedAt { get; private set; }
 
@@ -86,6 +94,18 @@ public sealed class Banco : Entity, IAuditable
         LimiteCreditoBrlDecimal = limiteBrl.HasValue
             ? Math.Round(limiteBrl.Value, 6, MidpointRounding.AwayFromZero)
             : (decimal?)null;
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Define o regime de limite do banco (per-modalidade ou global puro).
+    /// A coerência com limites existentes (ex.: não migrar para GlobalPuro com LimiteBanco ativo)
+    /// é validada na camada Application — o domínio não conhece repositório.
+    /// SPEC_REGIME_LIMITE_EXPLICITO §3.2, REG-02/REG-04.
+    /// </summary>
+    public void DefinirRegimeLimite(RegimeLimiteBanco regime, IClock clock)
+    {
+        RegimeLimite = regime;
         UpdatedAt = clock.GetCurrentInstant();
     }
 

@@ -2,9 +2,12 @@ using System.Text.Json;
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Bancos;
 using Sgcf.Application.Contratos;
 using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Exceptions;
+using Sgcf.Application.Tenancy;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Calendario;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -85,7 +88,9 @@ public sealed record CapitalDeGiroInputs(string? NumeroOperacao);
 /// <summary>
 /// Converte cotação aceita em contrato.
 /// Cria Contrato + EconomiaNegociacao atomicamente (único SaveChanges no final).
-/// Atualiza ValorUtilizadoBRL do LimiteBanco. SPEC §4.1, §5.2.
+/// Aplica o enforcement de teto por regime (LG-11/LG-12) e, no regime per-modalidade,
+/// atualiza ValorUtilizadoBRL do LimiteBanco (RegistrarUso). No regime global puro não há
+/// RegistrarUso — o consumo é o próprio contrato ativo. SPEC §4.1, §5.2 e SPEC_REGIME_LIMITE_EXPLICITO §4.4.
 /// Onda 1: aceita <see cref="RefinimpInputs"/> opcionais para modalidade REFINIMP.
 /// </summary>
 public sealed record ConverterEmContratoCommand(
@@ -151,6 +156,9 @@ public sealed class ConverterEmContratoCommandHandler(
     ILimiteGlobalBancoRepository limiteGlobalRepo,
     ICdiSnapshotRepository cdiRepo,
     IGarantiaRepository garantiaRepo,
+    IBancoRepository bancoRepo,
+    IConsultaSaldoBanco saldo,
+    ITenantContext tenantContext,
     IEnumerable<IConversorModalidade> conversores,
     IClock clock) : IRequestHandler<ConverterEmContratoCommand, ContratoDto>
 {
@@ -198,9 +206,10 @@ public sealed class ConverterEmContratoCommandHandler(
             dataReferencia: dataContratacao,
             cancellationToken);
 
-        // SC-02: LimiteGlobalBanco vigente para o banco (DataVigenciaFim == null).
+        // SC-02: LimiteGlobalBanco vigente para o banco na data de contratação.
         LimiteGlobalBanco? limiteGlobalVigente = await limiteGlobalRepo.GetVigenteByBancoAsync(
             bancoId: propostaAceita.BancoId,
+            hoje: dataContratacao,
             ct: cancellationToken);
 
         // SC-04: Enforcement — bloqueia conversão se garantias obrigatórias não estão cobertas.
@@ -228,6 +237,73 @@ public sealed class ConverterEmContratoCommandHandler(
                     limiteBancoId: limiteBancoVigente!.Id,
                     garantiasExigidasRevisaoId: revisaoVigente.Id,
                     lacunas: lacunas);
+            }
+        }
+
+        // ── 1c. Enforcement de teto por regime (LG-11 / LG-12) ─────────────────
+        // SPEC_REGIME_LIMITE_EXPLICITO §4.4. Roda ANTES de Contrato.Criar para não
+        // persistir estado parcial. O Banco é carregado (e exigido — a proposta sempre
+        // referencia um banco existente) para uso do Apelido nas mensagens; a detecção de
+        // regime usa IConsultaSaldoBanco.BancoEmRegimePerModalityAsync (fonte única — mesma
+        // usada pelos handlers de limite global e por AdicionarBancoNaCotacao).
+        Banco banco = await bancoRepo.GetByIdAsync(propostaAceita.BancoId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Banco '{propostaAceita.BancoId}' não encontrado.");
+        Guid tenantId = tenantContext.TenantId;
+        bool perModalidade = await saldo.BancoEmRegimePerModalityAsync(
+            propostaAceita.BancoId, tenantId, cancellationToken);
+
+        if (!perModalidade)
+        {
+            // LG-12: consumo do teto global. O global é calculado dinamicamente a partir
+            // dos contratos ativos; criar o contrato já consome — não há RegistrarUso.
+            if (limiteGlobalVigente is null)
+            {
+                throw new InvalidOperationException(
+                    $"Banco '{banco.Apelido}' opera em regime de limite global, " +
+                    "mas não possui limite global vigente cadastrado. [REG-03]");
+            }
+
+            Money saldoDevedor = await saldo.CalcularSaldoDevedorBancoAsync(
+                propostaAceita.BancoId, tenantId, cancellationToken);
+
+            if (saldoDevedor.Valor + valorPrincipalBrl.Valor > limiteGlobalVigente.ValorLimiteBrl.Valor)
+            {
+                throw new InvalidOperationException(
+                    $"Contratação excede o limite global do banco '{banco.Apelido}'. " +
+                    $"Saldo devedor: BRL {saldoDevedor.Valor:F2}, principal: BRL {valorPrincipalBrl.Valor:F2}, " +
+                    $"limite: BRL {limiteGlobalVigente.ValorLimiteBrl.Valor:F2}. [LG-12]");
+            }
+        }
+        else
+        {
+            // PerModalidade — LG-11: exige LimiteBanco na modalidade e respeita o teto global agregado.
+            if (limiteBancoVigente is null)
+            {
+                throw new InvalidOperationException(
+                    $"Modalidade '{cotacao.Modalidade}' requer LimiteBanco registrado neste banco " +
+                    "— regime per-modalidade. [LG-11]");
+            }
+
+            if (limiteBancoVigente.ValorDisponivelBrl.Valor < valorPrincipalBrl.Valor)
+            {
+                throw new InvalidOperationException(
+                    $"Banco '{banco.Apelido}' não possui limite disponível suficiente na modalidade " +
+                    $"'{cotacao.Modalidade}'. Disponível: BRL {limiteBancoVigente.ValorDisponivelBrl.Valor:F2}, " +
+                    $"necessário: BRL {valorPrincipalBrl.Valor:F2}. [LG-11]");
+            }
+
+            if (limiteGlobalVigente is not null)
+            {
+                Money utilizadoAgregado = await saldo.CalcularUtilizadoAgregadoModalidadesAsync(
+                    propostaAceita.BancoId, tenantId, cancellationToken);
+
+                if (utilizadoAgregado.Valor + valorPrincipalBrl.Valor > limiteGlobalVigente.ValorLimiteBrl.Valor)
+                {
+                    throw new InvalidOperationException(
+                        $"Contratação excede o teto global agregado do banco '{banco.Apelido}'. " +
+                        $"Utilizado: BRL {utilizadoAgregado.Valor:F2}, principal: BRL {valorPrincipalBrl.Valor:F2}, " +
+                        $"limite global: BRL {limiteGlobalVigente.ValorLimiteBrl.Valor:F2}. [LG-11]");
+                }
             }
         }
 

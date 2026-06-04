@@ -87,6 +87,31 @@ public sealed class BancosController(IMediator mediator) : ControllerBase
         }
     }
 
+    [HttpPut("{id:guid}/regime-limite")]
+    [Authorize(Policy = Policies.Admin)]
+    [ProducesResponseType<BancoDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DefinirRegimeLimite(
+        Guid id, [FromBody] DefinirRegimeLimiteRequest request, CancellationToken ct)
+    {
+        try
+        {
+            BancoDto result = await mediator.Send(
+                new DefinirRegimeLimiteBancoCommand(id, request.RegimeLimite), ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            // REG-02: mudança para GlobalPuro com LimiteBanco ativo → 409.
+            return Conflict(new { error = ex.Message });
+        }
+    }
+
     [HttpPut("{id:guid}/config-antecipacao")]
     [Authorize(Policy = Policies.Admin)]
     [ProducesResponseType<BancoDto>(StatusCodes.Status200OK)]
@@ -120,3 +145,5 @@ public sealed record UpdateBancoConfigRequest(
     bool ExigeAnuenciaExpressa,
     bool ExigeParcelaInteira,
     int AvisoPrevioMinDiasUteis);
+
+public sealed record DefinirRegimeLimiteRequest(string RegimeLimite);

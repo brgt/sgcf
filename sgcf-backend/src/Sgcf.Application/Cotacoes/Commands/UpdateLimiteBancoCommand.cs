@@ -1,7 +1,9 @@
 using FluentValidation;
 using MediatR;
 using NodaTime;
+using Sgcf.Application.Bancos;
 using Sgcf.Application.Common;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -71,18 +73,32 @@ public sealed class UpdateLimiteBancoCommandValidator : AbstractValidator<Update
 public sealed class UpdateLimiteBancoCommandHandler(
     ILimiteBancoRepository repo,
     ILimiteGlobalBancoRepository limiteGlobalRepo,
+    IBancoRepository bancoRepo,
     IClock clock)
     : IRequestHandler<UpdateLimiteBancoCommand, AtualizarLimiteBancoResponse>
 {
+    private static readonly DateTimeZone FusoBrasilia =
+        DateTimeZoneProviders.Tzdb["America/Sao_Paulo"];
+
     public async Task<AtualizarLimiteBancoResponse> Handle(UpdateLimiteBancoCommand cmd, CancellationToken cancellationToken)
     {
         LimiteBanco limite = await repo.GetByIdTrackingAsync(cmd.LimiteId, cancellationToken)
             ?? throw new KeyNotFoundException($"Limite '{cmd.LimiteId}' não encontrado.");
 
+        // REG-01: banco em regime de limite global puro não admite LimiteBanco por modalidade.
+        Banco? banco = await bancoRepo.GetByIdAsync(limite.BancoId, cancellationToken);
+        if (banco is { RegimeLimite: RegimeLimiteBanco.GlobalPuro })
+        {
+            throw new InvalidOperationException(
+                $"Banco '{banco.Apelido}' opera em regime de limite global e não admite limite por modalidade. [REG-01]");
+        }
+
         if (cmd.NovoValorLimiteBrl.HasValue)
         {
+            LocalDate hoje = clock.GetCurrentInstant().InZone(FusoBrasilia).Date;
+
             // LG-09: o novo valor do limite por modalidade não pode superar o limite global vigente do banco.
-            LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(limite.BancoId, cancellationToken);
+            LimiteGlobalBanco? limiteGlobal = await limiteGlobalRepo.GetVigenteByBancoAsync(limite.BancoId, hoje, cancellationToken);
             if (limiteGlobal is not null)
             {
                 Money novoValorVerificacao = new(cmd.NovoValorLimiteBrl.Value, Moeda.Brl);

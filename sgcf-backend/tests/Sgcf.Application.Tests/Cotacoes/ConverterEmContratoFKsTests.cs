@@ -148,7 +148,7 @@ public sealed class ConverterEmContratoFKsTests
 
         // Lookup de LimiteGlobal vigente (SC-02).
         limiteGlobalRepo
-            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(limiteGlobal);
 
         // CDI — necessário para CalcularCet no handler.
@@ -198,6 +198,28 @@ public sealed class ConverterEmContratoFKsTests
                 return Task.FromResult<(Domain.Common.Entity, Domain.Common.Entity?)>((detail, null));
             });
 
+        // Regime derivado do setup: sem LimiteBanco por modalidade ⇒ GlobalPuro; senão PerModalidade.
+        // A detecção usa o serviço (fonte única); o Banco é carregado para o Apelido nas mensagens.
+        bool globalPuro = limiteBanco is null;
+        var banco = Sgcf.Domain.Bancos.Banco.Criar("B21", "Banco FK S.A.", "BancoFK", CriarClock());
+        if (globalPuro)
+        {
+            banco.DefinirRegimeLimite(Sgcf.Domain.Bancos.RegimeLimiteBanco.GlobalPuro, CriarClock());
+        }
+
+        var bancoRepo = Substitute.For<Sgcf.Application.Bancos.IBancoRepository>();
+        bancoRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(banco);
+
+        var saldo = Substitute.For<IConsultaSaldoBanco>();
+        saldo.BancoEmRegimePerModalityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+             .Returns(!globalPuro);
+        saldo.CalcularSaldoDevedorBancoAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+             .Returns(new Money(0m, Moeda.Brl));
+        saldo.CalcularUtilizadoAgregadoModalidadesAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+             .Returns(new Money(0m, Moeda.Brl));
+
+        var tenantContext = Substitute.For<Sgcf.Application.Tenancy.ITenantContext>();
+
         return new ConverterEmContratoCommandHandler(
             cotacaoRepo,
             contratoRepo,
@@ -206,6 +228,9 @@ public sealed class ConverterEmContratoFKsTests
             limiteGlobalRepo,
             cdiRepo,
             garantiaRepoMock,
+            bancoRepo,
+            saldo,
+            tenantContext,
             [conversorFinimp],
             clock);
     }
@@ -305,10 +330,19 @@ public sealed class ConverterEmContratoFKsTests
         contratoCapturado.GarantiasExigidasRevisaoId.Should().BeNull();
     }
 
+    /// <summary>
+    /// Banco sem NENHUM limite (nem por modalidade, nem global) → conversão bloqueada.
+    /// MUDANÇA DE COMPORTAMENTO (SPEC_REGIME_LIMITE_EXPLICITO §4.4, LG-11/LG-12, shipada nos
+    /// commits de regime): converter sem limite algum deixou de ser permitido. O cenário antigo
+    /// (SC-07: convertia com as 3 FKs null) não é mais alcançável — sem LimiteBanco o banco cai
+    /// no regime GlobalPuro, que exige LimiteGlobalBanco vigente (REG-03).
+    /// FYI workstream de snapshot/garantias: este teste foi reescrito de "converte com FKs null"
+    /// para "bloqueia", refletindo a regra de regime.
+    /// </summary>
     [Fact]
-    public async Task Converter_SemLimiteBancoCadastrado_PreencheFKsComoNull()
+    public async Task Converter_SemNenhumLimite_Bloqueia()
     {
-        // Arrange — SC-07: banco sem LimiteBanco → todos os 3 ids ficam null.
+        // Arrange — sem LimiteBanco e sem LimiteGlobal → GlobalPuro sem teto vigente.
         Guid bancoId = Guid.NewGuid();
         (Cotacao cotacao, _) = CriarCotacaoAceita(bancoId);
 
@@ -316,23 +350,12 @@ public sealed class ConverterEmContratoFKsTests
             cotacao,
             limiteBanco: null,
             limiteGlobal: null,
-            out _, out IContratoRepository contratoRepo);
+            out _, out _);
 
-        Contrato? contratoCapturado = null;
-        contratoRepo.When(r => r.Add(Arg.Any<Contrato>()))
-            .Do(callInfo => contratoCapturado = callInfo.Arg<Contrato>());
-
-        // Act — deve completar sem erro (SC-07 não lança exceção).
-        ContratoDto dto = await handler.Handle(CriarComando(cotacao.Id), CancellationToken.None);
-
-        // Assert — todas as FKs devem ser null.
-        dto.LimiteBancoId.Should().BeNull();
-        dto.LimiteGlobalBancoId.Should().BeNull();
-        dto.GarantiasExigidasRevisaoId.Should().BeNull();
-
-        contratoCapturado!.LimiteBancoId.Should().BeNull();
-        contratoCapturado.LimiteGlobalBancoId.Should().BeNull();
-        contratoCapturado.GarantiasExigidasRevisaoId.Should().BeNull();
+        // Act & Assert
+        Func<Task> act = () => handler.Handle(CriarComando(cotacao.Id), CancellationToken.None);
+        InvalidOperationException ex = await Assert.ThrowsAsync<InvalidOperationException>(act);
+        ex.Message.Should().Contain("[REG-03]", "banco GlobalPuro sem limite global vigente é bloqueado");
     }
 
     [Fact]

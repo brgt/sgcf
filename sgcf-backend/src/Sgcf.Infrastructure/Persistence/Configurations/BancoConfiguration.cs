@@ -53,6 +53,13 @@ internal sealed class BancoConfiguration : IEntityTypeConfiguration<Banco>
             .HasColumnType("numeric(20,6)")
             .IsRequired(false);
 
+        builder.Property(b => b.RegimeLimite)
+            .HasColumnName("regime_limite")
+            .HasColumnType("integer")
+            .HasConversion<int>()
+            .HasDefaultValue(RegimeLimiteBanco.PerModalidade)
+            .IsRequired();
+
         builder.Property(b => b.CreatedAt).HasColumnName("created_at").HasColumnType("timestamptz").IsRequired();
         builder.Property(b => b.UpdatedAt).HasColumnName("updated_at").HasColumnType("timestamptz").IsRequired();
 

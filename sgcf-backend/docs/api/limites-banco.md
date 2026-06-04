@@ -96,7 +96,9 @@ Cria novo limite operacional para banco/modalidade. A criação registra automat
 **Responses:**
 - `201 Created` — [LimiteBancoDto](#limitebancodto)
 - `400 Bad Request` — campo inválido ou regra de valor violada (ex.: percentual fora de (0, 100])
-- `409 Conflict` — sobreposição de vigência para o par banco/modalidade, ou tipo de garantia duplicado na lista
+- `409 Conflict` — sobreposição de vigência para o par banco/modalidade, tipo de garantia duplicado na lista, ou banco em regime `GlobalPuro` (REG-01 — bancos de limite global puro não admitem limite por modalidade; ver [Bancos API → Regime de Limite](./bancos.md#regime-de-limite))
+
+> **REG-01 / regime de limite:** se o banco opera em regime `GlobalPuro`, a criação e a atualização de `LimiteBanco` por modalidade são bloqueadas (`409`). Esses bancos operam exclusivamente sob o `LimiteGlobalBanco`. O mesmo se aplica a `PUT /api/v1/limites-banco/{id}`.
 
 ---
 

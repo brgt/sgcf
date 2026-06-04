@@ -7,6 +7,7 @@ using Sgcf.Application.Cotacoes;
 using Sgcf.Application.Cotacoes.Commands;
 using Sgcf.Application.Cotacoes.Exceptions;
 using Sgcf.Domain.Calendario;
+using Sgcf.Domain.Bancos;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
 using Sgcf.Domain.Cotacoes;
@@ -106,7 +107,9 @@ public sealed class ConverterEmContratoEnforcementTests
     /// </summary>
     private static ConverterEmContratoCommandHandler CriarHandler(
         Cotacao cotacao,
-        LimiteBanco? limiteBanco)
+        LimiteBanco? limiteBanco,
+        bool globalPuro = false,
+        decimal? limiteGlobalBrl = null)
     {
         IClock clock = CriarClock();
 
@@ -130,9 +133,12 @@ public sealed class ConverterEmContratoEnforcementTests
                 Arg.Any<CancellationToken>())
             .Returns(limiteBanco);
 
+        LimiteGlobalBanco? limiteGlobal = limiteGlobalBrl is { } lg
+            ? LimiteGlobalBanco.Criar(Guid.NewGuid(), new Money(lg, Moeda.Brl), new LocalDate(2026, 1, 1), CriarClockLimite())
+            : null;
         limiteGlobalRepo
-            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((LimiteGlobalBanco?)null);
+            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(limiteGlobal);
 
         CdiSnapshot cdi = CdiSnapshot.Criar(
             new LocalDate(2026, 5, 15),
@@ -176,6 +182,26 @@ public sealed class ConverterEmContratoEnforcementTests
                 return Task.FromResult<(Domain.Common.Entity, Domain.Common.Entity?)>((detail, null));
             });
 
+        // Regime: banco real (a proposta sempre referencia um banco existente). A detecção
+        // usa o serviço; por padrão PerModalidade (globalPuro=false). Os limites destes testes
+        // têm disponível >> principal (500k), então LG-11 passa e o foco permanece nas garantias.
+        var banco = Banco.Criar("B07", "Banco SC04 S.A.", "BancoSC04", CriarClock());
+        if (globalPuro)
+        {
+            banco.DefinirRegimeLimite(RegimeLimiteBanco.GlobalPuro, CriarClock());
+        }
+
+        var bancoRepo = Substitute.For<Sgcf.Application.Bancos.IBancoRepository>();
+        bancoRepo.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(banco);
+
+        var saldo = Substitute.For<IConsultaSaldoBanco>();
+        saldo.BancoEmRegimePerModalityAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+             .Returns(!globalPuro);
+        saldo.CalcularSaldoDevedorBancoAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+             .Returns(new Money(0m, Moeda.Brl));
+
+        var tenantContext = Substitute.For<Sgcf.Application.Tenancy.ITenantContext>();
+
         return new ConverterEmContratoCommandHandler(
             cotacaoRepo,
             contratoRepo,
@@ -184,6 +210,9 @@ public sealed class ConverterEmContratoEnforcementTests
             limiteGlobalRepo,
             cdiRepo,
             garantiaRepo,
+            bancoRepo,
+            saldo,
+            tenantContext,
             [conversorFinimp],
             clock);
     }
@@ -221,9 +250,10 @@ public sealed class ConverterEmContratoEnforcementTests
     // ──────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// SC-07: quando não há LimiteBanco cadastrado para o banco/modalidade,
-    /// a conversão deve completar sem lançar GarantiaExigidaNaoCobertaException
-    /// mesmo com garantias ausentes.
+    /// SC-07: sem LimiteBanco por modalidade, o enforcement de garantias fica desligado.
+    /// Sob LG-11, "operar sem LimiteBanco" só é válido no regime GlobalPuro (com limite global
+    /// vigente) — então este cenário é exercitado com um banco GlobalPuro. A conversão completa
+    /// sem GarantiaExigidaNaoCobertaException mesmo com garantias ausentes.
     /// </summary>
     [Fact]
     public async Task SC07_SemLimiteBanco_ConverteSemlancamentoDeExcecao()
@@ -231,7 +261,9 @@ public sealed class ConverterEmContratoEnforcementTests
         Guid bancoId = Guid.NewGuid();
         (Cotacao cotacao, _) = CriarCotacaoAceita(bancoId);
 
-        ConverterEmContratoCommandHandler handler = CriarHandler(cotacao, limiteBanco: null);
+        // GlobalPuro com limite global folgado (5M » principal 500k) e sem LimiteBanco.
+        ConverterEmContratoCommandHandler handler = CriarHandler(
+            cotacao, limiteBanco: null, globalPuro: true, limiteGlobalBrl: 5_000_000m);
 
         // Sem garantias declaradas e sem LimiteBanco → deve completar sem exceção.
         Func<Task> act = () => handler.Handle(CriarComando(cotacao.Id), CancellationToken.None);

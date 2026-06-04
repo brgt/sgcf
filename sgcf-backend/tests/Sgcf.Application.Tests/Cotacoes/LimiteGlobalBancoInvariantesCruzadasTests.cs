@@ -56,6 +56,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         return new CreateLimiteBancoCommandHandler(
             repo ?? Substitute.For<ILimiteBancoRepository>(),
             limiteGlobalRepo ?? Substitute.For<ILimiteGlobalBancoRepository>(),
+            Substitute.For<Sgcf.Application.Bancos.IBancoRepository>(),
             clock ?? CriarClock());
     }
 
@@ -67,6 +68,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         return new UpdateLimiteBancoCommandHandler(
             repo ?? Substitute.For<ILimiteBancoRepository>(),
             limiteGlobalRepo ?? Substitute.For<ILimiteGlobalBancoRepository>(),
+            Substitute.For<Sgcf.Application.Bancos.IBancoRepository>(),
             clock ?? CriarClock());
     }
 
@@ -84,7 +86,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         LimiteGlobalBanco? semGlobal = null;
         repo.FindOverlappingAsync(BancoId, Arg.Any<ModalidadeContrato>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate?>(), null, Arg.Any<CancellationToken>())
             .Returns(semConflito);
-        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<CancellationToken>())
+        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(semGlobal);
 
         var handler = CriarHandlerCreate(repo, limiteGlobalRepo, clock);
@@ -115,7 +117,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         LimiteBanco? semConflito = null;
         repo.FindOverlappingAsync(BancoId, Arg.Any<ModalidadeContrato>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate?>(), null, Arg.Any<CancellationToken>())
             .Returns(semConflito);
-        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<CancellationToken>())
+        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(limiteGlobal);
 
         var handler = CriarHandlerCreate(repo, limiteGlobalRepo, clock);
@@ -143,7 +145,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         LimiteBanco? semConflito = null;
         repo.FindOverlappingAsync(BancoId, Arg.Any<ModalidadeContrato>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate?>(), null, Arg.Any<CancellationToken>())
             .Returns(semConflito);
-        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<CancellationToken>())
+        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(limiteGlobal);
 
         var handler = CriarHandlerCreate(repo, limiteGlobalRepo, clock);
@@ -171,7 +173,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         LimiteBanco? semConflito = null;
         repo.FindOverlappingAsync(BancoId, Arg.Any<ModalidadeContrato>(), Arg.Any<LocalDate>(), Arg.Any<LocalDate?>(), null, Arg.Any<CancellationToken>())
             .Returns(semConflito);
-        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<CancellationToken>())
+        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(limiteGlobal);
 
         var handler = CriarHandlerCreate(repo, limiteGlobalRepo, clock);
@@ -214,7 +216,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
 
         // Assert — repositório global não deve ter sido consultado.
         await limiteGlobalRepo.DidNotReceive()
-            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
+            .GetVigenteByBancoAsync(Arg.Any<Guid>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -229,7 +231,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         LimiteBanco existente = CriarLimiteBanco(BancoId, 300_000m);
         repo.GetByIdTrackingAsync(existente.Id, Arg.Any<CancellationToken>())
             .Returns(existente);
-        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<CancellationToken>())
+        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(limiteGlobal);
 
         var handler = CriarHandlerUpdate(repo, limiteGlobalRepo, clock);
@@ -255,7 +257,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         LimiteBanco existente = CriarLimiteBanco(BancoId, 300_000m);
         repo.GetByIdTrackingAsync(existente.Id, Arg.Any<CancellationToken>())
             .Returns(existente);
-        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<CancellationToken>())
+        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(limiteGlobal);
 
         var handler = CriarHandlerUpdate(repo, limiteGlobalRepo, clock);
@@ -283,7 +285,7 @@ public sealed class LimiteGlobalBancoInvariantesCruzadasTests
         LimiteBanco existente = CriarLimiteBanco(BancoId, 300_000m);
         repo.GetByIdTrackingAsync(existente.Id, Arg.Any<CancellationToken>())
             .Returns(existente);
-        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<CancellationToken>())
+        limiteGlobalRepo.GetVigenteByBancoAsync(BancoId, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(semGlobal);
 
         var handler = CriarHandlerUpdate(repo, limiteGlobalRepo, clock);

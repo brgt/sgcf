@@ -14,6 +14,8 @@ namespace Sgcf.Application.Tests.Cotacoes;
 public sealed class LimiteGlobalBancoQueryHandlerTests
 {
     private static readonly Instant Agora = Instant.FromUtc(2026, 5, 23, 10, 0);
+    // Agora projetado em America/Sao_Paulo (UTC-3, sem horário de verão): 2026-05-23 07:00 → data 2026-05-23.
+    private static readonly LocalDate Hoje = new(2026, 5, 23);
     private static readonly Guid TenantId = Guid.NewGuid();
     private static readonly Guid BancoId = Guid.NewGuid();
 
@@ -134,12 +136,12 @@ public sealed class LimiteGlobalBancoQueryHandlerTests
         var saldo = Substitute.For<IConsultaSaldoBanco>();
         var tenantContext = CriarTenantContext();
 
-        repo.GetVigenteByBancoAsync(BancoId, default).Returns(limite);
+        repo.GetVigenteByBancoAsync(BancoId, Hoje, default).Returns(limite);
         saldo.BancoEmRegimePerModalityAsync(BancoId, TenantId, default).Returns(false);
         saldo.CalcularSaldoDevedorBancoAsync(BancoId, TenantId, default)
             .Returns(new Money(300_000m, Moeda.Brl));
 
-        var handler = new GetLimiteGlobalVigenteBancoQueryHandler(repo, saldo, tenantContext);
+        var handler = new GetLimiteGlobalVigenteBancoQueryHandler(repo, saldo, tenantContext, CriarClock());
         var query = new GetLimiteGlobalVigenteBancoQuery(BancoId);
 
         // Act
@@ -165,12 +167,12 @@ public sealed class LimiteGlobalBancoQueryHandlerTests
         var saldo = Substitute.For<IConsultaSaldoBanco>();
         var tenantContext = CriarTenantContext();
 
-        repo.GetVigenteByBancoAsync(BancoId, default).Returns(limite);
+        repo.GetVigenteByBancoAsync(BancoId, Hoje, default).Returns(limite);
         saldo.BancoEmRegimePerModalityAsync(BancoId, TenantId, default).Returns(true);
         saldo.CalcularUtilizadoAgregadoModalidadesAsync(BancoId, TenantId, default)
             .Returns(new Money(450_000m, Moeda.Brl));
 
-        var handler = new GetLimiteGlobalVigenteBancoQueryHandler(repo, saldo, tenantContext);
+        var handler = new GetLimiteGlobalVigenteBancoQueryHandler(repo, saldo, tenantContext, CriarClock());
         var query = new GetLimiteGlobalVigenteBancoQuery(BancoId);
 
         // Act
@@ -195,12 +197,12 @@ public sealed class LimiteGlobalBancoQueryHandlerTests
         var saldo = Substitute.For<IConsultaSaldoBanco>();
         var tenantContext = CriarTenantContext();
 
-        repo.GetVigenteByBancoAsync(BancoId, default).Returns(limite);
+        repo.GetVigenteByBancoAsync(BancoId, Hoje, default).Returns(limite);
         saldo.BancoEmRegimePerModalityAsync(BancoId, TenantId, default).Returns(false);
         saldo.CalcularSaldoDevedorBancoAsync(BancoId, TenantId, default)
             .Returns(new Money(1_200_000m, Moeda.Brl));
 
-        var handler = new GetLimiteGlobalVigenteBancoQueryHandler(repo, saldo, tenantContext);
+        var handler = new GetLimiteGlobalVigenteBancoQueryHandler(repo, saldo, tenantContext, CriarClock());
         var query = new GetLimiteGlobalVigenteBancoQuery(BancoId);
 
         LimiteGlobalBancoVigenteDto resultado = await handler.Handle(query, default);
@@ -215,9 +217,9 @@ public sealed class LimiteGlobalBancoQueryHandlerTests
         var saldo = Substitute.For<IConsultaSaldoBanco>();
         var tenantContext = CriarTenantContext();
 
-        repo.GetVigenteByBancoAsync(BancoId, default).Returns((LimiteGlobalBanco?)null);
+        repo.GetVigenteByBancoAsync(BancoId, Hoje, default).Returns((LimiteGlobalBanco?)null);
 
-        var handler = new GetLimiteGlobalVigenteBancoQueryHandler(repo, saldo, tenantContext);
+        var handler = new GetLimiteGlobalVigenteBancoQueryHandler(repo, saldo, tenantContext, CriarClock());
         var query = new GetLimiteGlobalVigenteBancoQuery(BancoId);
 
         Func<Task> act = () => handler.Handle(query, default);
