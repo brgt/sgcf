@@ -4,6 +4,7 @@ using NodaTime;
 using Sgcf.Application.Cambio;
 using Sgcf.Application.Common;
 using Sgcf.Application.Contratos;
+using Sgcf.Application.Cotacoes.Services;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contratos;
@@ -15,14 +16,17 @@ namespace Sgcf.Application.Cotacoes.Commands;
 /// Cria uma nova cotação em estado Rascunho.
 /// Se CodigoInterno for nulo, gera automaticamente via repositório.
 /// Busca PTAX D-1 via <see cref="ICotacaoFxRepository"/>. SPEC §6.1.
+/// S40: prazo aceito como tenor {valor, unidade}; prazoMaximoDias permanece como entrada legada.
 /// Onda 1: <see cref="ContratoMaeId"/> obrigatório para modalidade Refinimp. SPEC §4.1.
 /// </summary>
 public sealed record CriarCotacaoCommand(
-    string? CodigoInterno,
     string Modalidade,
     decimal ValorAlvoBrl,
-    int PrazoMaximoDias,
     DateOnly DataAbertura,
+    string? CodigoInterno = null,
+    int? PrazoMaximoDias = null,
+    int? PrazoMaximoValor = null,
+    string? PrazoMaximoUnidade = null,
     string? Observacoes = null,
     Guid? ContratoMaeId = null) : IRequest<CotacaoDto>;
 
@@ -39,9 +43,26 @@ public sealed class CriarCotacaoCommandValidator : AbstractValidator<CriarCotaca
             .GreaterThan(0m)
             .WithMessage("ValorAlvoBrl deve ser maior que zero.");
 
-        RuleFor(c => c.PrazoMaximoDias)
-            .GreaterThanOrEqualTo(1)
-            .WithMessage("PrazoMaximoDias deve ser maior ou igual a 1.");
+        // S40 §4.1: prazo obrigatório na criação (tenor estruturado OU dias legado).
+        RuleFor(c => c)
+            .Must(c => c.PrazoMaximoValor.HasValue || c.PrazoMaximoDias.HasValue)
+            .WithMessage("Informe prazoMaximoValor (com unidade) ou prazoMaximoDias.");
+
+        // S40 §4.3: validação dura do tenor.
+        When(c => c.PrazoMaximoValor.HasValue, () =>
+            RuleFor(c => c.PrazoMaximoValor!.Value)
+                .GreaterThanOrEqualTo(1)
+                .WithMessage("PrazoMaximoValor deve ser maior ou igual a 1."));
+
+        When(c => c.PrazoMaximoDias.HasValue, () =>
+            RuleFor(c => c.PrazoMaximoDias!.Value)
+                .GreaterThanOrEqualTo(1)
+                .WithMessage("PrazoMaximoDias deve ser maior ou igual a 1."));
+
+        When(c => c.PrazoMaximoUnidade is not null, () =>
+            RuleFor(c => c.PrazoMaximoUnidade!)
+                .Must(u => Enum.TryParse<UnidadePrazo>(u, true, out _))
+                .WithMessage($"PrazoMaximoUnidade deve ser um dos valores: {string.Join(", ", Enum.GetNames<UnidadePrazo>())}."));
 
         // Onda 1 — SPEC §5.1: ContratoMaeId obrigatório quando modalidade=Refinimp.
         RuleFor(c => c.ContratoMaeId)
@@ -72,16 +93,21 @@ public sealed class CriarCotacaoCommandHandler(
 
         ModalidadeContrato modalidade = Enum.Parse<ModalidadeContrato>(cmd.Modalidade, true);
 
+        // S40 §4.1: resolve o tenor (precedência valor+unidade > dias legado; default por modalidade).
+        UnidadePrazo? unidade = cmd.PrazoMaximoUnidade is null
+            ? null
+            : Enum.Parse<UnidadePrazo>(cmd.PrazoMaximoUnidade, true);
+        ResolvedorTenor.Resultado tenor = ResolvedorTenor.Resolver(
+            modalidade, cmd.PrazoMaximoValor, unidade, cmd.PrazoMaximoDias);
+
         // Onda 0 F0.1: busca PTAX apenas para modalidades cambiais (FINIMP, REFINIMP, Lei4131).
-        // Modalidades BRL puras (NCE, CapitalDeGiro, FGI) não requerem conversão cambial.
+        // A generalização multimoeda da PTAX é tratada em S40 T8; aqui mantém-se USD.
         decimal? ptax = null;
         LocalDate? dataPtaxReferencia = null;
+        Moeda moedaAlvo = Cotacao.ExigeMoedaEstrangeira(modalidade) ? Moeda.Usd : Moeda.Brl;
 
         if (Cotacao.ExigeMoedaEstrangeira(modalidade))
         {
-            // PTAX D-1 relativa à data de abertura: o resolver traduz PtaxD1 → PtaxD0 do
-            // fechamento do dia anterior (formato que o ingestor do BCB realmente grava).
-            // Passamos dataAbertura (não dataAbertura-1); o deslocamento de D-1 é do resolver.
             CotacaoFx cotacaoFx = await cotacaoResolver.ResolverFxAsync(
                 Moeda.Usd,
                 TipoCotacao.PtaxD1,
@@ -126,21 +152,30 @@ public sealed class CriarCotacaoCommandHandler(
 
         Money valorAlvo = new(cmd.ValorAlvoBrl, Moeda.Brl);
 
-        Cotacao cotacao = Cotacao.Criar(
+        Cotacao cotacao = Cotacao.CriarComTenor(
             codigoInterno,
             modalidade,
             valorAlvo,
-            cmd.PrazoMaximoDias,
+            tenor.Valor,
+            tenor.Unidade,
             dataAbertura,
+            moedaAlvo,
             dataPtaxReferencia: dataPtaxReferencia,
-            ptaxUsadaUsdBrl: ptax,
+            ptaxUsada: ptax,
             clock,
-            cmd.Observacoes,
+            dominio: null,
+            observacoes: cmd.Observacoes,
             contratoMaeId: cmd.ContratoMaeId);
 
         repo.Add(cotacao);
         await repo.SaveChangesAsync(cancellationToken);
 
-        return CotacaoDto.From(cotacao);
+        List<AlertaDto> alertas = [];
+        if (tenor.Alerta is not null)
+        {
+            alertas.Add(tenor.Alerta);
+        }
+
+        return CotacaoDto.From(cotacao, alertas);
     }
 }

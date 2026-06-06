@@ -30,9 +30,12 @@ public sealed record AdicionarBancoRequest(
 public sealed record CancelarCotacaoRequest(string Motivo);
 
 /// <summary>Corpo para atualizar campos básicos editáveis de uma cotação.</summary>
+/// <remarks>S40: prefira o tenor { PrazoMaximoValor, PrazoMaximoUnidade }; PrazoMaximoDias é legado.</remarks>
 public sealed record AtualizarCotacaoRequest(
     int? PrazoMaximoDias,
-    string? Observacoes);
+    string? Observacoes,
+    int? PrazoMaximoValor = null,
+    string? PrazoMaximoUnidade = null);
 
 // ── Controller ───────────────────────────────────────────────────────────────
 
@@ -128,7 +131,9 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         try
         {
             CotacaoDto result = await mediator.Send(
-                new AtualizarCotacaoCommand(id, body.PrazoMaximoDias, body.Observacoes),
+                new AtualizarCotacaoCommand(
+                    id, body.PrazoMaximoDias, body.Observacoes,
+                    body.PrazoMaximoValor, body.PrazoMaximoUnidade),
                 cancellationToken);
 
             return Ok(result);
