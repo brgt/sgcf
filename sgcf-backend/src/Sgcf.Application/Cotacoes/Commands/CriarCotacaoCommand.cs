@@ -28,6 +28,8 @@ public sealed record CriarCotacaoCommand(
     int? PrazoMaximoValor = null,
     string? PrazoMaximoUnidade = null,
     string? MoedaAlvo = null,
+    int? CarenciaMeses = null,
+    IndexadorBaseInput? IndexadorBase = null,
     string? Observacoes = null,
     Guid? ContratoMaeId = null) : IRequest<CotacaoDto>;
 
@@ -81,6 +83,18 @@ public sealed class CriarCotacaoCommandValidator : AbstractValidator<CriarCotaca
             RuleFor(c => c.MoedaAlvo!)
                 .Must(m => string.Equals(m, nameof(Moeda.Brl), StringComparison.OrdinalIgnoreCase))
                 .WithMessage("moedaAlvo deve ser 'Brl' para as modalidades Nce, CapitalDeGiro e Fgi."));
+
+        // S40 §4.5: carência não pode ser negativa (validação dura → 400).
+        When(c => c.CarenciaMeses.HasValue, () =>
+            RuleFor(c => c.CarenciaMeses!.Value)
+                .GreaterThanOrEqualTo(0)
+                .WithMessage("CarenciaMeses não pode ser negativa."));
+
+        // S40 §2.4: tipo de indexador deve pertencer ao enum quando informado.
+        When(c => c.IndexadorBase?.Tipo is not null, () =>
+            RuleFor(c => c.IndexadorBase!.Tipo!)
+                .Must(t => Enum.TryParse<TipoIndexador>(t, true, out _))
+                .WithMessage($"indexadorBase.tipo deve ser um dos valores: {string.Join(", ", Enum.GetNames<TipoIndexador>())}."));
 
         // Onda 1 — SPEC §5.1: ContratoMaeId obrigatório quando modalidade=Refinimp.
         RuleFor(c => c.ContratoMaeId)
@@ -149,6 +163,13 @@ public sealed class CriarCotacaoCommandHandler(
             ? cmd.CodigoInterno
             : await repo.GerarProximoCodigoInternoAsync(dataAbertura.Year, cancellationToken);
 
+        // S40 §2.3–§2.4: campos de domínio + alertas suaves (carência ignorada, indexador incoerente).
+        IndexadorBase? indexador = MapearIndexador(cmd.IndexadorBase);
+        GeradorAlertasCotacao.AdicionarAlertasCamposDominio(alertas, modalidade, cmd.CarenciaMeses, indexador);
+        DadosDominioCotacao dominio = new(
+            CarenciaMeses: cmd.CarenciaMeses,
+            IndexadorBase: indexador);
+
         Money valorAlvo = new(cmd.ValorAlvoBrl, Moeda.Brl);
 
         Cotacao cotacao = Cotacao.CriarComTenor(
@@ -162,7 +183,7 @@ public sealed class CriarCotacaoCommandHandler(
             dataPtaxReferencia: dataPtaxReferencia,
             ptaxUsada: ptax,
             clock,
-            dominio: null,
+            dominio: dominio,
             observacoes: cmd.Observacoes,
             contratoMaeId: cmd.ContratoMaeId);
 
@@ -228,4 +249,15 @@ public sealed class CriarCotacaoCommandHandler(
     }
 
     private static DateOnly ToDateOnly(LocalDate d) => new(d.Year, d.Month, d.Day);
+
+    private static IndexadorBase? MapearIndexador(IndexadorBaseInput? input) =>
+        input is null
+            ? null
+            : new IndexadorBase
+            {
+                Tipo = input.Tipo is null ? null : Enum.Parse<TipoIndexador>(input.Tipo, true),
+                PercentualCdi = input.PercentualCdi,
+                SpreadAa = input.SpreadAa,
+                TaxaPrefixadaAa = input.TaxaPrefixadaAa,
+            };
 }
