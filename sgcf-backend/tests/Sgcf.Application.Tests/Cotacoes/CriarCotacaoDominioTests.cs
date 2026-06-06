@@ -106,4 +106,48 @@ public sealed class CriarCotacaoDominioTests
 
         result.Alertas.Should().ContainSingle(a => a.Codigo == "indexador-incoerente");
     }
+
+    [Fact]
+    public async Task Fgi_armazena_estruturantes()
+    {
+        (ICotacaoRepository repo, IResolveTipoCotacaoService resolver) = Mocks();
+        CriarCotacaoCommandHandler handler = new(repo, resolver, Clock());
+
+        CriarCotacaoCommand cmd = new(
+            Modalidade: "Fgi",
+            ValorAlvoBrl: 5_000_000m,
+            DataAbertura: new DateOnly(2026, 5, 16),
+            PrazoMaximoValor: 60,
+            PrazoMaximoUnidade: "Meses",
+            PercentualCoberturaFgi: 80m,
+            FinalidadeBndes: "Investimento",
+            BancoRepassadorPretendido: "BancoDoBrasil");
+
+        CotacaoDto result = await handler.Handle(cmd, default);
+
+        result.PercentualCoberturaFgi.Should().Be(80m);
+        result.FinalidadeBndes.Should().Be("Investimento");
+        result.BancoRepassadorPretendido.Should().Be("BancoDoBrasil");
+    }
+
+    [Fact]
+    public async Task Estruturantes_em_modalidade_nao_fgi_sao_ignorados()
+    {
+        (ICotacaoRepository repo, IResolveTipoCotacaoService resolver) = Mocks();
+        CriarCotacaoCommandHandler handler = new(repo, resolver, Clock());
+
+        CriarCotacaoCommand cmd = new(
+            Modalidade: "Nce",
+            ValorAlvoBrl: 5_000_000m,
+            DataAbertura: new DateOnly(2026, 5, 16),
+            PrazoMaximoValor: 12,
+            PrazoMaximoUnidade: "Meses",
+            PercentualCoberturaFgi: 80m,
+            FinalidadeBndes: "Investimento");
+
+        CotacaoDto result = await handler.Handle(cmd, default);
+
+        result.PercentualCoberturaFgi.Should().BeNull();
+        result.FinalidadeBndes.Should().BeNull();
+    }
 }

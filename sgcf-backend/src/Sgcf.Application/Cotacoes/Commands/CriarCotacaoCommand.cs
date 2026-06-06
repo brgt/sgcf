@@ -30,6 +30,9 @@ public sealed record CriarCotacaoCommand(
     string? MoedaAlvo = null,
     int? CarenciaMeses = null,
     IndexadorBaseInput? IndexadorBase = null,
+    decimal? PercentualCoberturaFgi = null,
+    string? FinalidadeBndes = null,
+    string? BancoRepassadorPretendido = null,
     string? Observacoes = null,
     Guid? ContratoMaeId = null) : IRequest<CotacaoDto>;
 
@@ -95,6 +98,12 @@ public sealed class CriarCotacaoCommandValidator : AbstractValidator<CriarCotaca
             RuleFor(c => c.IndexadorBase!.Tipo!)
                 .Must(t => Enum.TryParse<TipoIndexador>(t, true, out _))
                 .WithMessage($"indexadorBase.tipo deve ser um dos valores: {string.Join(", ", Enum.GetNames<TipoIndexador>())}."));
+
+        // S40 §4.5: percentual de cobertura FGI deve estar em 0..100 (validação dura → 400).
+        When(c => c.PercentualCoberturaFgi.HasValue, () =>
+            RuleFor(c => c.PercentualCoberturaFgi!.Value)
+                .InclusiveBetween(0m, 100m)
+                .WithMessage("percentualCoberturaFgi deve estar entre 0 e 100."));
 
         // Onda 1 — SPEC §5.1: ContratoMaeId obrigatório quando modalidade=Refinimp.
         RuleFor(c => c.ContratoMaeId)
@@ -168,7 +177,10 @@ public sealed class CriarCotacaoCommandHandler(
         GeradorAlertasCotacao.AdicionarAlertasCamposDominio(alertas, modalidade, cmd.CarenciaMeses, indexador);
         DadosDominioCotacao dominio = new(
             CarenciaMeses: cmd.CarenciaMeses,
-            IndexadorBase: indexador);
+            IndexadorBase: indexador,
+            FinalidadeBndes: cmd.FinalidadeBndes,
+            BancoRepassadorPretendido: cmd.BancoRepassadorPretendido,
+            PercentualCoberturaFgi: cmd.PercentualCoberturaFgi);
 
         Money valorAlvo = new(cmd.ValorAlvoBrl, Moeda.Brl);
 
