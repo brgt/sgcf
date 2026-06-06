@@ -42,7 +42,7 @@ public static class ResolvedorTenor
             if (prazoMaximoDias is { } diasEnviado && diasEnviado != dias)
             {
                 alerta = new AlertaDto(
-                    "prazo-recalculado",
+                    CodigosAlerta.PrazoRecalculado,
                     "prazoMaximoValor",
                     SeveridadeAlertaCotacao.Aviso,
                     $"prazoMaximoDias enviado ({diasEnviado}) diverge do tenor {valor} {unidade}; " +

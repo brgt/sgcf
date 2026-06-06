@@ -148,6 +148,9 @@ public sealed class CriarCotacaoCommandHandler(
             alertas.Add(tenor.Alerta);
         }
 
+        // S40 §4.4: alerta suave quando o prazo excede a faixa esperada da modalidade.
+        GeradorAlertasCotacao.AdicionarAlertaFaixaPrazo(alertas, modalidade, tenor.Dias);
+
         // S40 §2.2/§6: determina a moeda alvo por modalidade (Refinimp herda do contrato mãe).
         Moeda moedaAlvo = await ResolverMoedaAlvoAsync(cmd, modalidade, alertas, cancellationToken);
 
@@ -241,7 +244,7 @@ public sealed class CriarCotacaoCommandHandler(
                 && !string.Equals(cmd.MoedaAlvo, mae.Moeda.ToString(), StringComparison.OrdinalIgnoreCase))
             {
                 alertas.Add(new AlertaDto(
-                    "moeda-herdada-do-contrato-mae",
+                    CodigosAlerta.MoedaHerdadaDoContratoMae,
                     "moedaAlvo",
                     SeveridadeAlertaCotacao.Info,
                     $"moedaAlvo informada foi ignorada; Refinimp herda a moeda do contrato mãe ({mae.Moeda})."));
