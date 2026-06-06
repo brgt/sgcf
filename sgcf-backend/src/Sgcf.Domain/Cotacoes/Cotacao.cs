@@ -58,8 +58,26 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
     /// <summary>Carência pretendida em meses. Null para modalidades não aplicáveis. SPEC S40 §2.3.</summary>
     public int? CarenciaMeses { get; private set; }
 
-    /// <summary>Indexador base pretendido (intenção). Null quando ausente. SPEC S40 §2.4.</summary>
-    public IndexadorBase? IndexadorBase { get; private set; }
+    // IndexadorBase é decomposto em colunas planas (sem owned type — mesma estratégia de ValorAlvoBrl). SPEC S40 §2.4.
+    internal TipoIndexador? IndexadorTipo { get; private set; }
+    internal decimal? IndexadorPercentualCdi { get; private set; }
+    internal decimal? IndexadorSpreadAa { get; private set; }
+    internal decimal? IndexadorTaxaPrefixadaAa { get; private set; }
+
+    /// <summary>Indexador base pretendido (intenção), montado das colunas planas. Null quando ausente. SPEC S40 §2.4.</summary>
+    public IndexadorBase? IndexadorBase =>
+        IndexadorTipo is null
+        && IndexadorPercentualCdi is null
+        && IndexadorSpreadAa is null
+        && IndexadorTaxaPrefixadaAa is null
+            ? null
+            : new IndexadorBase
+            {
+                Tipo = IndexadorTipo,
+                PercentualCdi = IndexadorPercentualCdi,
+                SpreadAa = IndexadorSpreadAa,
+                TaxaPrefixadaAa = IndexadorTaxaPrefixadaAa,
+            };
 
     /// <summary>Finalidade/enquadramento BNDES pretendido (apenas Fgi). SPEC S40 §2.5.</summary>
     public string? FinalidadeBndes { get; private set; }
@@ -350,7 +368,10 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
             PtaxUsada = ptaxUsada,
             PtaxUsadaUsdBrl = moedaAlvo == Moeda.Usd ? ptaxUsada : null,
             CarenciaMeses = carenciaFinal,
-            IndexadorBase = dominio.IndexadorBase,
+            IndexadorTipo = dominio.IndexadorBase?.Tipo,
+            IndexadorPercentualCdi = dominio.IndexadorBase?.PercentualCdi,
+            IndexadorSpreadAa = dominio.IndexadorBase?.SpreadAa,
+            IndexadorTaxaPrefixadaAa = dominio.IndexadorBase?.TaxaPrefixadaAa,
             FinalidadeBndes = ehFgi ? dominio.FinalidadeBndes : null,
             BancoRepassadorPretendido = ehFgi ? dominio.BancoRepassadorPretendido : null,
             PercentualCoberturaFgi = coberturaFinal,

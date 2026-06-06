@@ -72,6 +72,73 @@ internal sealed class CotacaoConfiguration : IEntityTypeConfiguration<Cotacao>
             .HasColumnType("numeric(12,6)")
             .IsRequired(false);
 
+        // ─── S40: tenor de prazo, moeda alvo, PTAX multimoeda e campos de domínio ───
+
+        builder.Property(c => c.PrazoMaximoValor)
+            .HasColumnName("prazo_maximo_valor")
+            .HasColumnType("integer")
+            .IsRequired();
+
+        builder.Property(c => c.PrazoMaximoUnidade)
+            .HasColumnName("prazo_maximo_unidade")
+            .HasConversion(SgcfConverters.UnidadePrazo)
+            .HasColumnType("text")
+            .IsRequired();
+
+        builder.Property(c => c.MoedaAlvo)
+            .HasColumnName("moeda_alvo")
+            .HasConversion(SgcfConverters.Moeda)
+            .HasColumnType("text")
+            .IsRequired();
+
+        builder.Property(c => c.PtaxUsada)
+            .HasColumnName("ptax_usada")
+            .HasColumnType("numeric(12,6)")
+            .IsRequired(false);
+
+        builder.Property(c => c.CarenciaMeses)
+            .HasColumnName("carencia_meses")
+            .HasColumnType("integer")
+            .IsRequired(false);
+
+        builder.Property(c => c.FinalidadeBndes)
+            .HasColumnName("finalidade_bndes")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(c => c.BancoRepassadorPretendido)
+            .HasColumnName("banco_repassador_pretendido")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(c => c.PercentualCoberturaFgi)
+            .HasColumnName("percentual_cobertura_fgi")
+            .HasColumnType("numeric")
+            .IsRequired(false);
+
+        // IndexadorBase: VO opcional decomposto em colunas planas (estratégia de backing fields,
+        // como ValorAlvoBrl). A propriedade computada Cotacao.IndexadorBase não é persistida. SPEC S40 §2.4.
+        builder.Property(c => c.IndexadorTipo)
+            .HasColumnName("indexador_tipo")
+            .HasConversion(SgcfConverters.TipoIndexador)
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(c => c.IndexadorPercentualCdi)
+            .HasColumnName("indexador_percentual_cdi")
+            .HasColumnType("numeric")
+            .IsRequired(false);
+
+        builder.Property(c => c.IndexadorSpreadAa)
+            .HasColumnName("indexador_spread_aa")
+            .HasColumnType("numeric")
+            .IsRequired(false);
+
+        builder.Property(c => c.IndexadorTaxaPrefixadaAa)
+            .HasColumnName("indexador_taxa_prefixada_aa")
+            .HasColumnType("numeric")
+            .IsRequired(false);
+
         builder.Property(c => c.Status)
             .HasColumnName("status")
             .HasConversion(new ValueConverter<StatusCotacao, short>(
@@ -167,8 +234,9 @@ internal sealed class CotacaoConfiguration : IEntityTypeConfiguration<Cotacao>
             .HasField("_propostas")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        // Propriedades computadas (Money wrappers) não são persistidas.
+        // Propriedades computadas não são persistidas (montadas a partir de backing fields).
         builder.Ignore(c => c.ValorAlvoBrl);
         builder.Ignore(c => c.BancosAlvo);
+        builder.Ignore(c => c.IndexadorBase);
     }
 }
