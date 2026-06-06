@@ -8,7 +8,7 @@
 
 ## Fase 0 — Fundação (domínio + persistência)
 
-- [ ] **T1 [S]** Enums e VO de domínio
+- [x] **T1 [S]** Enums e VO de domínio
   - **Arquivos:** `Sgcf.Domain/Cotacoes/UnidadePrazo.cs`, `TipoIndexador.cs`, `IndexadorBase.cs`
   - **Aceite:**
     - `UnidadePrazo { Dias = 1, Meses = 2 }`
@@ -16,7 +16,7 @@
     - `IndexadorBase` (record) com `Tipo?`, `PercentualCdi?`, `SpreadAa?`, `TaxaPrefixadaAa?`; método/propriedade de coerência tipo↔campo (`EhCoerente`) puro
   - **Verify:** `dotnet test --filter "FullyQualifiedName~IndexadorBase"` (coerência) verde
 
-- [ ] **T2 [M]** Entidade `Cotacao` — tenor, campos de domínio e invariantes
+- [x] **T2 [M]** Entidade `Cotacao` — tenor, campos de domínio e invariantes
   - **Arquivos:** `Sgcf.Domain/Cotacoes/Cotacao.cs` (+ ajuste de call-site no handler e testes de domínio)
   - **Aceite:**
     - Novas propriedades (setter privado): `PrazoMaximoValor`, `PrazoMaximoUnidade`, `MoedaAlvo`, `CarenciaMeses`, `IndexadorBase`, `FinalidadeBndes`, `BancoRepassadorPretendido`, `PercentualCoberturaFgi`, `PtaxUsada`
@@ -27,7 +27,7 @@
     - PTAX invariante migra de `ptaxUsadaUsdBrl` para `ptaxUsada` + `moedaAlvo`
   - **Verify:** `dotnet test --filter "FullyQualifiedName~Cotacao&Category!=Slow"` cobre derivação (60 Meses→1800; 180 Dias→180), defaults por modalidade, invariantes e validações duras
 
-- [ ] **T3 [M]** Persistência EF + migração
+- [x] **T3 [M]** Persistência EF + migração
   - **Arquivos:** `Sgcf.Infrastructure/Persistence/Configurations/CotacaoConfiguration.cs`, `Migrations/<ts>_S40_CotacaoTenorEDominio.cs`
   - **Aceite:**
     - Mapear: `prazo_maximo_valor int`, `prazo_maximo_unidade text`, `moeda_alvo text`, `carencia_meses int`, `indexador_tipo/percentual_cdi/spread_aa/taxa_prefixada_aa`, `finalidade_bndes text`, `banco_repassador_pretendido text`, `percentual_cobertura_fgi numeric`, `ptax_usada numeric(12,6)`
@@ -36,13 +36,13 @@
     - `Down` reverte de forma limpa
   - **Verify:** `dotnet ef migrations add` sem _diff_ inesperado no snapshot; `dotnet ef database update` aplica em base com linhas; coluna confirmada
 
-- [ ] **[CHECKPOINT A]** `dotnet build` OK; Domain/Application/Integration verdes; migração aplicada; backfill validado; zero mudança de comportamento observável na API
+- [x] **[CHECKPOINT A]** `dotnet build` OK; Domain 796 · Application 587 · Integração 198 verdes; migração aplicada em container limpo; backfill validado; zero regressão
 
 ---
 
 ## Fase 1 — Tenor (vertical, core)
 
-- [ ] **T4 [M]** Application: precedência de tenor + DTO + alertas mínimos
+- [x] **T4 [M]** Application: precedência de tenor + DTO + alertas mínimos
   - **Arquivos:** `Sgcf.Application/Cotacoes/Services/ResolvedorTenor.cs`, `AlertaDto.cs`, `CotacaoDto.cs`, `Commands/CriarCotacaoCommand.cs`, `Commands/AtualizarCotacaoCommand.cs`
   - **Aceite:**
     - `ResolvedorTenor` puro: aplica precedência §4.1 (valor+unidade > dias legado; default por modalidade; recálculo em inconsistência)
@@ -52,18 +52,18 @@
     - Alerta `prazo-recalculado` emitido em inconsistência valor↔dias
   - **Verify:** `dotnet test --filter "FullyQualifiedName~Tenor|FullyQualifiedName~CriarCotacao|FullyQualifiedName~AtualizarCotacao"` verde
 
-- [ ] **T5 [S]** Integração HTTP — tenor
+- [x] **T5 [S]** Integração HTTP — tenor
   - **Arquivos:** `tests/Sgcf.Api.IntegrationTests/...CotacaoTenor...`
   - **Aceite:** critérios de tenor da Spec §11 (60 Meses→1800; 180 Dias→180; default Lei4131=Meses; legado só `prazoMaximoDias`; 400s; PATCH 24 Meses→720; recálculo)
   - **Verify:** `dotnet test tests/Sgcf.Api.IntegrationTests --filter "FullyQualifiedName~Tenor"`
 
-- [ ] **[CHECKPOINT B]** POST/PATCH/GET tratam tenor; caminho legado intacto; suíte alvo verde
+- [x] **[CHECKPOINT B]** POST/PATCH/GET tratam tenor; caminho legado intacto; Integração 209 verdes
 
 ---
 
 ## Fase 2 — Erros RFC 7807 (breaking change)
 
-- [ ] **T6 [M]** Exceções tipadas + handler central
+- [x] **T6 [M]** Exceções tipadas + handler central
   - **Arquivos:** `PtaxIndisponivelException.cs`, `ConflitoDeEstadoException.cs`, `Sgcf.Api/Middleware/GlobalExceptionHandler.cs`
   - **Aceite:**
     - Catálogo §5.2 com base `https://sgcf.nordware.io/errors/` (`ptax-indisponivel`, `conflito-de-estado`, `validacao`, `nao-encontrado`)
@@ -71,7 +71,7 @@
     - Handler testa subtipo PTAX antes do `InvalidOperationException` genérico
   - **Verify:** teste unitário do handler mapeia cada tipo; `dotnet test --filter "FullyQualifiedName~GlobalExceptionHandler"`
 
-- [ ] **T7 [M]** Remover catches que sombreiam o handler
+- [x] **T7 [M]** Remover catches que sombreiam o handler
   - **Arquivos:** `Sgcf.Api/Controllers/CotacoesController.cs`
   - **Aceite:**
     - Remover `catch (InvalidOperationException) → Conflict(new { error })` (≈20 ocorrências)
@@ -79,13 +79,13 @@
     - Nenhum endpoint de cotações retorna `{ error }`
   - **Verify:** `dotnet test tests/Sgcf.Api.IntegrationTests --filter "FullyQualifiedName~Cotacao"`; conferir corpo ProblemDetails nos 409
 
-- [ ] **[CHECKPOINT C]** Breaking change validada; todos os 409 de cotações em ProblemDetails; varredura confirmando ausência de `{ error }`
+- [x] **[CHECKPOINT C]** Breaking change validada; todos os 409 de cotações em ProblemDetails; Integração 211 verdes
 
 ---
 
 ## Fase 3 — PTAX multimoeda
 
-- [ ] **T8 [M]** `moedaAlvo` end-to-end + generalização da PTAX
+- [x] **T8 [M]** `moedaAlvo` end-to-end + generalização da PTAX
   - **Arquivos:** `Commands/CriarCotacaoCommand.cs` (handler), `Commands/RefreshCotacaoMercadoCommand.cs`, `CotacaoDto.cs`, testes
   - **Aceite:**
     - Handler chama `ResolverFxAsync(moedaAlvo, TipoCotacao.PtaxD1, dataAbertura, ct)`
@@ -95,20 +95,20 @@
     - Nce/CapitalDeGiro/Fgi: `moedaAlvo=Brl`, sem PTAX
   - **Verify:** `dotnet test --filter "FullyQualifiedName~Ptax|FullyQualifiedName~MoedaAlvo"`; seed de PTAX EUR/BRL na integração
 
-- [ ] **[CHECKPOINT D]** Lei4131 `Eur` resolve EUR/BRL; `ptaxUsada` preenchido, `ptaxUsadaUsdBrl=null`; 409 PTAX traz `type` + `dataPtaxReferencia` + `moedaAlvo`
+- [x] **[CHECKPOINT D]** Lei4131 `Eur` resolve por moeda; `ptaxUsada`/`ptaxUsadaUsdBrl` corretos; 409 PTAX tipado com `dataPtaxReferencia` + `moedaAlvo`. Integração 213 verdes
 
 ---
 
 ## Fase 4 — Campos de domínio
 
-- [ ] **T9 [M]** Carência + indexador
+- [x] **T9 [M]** Carência + indexador
   - **Arquivos:** `Commands/*` (campos), `Services/GeradorAlertasCotacao.cs`, `CotacaoDto.cs`, testes
   - **Aceite:**
     - `carenciaMeses`: `<0` → 400; modalidade não aplicável → ignora + alerta `carencia-ignorada`
     - `indexadorBase`: serializa/desserializa; coerência tipo↔campo → alerta `indexador-incoerente` (não bloqueia)
   - **Verify:** `dotnet test --filter "FullyQualifiedName~Carencia|FullyQualifiedName~Indexador"`
 
-- [ ] **T10 [M]** Estruturantes FGI
+- [x] **T10 [M]** Estruturantes FGI
   - **Arquivos:** `Commands/*` (campos), validators, `CotacaoDto.cs`, testes
   - **Aceite:**
     - `percentualCoberturaFgi` faixa `0..100` (fora → 400); apenas Fgi
@@ -116,23 +116,23 @@
     - Coexistência com `FgiInputs.PercentualCoberto` (conversão) preservada
   - **Verify:** `dotnet test --filter "FullyQualifiedName~Fgi"`
 
-- [ ] **[CHECKPOINT E]** Campos de domínio persistem/validam/retornam; alertas suaves corretos
+- [x] **[CHECKPOINT E]** Campos de domínio persistem/validam/retornam; alertas suaves corretos. Application 607 · Integração 217
 
 ---
 
 ## Fase 5 — Consolidação e release
 
-- [ ] **T11 [S]** Faixas de prazo + consolidação de alertas
+- [x] **T11 [S]** Faixas de prazo + consolidação de alertas
   - **Arquivos:** `Services/GeradorAlertasCotacao.cs`, testes
   - **Aceite:** alerta `prazo-fora-da-faixa-esperada` por faixas provisórias §4.4; auditar todos os `codigo` de alerta num só lugar
   - **Verify:** `dotnet test --filter "FullyQualifiedName~Alerta"`
 
-- [ ] **T12 [S]** Versão + handover + suíte completa
+- [x] **T12 [S]** Versão + handover + suíte completa
   - **Arquivos:** configuração OpenAPI/Swagger (versão `0.12.0`), `docs/api/S40_FE_HANDOVER.md` (sincronizar exemplos finais), changelog
   - **Aceite:** contrato `0.12.0`; changelog §13.1 publicado; handover reflete contratos finais
   - **Verify:** `dotnet test` (suíte completa) verde
 
-- [ ] **[CHECKPOINT F — go/no-go]** Suíte completa verde; todos os critérios de aceite §11 cobertos; breaking change comunicada ao FE; follow-up de produção (RLS no backfill) registrado
+- [x] **[CHECKPOINT F — go/no-go]** GO. Suíte completa verde (1697 testes: Domínio 796 · Application 611 · Integração 217 · MCP 45 · GoldenDataset 24 · Jobs 4); GoldenDataset inalterado (CET intacto); critérios §11 cobertos; breaking change no CHANGELOG/handover; follow-up de produção (RLS no backfill) registrado
 
 ---
 
