@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Contabilidade;
 using Sgcf.Domain.Contratos;
+using Sgcf.Domain.Cotacoes;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Hedge;
 
@@ -90,4 +91,14 @@ internal static class SgcfConverters
     internal static readonly ValueConverter<NaturezaConta, string> NaturezaConta =
         new(n => n.ToString().ToUpperInvariant(),
             s => Enum.Parse<Domain.Contabilidade.NaturezaConta>(s, true));
+
+    // S40: tenor persiste 'Dias'/'Meses' (PascalCase, casa com o CHECK e com o enum da API).
+    internal static readonly ValueConverter<UnidadePrazo, string> UnidadePrazo =
+        new(u => u.ToString(),
+            s => Enum.Parse<Domain.Cotacoes.UnidadePrazo>(s, true));
+
+    // S40: tipo de indexador persiste o nome PascalCase (ex.: 'CdiMaisSpread').
+    internal static readonly ValueConverter<TipoIndexador, string> TipoIndexador =
+        new(t => t.ToString(),
+            s => Enum.Parse<Domain.Cotacoes.TipoIndexador>(s, true));
 }

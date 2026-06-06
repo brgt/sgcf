@@ -38,7 +38,55 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
     /// PTAX D-1 usada como referência na conversão USD/BRL para cálculo de CET.
     /// Null para modalidades BRL puras (NCE, CapitalDeGiro, FGI). Onda 0 F0.1.
     /// </summary>
+    /// <remarks>DEPRECIADO (S40): preferir <see cref="PtaxUsada"/>. Preenchido apenas quando <see cref="MoedaAlvo"/> = Usd.</remarks>
     public decimal? PtaxUsadaUsdBrl { get; private set; }
+
+    // ─── S40: tenor, moeda alvo, PTAX multimoeda e campos de domínio ─────────
+
+    /// <summary>Valor do prazo máximo na unidade indicada (intenção do operador). SPEC S40 §2.1.</summary>
+    public int PrazoMaximoValor { get; private set; }
+
+    /// <summary>Unidade do prazo máximo. O campo canônico <see cref="PrazoMaximoDias"/> é derivado (30/360). SPEC S40 §2.1.</summary>
+    public UnidadePrazo PrazoMaximoUnidade { get; private set; }
+
+    /// <summary>Moeda alvo da cotação. Fixa Brl nas modalidades BRL puras; FX em Finimp/Lei4131; herdada do mãe em Refinimp. SPEC S40 §2.2.</summary>
+    public Moeda MoedaAlvo { get; private set; }
+
+    /// <summary>PTAX D-1 de <see cref="MoedaAlvo"/>/BRL (canônico, multimoeda). Null para modalidades BRL puras. SPEC S40 §2.6.</summary>
+    public decimal? PtaxUsada { get; private set; }
+
+    /// <summary>Carência pretendida em meses. Null para modalidades não aplicáveis. SPEC S40 §2.3.</summary>
+    public int? CarenciaMeses { get; private set; }
+
+    // IndexadorBase é decomposto em colunas planas (sem owned type — mesma estratégia de ValorAlvoBrl). SPEC S40 §2.4.
+    internal TipoIndexador? IndexadorTipo { get; private set; }
+    internal decimal? IndexadorPercentualCdi { get; private set; }
+    internal decimal? IndexadorSpreadAa { get; private set; }
+    internal decimal? IndexadorTaxaPrefixadaAa { get; private set; }
+
+    /// <summary>Indexador base pretendido (intenção), montado das colunas planas. Null quando ausente. SPEC S40 §2.4.</summary>
+    public IndexadorBase? IndexadorBase =>
+        IndexadorTipo is null
+        && IndexadorPercentualCdi is null
+        && IndexadorSpreadAa is null
+        && IndexadorTaxaPrefixadaAa is null
+            ? null
+            : new IndexadorBase
+            {
+                Tipo = IndexadorTipo,
+                PercentualCdi = IndexadorPercentualCdi,
+                SpreadAa = IndexadorSpreadAa,
+                TaxaPrefixadaAa = IndexadorTaxaPrefixadaAa,
+            };
+
+    /// <summary>Finalidade/enquadramento BNDES pretendido (apenas Fgi). SPEC S40 §2.5.</summary>
+    public string? FinalidadeBndes { get; private set; }
+
+    /// <summary>Banco repassador pretendido (apenas Fgi). SPEC S40 §2.5.</summary>
+    public string? BancoRepassadorPretendido { get; private set; }
+
+    /// <summary>Percentual de cobertura FGI pretendido na cotação, 0..100 (apenas Fgi). SPEC S40 §2.5.</summary>
+    public decimal? PercentualCoberturaFgi { get; private set; }
 
     public StatusCotacao Status { get; private set; }
 
@@ -113,6 +161,101 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
         string? observacoes = null,
         Guid? contratoMaeId = null)
     {
+        // Mensagem legada preservada (S40 manteve o campo prazoMaximoDias como entrada retrocompatível).
+        if (prazoMaximoDias < 1)
+        {
+            throw new ArgumentOutOfRangeException(nameof(prazoMaximoDias), "PrazoMaximoDias deve ser maior ou igual a 1 (SPEC §3.2).");
+        }
+
+        // Caminho legado: o prazo entra como dias (unidade Dias) e a moeda é inferida da modalidade
+        // (USD para cambiais — comportamento Onda 0). O tenor multimoeda é exercido por CriarComTenor.
+        Moeda moedaAlvo = ExigeMoedaEstrangeira(modalidade) ? Moeda.Usd : Moeda.Brl;
+
+        return CriarInterno(
+            codigoInterno,
+            modalidade,
+            valorAlvoBrl,
+            prazoMaximoValor: prazoMaximoDias,
+            prazoMaximoUnidade: UnidadePrazo.Dias,
+            dataAbertura,
+            moedaAlvo,
+            dataPtaxReferencia,
+            ptaxUsada: ptaxUsadaUsdBrl,
+            DadosDominioCotacao.Vazio,
+            clock,
+            observacoes,
+            contratoMaeId);
+    }
+
+    /// <summary>
+    /// Cria nova cotação em estado Rascunho a partir do tenor estruturado {valor, unidade} e dos
+    /// campos de domínio S40. Deriva <see cref="PrazoMaximoDias"/> (30/360) e generaliza a PTAX por
+    /// <paramref name="moedaAlvo"/>. SPEC S40 §2, §4.1.
+    /// </summary>
+    public static Cotacao CriarComTenor(
+        string codigoInterno,
+        ModalidadeContrato modalidade,
+        Money valorAlvoBrl,
+        int prazoMaximoValor,
+        UnidadePrazo prazoMaximoUnidade,
+        LocalDate dataAbertura,
+        Moeda moedaAlvo,
+        LocalDate? dataPtaxReferencia,
+        decimal? ptaxUsada,
+        IClock clock,
+        DadosDominioCotacao? dominio = null,
+        string? observacoes = null,
+        Guid? contratoMaeId = null)
+        => CriarInterno(
+            codigoInterno,
+            modalidade,
+            valorAlvoBrl,
+            prazoMaximoValor,
+            prazoMaximoUnidade,
+            dataAbertura,
+            moedaAlvo,
+            dataPtaxReferencia,
+            ptaxUsada,
+            dominio ?? DadosDominioCotacao.Vazio,
+            clock,
+            observacoes,
+            contratoMaeId);
+
+    /// <summary>
+    /// Deriva o prazo máximo canônico em dias a partir do tenor {valor, unidade}.
+    /// Convenção fixa 30/360 (meses × 30) — teto comparável, NÃO day-count do CET. SPEC S40 §1.3, §4.1.
+    /// </summary>
+    public static int DerivarPrazoMaximoDias(int prazoMaximoValor, UnidadePrazo unidade)
+    {
+        if (prazoMaximoValor < 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(prazoMaximoValor), "PrazoMaximoValor deve ser maior ou igual a 1.");
+        }
+
+        return unidade switch
+        {
+            UnidadePrazo.Dias => prazoMaximoValor,
+            UnidadePrazo.Meses => prazoMaximoValor * 30,
+            _ => throw new ArgumentOutOfRangeException(nameof(unidade), $"UnidadePrazo inválida: {unidade}."),
+        };
+    }
+
+    private static Cotacao CriarInterno(
+        string codigoInterno,
+        ModalidadeContrato modalidade,
+        Money valorAlvoBrl,
+        int prazoMaximoValor,
+        UnidadePrazo prazoMaximoUnidade,
+        LocalDate dataAbertura,
+        Moeda moedaAlvo,
+        LocalDate? dataPtaxReferencia,
+        decimal? ptaxUsada,
+        DadosDominioCotacao dominio,
+        IClock clock,
+        string? observacoes,
+        Guid? contratoMaeId)
+    {
         if (string.IsNullOrWhiteSpace(codigoInterno))
         {
             throw new ArgumentException("CodigoInterno não pode ser vazio.", nameof(codigoInterno));
@@ -128,33 +271,41 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
             throw new ArgumentOutOfRangeException(nameof(valorAlvoBrl), "ValorAlvoBRL deve ser maior que zero (SPEC §3.2).");
         }
 
-        if (prazoMaximoDias < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(prazoMaximoDias), "PrazoMaximoDias deve ser maior ou igual a 1 (SPEC §3.2).");
-        }
+        int prazoMaximoDias = DerivarPrazoMaximoDias(prazoMaximoValor, prazoMaximoUnidade);
 
-        // Onda 0 F0.1: modalidades cambiais exigem PTAX; modalidades BRL puras rejeitam PTAX.
-        if (ExigeMoedaEstrangeira(modalidade) && ptaxUsadaUsdBrl is null)
-        {
-            throw new ArgumentException(
-                $"PTAX D-1 é obrigatória para modalidade {modalidade} (operação cambial). Onda 0 F0.1.",
-                nameof(ptaxUsadaUsdBrl));
-        }
+        bool cambial = ExigeMoedaEstrangeira(modalidade);
 
-        if (!ExigeMoedaEstrangeira(modalidade) && ptaxUsadaUsdBrl is not null)
+        // S40 §4.5: invariantes de moeda alvo por modalidade.
+        if (!cambial && moedaAlvo != Moeda.Brl)
         {
             throw new ArgumentException(
-                $"PTAX não se aplica à modalidade {modalidade} (operação em BRL). Onda 0 F0.1.",
-                nameof(ptaxUsadaUsdBrl));
+                $"Modalidade {modalidade} opera em BRL; moedaAlvo deve ser BRL.", nameof(moedaAlvo));
         }
 
-        if (ptaxUsadaUsdBrl is not null && ptaxUsadaUsdBrl <= 0)
+        if (cambial && moedaAlvo == Moeda.Brl)
         {
-            throw new ArgumentOutOfRangeException(nameof(ptaxUsadaUsdBrl), "PtaxUsadaUsdBrl deve ser positiva.");
+            throw new ArgumentException(
+                $"Modalidade {modalidade} exige moeda estrangeira; moedaAlvo não pode ser BRL.", nameof(moedaAlvo));
         }
 
-        // SPEC §3.2 regra 7: DataPtaxReferencia deve ser anterior a DataAbertura (apenas quando fornecida).
-        // Dia útil anterior é validado externamente (Application), aqui validamos apenas a anterioridade.
+        // S40 §2.6 / Onda 0 F0.1 generalizado: cambiais exigem PTAX; BRL puras a rejeitam.
+        if (cambial && ptaxUsada is null)
+        {
+            throw new ArgumentException(
+                $"PTAX D-1 é obrigatória para modalidade {modalidade} (operação cambial).", nameof(ptaxUsada));
+        }
+
+        if (!cambial && ptaxUsada is not null)
+        {
+            throw new ArgumentException(
+                $"PTAX não se aplica à modalidade {modalidade} (operação em BRL).", nameof(ptaxUsada));
+        }
+
+        if (ptaxUsada is not null && ptaxUsada <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(ptaxUsada), "PtaxUsada deve ser positiva.");
+        }
+
         if (dataPtaxReferencia is not null && dataPtaxReferencia >= dataAbertura)
         {
             throw new ArgumentException(
@@ -178,6 +329,30 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
                 nameof(contratoMaeId));
         }
 
+        // S40 §2.3–§2.5: normalização dos campos de domínio por modalidade.
+        if (dominio.CarenciaMeses is < 0)
+        {
+            throw new ArgumentException("CarenciaMeses não pode ser negativa.", nameof(dominio));
+        }
+
+        bool aplicaCarencia = modalidade is ModalidadeContrato.Lei4131
+            or ModalidadeContrato.Nce
+            or ModalidadeContrato.CapitalDeGiro
+            or ModalidadeContrato.Fgi;
+        int? carenciaFinal = aplicaCarencia ? dominio.CarenciaMeses ?? 0 : null;
+
+        bool ehFgi = modalidade == ModalidadeContrato.Fgi;
+        decimal? coberturaFinal = null;
+        if (ehFgi && dominio.PercentualCoberturaFgi is { } cobertura)
+        {
+            if (cobertura is < 0 or > 100)
+            {
+                throw new ArgumentException("PercentualCoberturaFgi deve estar entre 0 e 100.", nameof(dominio));
+            }
+
+            coberturaFinal = cobertura;
+        }
+
         var now = clock.GetCurrentInstant();
         return new Cotacao
         {
@@ -185,9 +360,21 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
             Modalidade = modalidade,
             ValorAlvoBrlDecimal = valorAlvoBrl.Valor,
             PrazoMaximoDias = prazoMaximoDias,
+            PrazoMaximoValor = prazoMaximoValor,
+            PrazoMaximoUnidade = prazoMaximoUnidade,
             DataAbertura = dataAbertura,
+            MoedaAlvo = moedaAlvo,
             DataPtaxReferencia = dataPtaxReferencia,
-            PtaxUsadaUsdBrl = ptaxUsadaUsdBrl,
+            PtaxUsada = ptaxUsada,
+            PtaxUsadaUsdBrl = moedaAlvo == Moeda.Usd ? ptaxUsada : null,
+            CarenciaMeses = carenciaFinal,
+            IndexadorTipo = dominio.IndexadorBase?.Tipo,
+            IndexadorPercentualCdi = dominio.IndexadorBase?.PercentualCdi,
+            IndexadorSpreadAa = dominio.IndexadorBase?.SpreadAa,
+            IndexadorTaxaPrefixadaAa = dominio.IndexadorBase?.TaxaPrefixadaAa,
+            FinalidadeBndes = ehFgi ? dominio.FinalidadeBndes : null,
+            BancoRepassadorPretendido = ehFgi ? dominio.BancoRepassadorPretendido : null,
+            PercentualCoberturaFgi = coberturaFinal,
             ContratoMaeId = contratoMaeId,
             Status = StatusCotacao.Rascunho,
             Observacoes = observacoes,
@@ -516,7 +703,9 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
             throw new ArgumentOutOfRangeException(nameof(novoPtax), "Nova PTAX deve ser positiva.");
         }
 
-        PtaxUsadaUsdBrl = novoPtax;
+        PtaxUsada = novoPtax;
+        // Alias legado depreciado: só reflete quando a moeda alvo é USD. SPEC S40 §2.6.
+        PtaxUsadaUsdBrl = MoedaAlvo == Moeda.Usd ? novoPtax : null;
         UpdatedAt = clock.GetCurrentInstant();
 
         // Invalida cache de CET em todas as propostas — devem ser recalculados
@@ -541,7 +730,10 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
                 throw new ArgumentException("PrazoMaximoDias deve ser maior ou igual a 1.");
             }
 
+            // Mantém o tenor coerente: edição direta em dias fixa a unidade Dias. SPEC S40 §4.1.
             PrazoMaximoDias = prazoMaximoDias.Value;
+            PrazoMaximoValor = prazoMaximoDias.Value;
+            PrazoMaximoUnidade = UnidadePrazo.Dias;
         }
 
         if (observacoes is not null)
@@ -549,6 +741,20 @@ public sealed class Cotacao : Entity, IAuditable, ITenantScoped
             Observacoes = observacoes;
         }
 
+        UpdatedAt = clock.GetCurrentInstant();
+    }
+
+    /// <summary>
+    /// Edita o prazo máximo a partir do tenor {valor, unidade}, recalculando o dia canônico (30/360).
+    /// Permitido apenas em Rascunho. SPEC S40 §4.1.
+    /// </summary>
+    public void EditarTenor(int prazoMaximoValor, UnidadePrazo prazoMaximoUnidade, IClock clock)
+    {
+        ExigirStatus(StatusCotacao.Rascunho, nameof(EditarTenor));
+
+        PrazoMaximoDias = DerivarPrazoMaximoDias(prazoMaximoValor, prazoMaximoUnidade);
+        PrazoMaximoValor = prazoMaximoValor;
+        PrazoMaximoUnidade = prazoMaximoUnidade;
         UpdatedAt = clock.GetCurrentInstant();
     }
 

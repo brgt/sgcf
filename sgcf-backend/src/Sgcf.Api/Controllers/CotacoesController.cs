@@ -30,9 +30,12 @@ public sealed record AdicionarBancoRequest(
 public sealed record CancelarCotacaoRequest(string Motivo);
 
 /// <summary>Corpo para atualizar campos básicos editáveis de uma cotação.</summary>
+/// <remarks>S40: prefira o tenor { PrazoMaximoValor, PrazoMaximoUnidade }; PrazoMaximoDias é legado.</remarks>
 public sealed record AtualizarCotacaoRequest(
     int? PrazoMaximoDias,
-    string? Observacoes);
+    string? Observacoes,
+    int? PrazoMaximoValor = null,
+    string? PrazoMaximoUnidade = null);
 
 // ── Controller ───────────────────────────────────────────────────────────────
 
@@ -40,6 +43,9 @@ public sealed record AtualizarCotacaoRequest(
 /// Gerencia cotações de captação financeira (propostas, comparativo, auditoria).
 /// Cobre o ciclo completo: Rascunho → EmCaptacao → Comparada → Aceita → Convertida.
 /// SPEC §7.
+///
+/// Erros são traduzidos centralmente pelo GlobalExceptionHandler (RFC 7807): KeyNotFoundException → 404,
+/// ConflitoDeEstadoException/InvalidOperationException → 409, ValidationException → 400. SPEC S40 §5.
 /// </summary>
 [ApiController]
 [Route("api/v1/cotacoes")]
@@ -48,7 +54,7 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     // ── Cotação ───────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Cria nova cotação em status Rascunho. Exige PTAX D-1 cadastrada.
+    /// Cria nova cotação em status Rascunho. Exige PTAX D-1 cadastrada para modalidades cambiais.
     /// </summary>
     [HttpPost]
     [Authorize(Policy = Policies.Escrita)]
@@ -59,15 +65,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         [FromBody] CriarCotacaoCommand command,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            CotacaoDto result = await mediator.Send(command, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        CotacaoDto result = await mediator.Send(command, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
     }
 
     /// <summary>
@@ -101,15 +100,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
-        try
-        {
-            CotacaoDto result = await mediator.Send(new GetCotacaoQuery(id), cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        CotacaoDto result = await mediator.Send(new GetCotacaoQuery(id), cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
@@ -125,22 +117,13 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         [FromBody] AtualizarCotacaoRequest body,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            CotacaoDto result = await mediator.Send(
-                new AtualizarCotacaoCommand(id, body.PrazoMaximoDias, body.Observacoes),
-                cancellationToken);
+        CotacaoDto result = await mediator.Send(
+            new AtualizarCotacaoCommand(
+                id, body.PrazoMaximoDias, body.Observacoes,
+                body.PrazoMaximoValor, body.PrazoMaximoUnidade),
+            cancellationToken);
 
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        return Ok(result);
     }
 
     /// <summary>
@@ -156,19 +139,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         [FromBody] CancelarCotacaoRequest body,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            await mediator.Send(new CancelarCotacaoCommand(id, body.Motivo), cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        await mediator.Send(new CancelarCotacaoCommand(id, body.Motivo), cancellationToken);
+        return NoContent();
     }
 
     // ── Bancos-alvo ───────────────────────────────────────────────────────────
@@ -190,33 +162,22 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         [FromBody] AdicionarBancoRequest body,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            AdicionarBancoNaCotacaoResponse resultado = await mediator.Send(
-                new AdicionarBancoNaCotacaoCommand(
-                    CotacaoId: id,
-                    BancoId: body.BancoId,
-                    PreencherGarantiaAutomaticamente: body.PreencherGarantiaAutomaticamente,
-                    GarantiaExigidaManual: body.GarantiaExigidaManual,
-                    ValorGarantiaExigidaBrlManual: body.ValorGarantiaExigidaBrlManual,
-                    GarantiaEhCdbCativoManual: body.GarantiaEhCdbCativoManual,
-                    RendimentoCdbAaPercentual: body.RendimentoCdbAaPercentual),
-                cancellationToken);
+        AdicionarBancoNaCotacaoResponse resultado = await mediator.Send(
+            new AdicionarBancoNaCotacaoCommand(
+                CotacaoId: id,
+                BancoId: body.BancoId,
+                PreencherGarantiaAutomaticamente: body.PreencherGarantiaAutomaticamente,
+                GarantiaExigidaManual: body.GarantiaExigidaManual,
+                ValorGarantiaExigidaBrlManual: body.ValorGarantiaExigidaBrlManual,
+                GarantiaEhCdbCativoManual: body.GarantiaEhCdbCativoManual,
+                RendimentoCdbAaPercentual: body.RendimentoCdbAaPercentual),
+            cancellationToken);
 
-            // Retorna 200 com body quando há dados de garantia pré-preenchida ou alertas;
-            // caso contrário 204 para manter compatibilidade com os callers existentes.
-            return resultado.Proposta is not null || resultado.Alertas.Count > 0
-                ? Ok(resultado)
-                : NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        // Retorna 200 com body quando há dados de garantia pré-preenchida ou alertas;
+        // caso contrário 204 para manter compatibilidade com os callers existentes.
+        return resultado.Proposta is not null || resultado.Alertas.Count > 0
+            ? Ok(resultado)
+            : NoContent();
     }
 
     /// <summary>
@@ -232,19 +193,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         Guid bancoId,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            await mediator.Send(new RemoverBancoDaCotacaoCommand(id, bancoId), cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        await mediator.Send(new RemoverBancoDaCotacaoCommand(id, bancoId), cancellationToken);
+        return NoContent();
     }
 
     // ── Transições de estado ─────────────────────────────────────────────────
@@ -259,19 +209,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Enviar(Guid id, CancellationToken cancellationToken)
     {
-        try
-        {
-            await mediator.Send(new EnviarCotacaoCommand(id), cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        await mediator.Send(new EnviarCotacaoCommand(id), cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
@@ -284,19 +223,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> EncerrarCaptacao(Guid id, CancellationToken cancellationToken)
     {
-        try
-        {
-            await mediator.Send(new EncerrarCaptacaoCommand(id), cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        await mediator.Send(new EncerrarCaptacaoCommand(id), cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
@@ -312,19 +240,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         [FromBody] CancelarCotacaoRequest body,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            await mediator.Send(new CancelarCotacaoCommand(id, body.Motivo), cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        await mediator.Send(new CancelarCotacaoCommand(id, body.Motivo), cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
@@ -338,19 +255,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RefreshMercado(Guid id, CancellationToken cancellationToken)
     {
-        try
-        {
-            CotacaoDto result = await mediator.Send(new RefreshCotacaoMercadoCommand(id), cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        CotacaoDto result = await mediator.Send(new RefreshCotacaoMercadoCommand(id), cancellationToken);
+        return Ok(result);
     }
 
     // ── Relatórios ────────────────────────────────────────────────────────────
@@ -368,17 +274,10 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         [FromQuery] decimal? aliquotaIrrfPercentual,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            IReadOnlyList<ComparativoDto> result = await mediator.Send(
-                new CompararPropostasQuery(id, aliquotaIrrfPercentual), cancellationToken);
+        IReadOnlyList<ComparativoDto> result = await mediator.Send(
+            new CompararPropostasQuery(id, aliquotaIrrfPercentual), cancellationToken);
 
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        return Ok(result);
     }
 
     /// <summary>
@@ -474,19 +373,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     {
         RegistrarPropostaCommand cmd = command with { CotacaoId = id };
 
-        try
-        {
-            PropostaDto result = await mediator.Send(cmd, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { id }, result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        PropostaDto result = await mediator.Send(cmd, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { id }, result);
     }
 
     /// <summary>
@@ -506,19 +394,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     {
         AtualizarPropostaCommand cmd = command with { CotacaoId = id, PropostaId = propostaId };
 
-        try
-        {
-            PropostaDto result = await mediator.Send(cmd, cancellationToken);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        PropostaDto result = await mediator.Send(cmd, cancellationToken);
+        return Ok(result);
     }
 
     /// <summary>
@@ -534,19 +411,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         Guid propostaId,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            await mediator.Send(new AceitarPropostaCommand(id, propostaId), cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        await mediator.Send(new AceitarPropostaCommand(id, propostaId), cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
@@ -567,19 +433,8 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
         // propostaId é ignorado: a cotação possui exatamente uma proposta aceita (SPEC §3.2 regra 4)
         _ = propostaId;
 
-        try
-        {
-            await mediator.Send(new DesfazerAceitacaoCommand(id), cancellationToken);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        await mediator.Send(new DesfazerAceitacaoCommand(id), cancellationToken);
+        return NoContent();
     }
 
     /// <summary>
@@ -599,18 +454,7 @@ public sealed class CotacoesController(IMediator mediator) : ControllerBase
     {
         ConverterEmContratoCommand cmd = command with { CotacaoId = id };
 
-        try
-        {
-            ContratoDto result = await mediator.Send(cmd, cancellationToken);
-            return StatusCode(StatusCodes.Status201Created, result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { error = ex.Message });
-        }
+        ContratoDto result = await mediator.Send(cmd, cancellationToken);
+        return StatusCode(StatusCodes.Status201Created, result);
     }
 }

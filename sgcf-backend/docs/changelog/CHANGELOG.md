@@ -11,6 +11,63 @@
 
 ---
 
+## [0.12.0] — 2026-06-06
+
+### Resumo executivo
+
+Entrega do **S40 — Cotação: Tenor, Campos de Domínio, PTAX Multimoeda e Erros RFC 7807**.
+O prazo máximo passa a ser cotado como tenor estruturado `{ prazoMaximoValor, prazoMaximoUnidade }`,
+derivando `prazoMaximoDias` (canônico, 30/360). A cotação ganha campos de domínio opcionais
+(moeda alvo, carência, indexador e estruturantes do FGI), a resolução de PTAX é generalizada por moeda,
+e os erros das operações de cotação passam a ser `ProblemDetails` (RFC 7807) com `type` URIs estáveis.
+
+Documentação técnica em [`docs/specs/cotacoes/SPEC_S40_TENOR_DOMINIO_PTAX.md`](../specs/cotacoes/SPEC_S40_TENOR_DOMINIO_PTAX.md)
+e handover em [`docs/api/S40_FE_HANDOVER.md`](../api/S40_FE_HANDOVER.md).
+
+---
+
+### BREAKING — Erros de cotação em ProblemDetails
+
+Os endpoints de `/api/v1/cotacoes` deixam de retornar o corpo `{ "error": "..." }` em `409`/`404`.
+Passam a retornar `ProblemDetails` (RFC 7807) com `type` URI estável:
+
+- `409` de transição/edição inválida → `type: https://sgcf.nordware.io/errors/conflito-de-estado` (campo `detail`).
+- `409` de PTAX indisponível → `type: https://sgcf.nordware.io/errors/ptax-indisponivel` (extensões `moedaAlvo`, `dataPtaxReferencia`).
+- `404` → `type: https://sgcf.nordware.io/errors/nao-encontrado`.
+- `400` de validação → `type: https://sgcf.nordware.io/errors/validacao`.
+
+Clientes que liam `data.error` devem passar a ler `data.detail` e ramificar por `data.type`.
+
+---
+
+### ADDITIVE — Tenor de prazo
+
+- `CotacaoDto` e `POST/PATCH /cotacoes` ganham `prazoMaximoValor` e `prazoMaximoUnidade` (`Dias` | `Meses`).
+- `prazoMaximoDias` permanece canônico na saída, derivado por 30/360 (meses × 30) — teto comparável, não day-count do CET.
+- Unidade default por modalidade quando omitida (Finimp/Refinimp = Dias; Lei4131/Nce/CapitalDeGiro/Fgi = Meses).
+
+### ADDITIVE — Campos de domínio e PTAX multimoeda
+
+- `moedaAlvo` (`Brl|Usd|Eur|Jpy|Cny`): editável em Finimp/Lei4131, herdada do contrato mãe em Refinimp, fixa `Brl` nas BRL puras.
+- `ptaxUsada` (canônico, PTAX D-1 de `moedaAlvo`/BRL); resolução de PTAX generalizada por moeda alvo.
+- `carenciaMeses`, `indexadorBase { tipo, percentualCdi, spreadAa, taxaPrefixadaAa }`.
+- Estruturantes FGI: `percentualCoberturaFgi` (0..100), `finalidadeBndes`, `bancoRepassadorPretendido`.
+- `alertas[]` (validação suave, não bloqueante) nas respostas de escrita: `prazo-recalculado`,
+  `prazo-fora-da-faixa-esperada`, `indexador-incoerente`, `carencia-ignorada`, `moeda-herdada-do-contrato-mae`.
+
+### DEPRECATED
+
+- `prazoMaximoDias` como campo de **entrada** em `POST/PATCH /cotacoes` (aceito por retrocompatibilidade; preferir o tenor).
+- `ptaxUsadaUsdBrl` como campo de **saída** (preferir `ptaxUsada`; preenchido apenas quando `moedaAlvo = Usd`).
+
+### Migração
+
+- Migração aditiva e não destrutiva `S40_CotacaoTenorEDominio` sobre `sgcf.cotacao`: colunas nullable →
+  backfill (`prazo_maximo_unidade='Dias'`, `prazo_maximo_valor=prazo_maximo_dias`, `ptax_usada=ptax_usada_usd_brl`,
+  `moeda_alvo` por modalidade) → `NOT NULL` no tenor + CHECK constraints.
+
+---
+
 ## [0.11.0] — 2026-05-25
 
 ### Resumo executivo

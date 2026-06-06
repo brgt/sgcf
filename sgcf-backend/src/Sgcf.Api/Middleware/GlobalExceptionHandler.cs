@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -31,7 +33,7 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
 
             ValidationProblemDetails problemDetails = new(errors)
             {
-                Type = "https://tools.ietf.org/html/rfc7807",
+                Type = ProblemTypes.Validacao,
                 Title = "Validation failed",
                 Status = StatusCodes.Status400BadRequest,
             };
@@ -46,13 +48,32 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
 
             ProblemDetails problemDetails = new()
             {
-                Type = "https://tools.ietf.org/html/rfc7807",
+                Type = ProblemTypes.NaoEncontrado,
                 Title = "Resource not found",
                 Status = StatusCodes.Status404NotFound,
                 Detail = exception.Message,
             };
 
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+            return true;
+        }
+
+        // S40 §6: PTAX indisponível — type estável + extensões moedaAlvo/dataPtaxReferencia.
+        if (exception is PtaxIndisponivelException ptaxEx)
+        {
+            httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
+
+            ProblemDetails problem = new()
+            {
+                Type = ProblemTypes.PtaxIndisponivel,
+                Title = "PTAX indisponível",
+                Status = StatusCodes.Status409Conflict,
+                Detail = ptaxEx.Message,
+            };
+            problem.Extensions["moedaAlvo"] = ptaxEx.MoedaAlvo;
+            problem.Extensions["dataPtaxReferencia"] = ptaxEx.DataReferencia?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+            await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
             return true;
         }
 
@@ -63,7 +84,7 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
 
             ProblemDetails problem = new()
             {
-                Type = "https://sgcf.io/errors/garantia-exigida-nao-coberta",
+                Type = ProblemTypes.GarantiaExigidaNaoCoberta,
                 Title = "Garantias exigidas pela política do banco não foram cobertas pelo contrato.",
                 Status = StatusCodes.Status409Conflict,
                 Detail = $"A revisão vigente do LimiteBanco {garantiaEx.LimiteBancoId} exige " +
@@ -96,7 +117,7 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
 
             ProblemDetails problemDetails = new()
             {
-                Type = "https://tools.ietf.org/html/rfc7807",
+                Type = ProblemTypes.EntidadeNaoProcessavel,
                 Title = "Unprocessable entity",
                 Status = StatusCodes.Status422UnprocessableEntity,
                 Detail = exception.Message,
@@ -106,11 +127,29 @@ internal sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHand
             return true;
         }
 
+        // S40 §5: conflitos de estado de domínio (ConflitoDeEstadoException e demais
+        // InvalidOperationException) → 409 ProblemDetails. PTAX já foi tratada acima.
+        if (exception is InvalidOperationException)
+        {
+            httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
+
+            ProblemDetails problem = new()
+            {
+                Type = ProblemTypes.ConflitoDeEstado,
+                Title = "Conflito de estado",
+                Status = StatusCodes.Status409Conflict,
+                Detail = exception.Message,
+            };
+
+            await httpContext.Response.WriteAsJsonAsync(problem, cancellationToken);
+            return true;
+        }
+
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
 
         ProblemDetails internalProblemDetails = new()
         {
-            Type = "https://tools.ietf.org/html/rfc7807",
+            Type = ProblemTypes.Interno,
             Title = "An unexpected error occurred",
             Status = StatusCodes.Status500InternalServerError,
         };
