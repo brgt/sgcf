@@ -1,9 +1,16 @@
 # Frontend Handover — S40 Cotação: Tenor, Campos de Domínio, PTAX Multimoeda e Erros RFC 7807
 
 **Versão backend:** `0.12.0`
+**Status:** Entregue e integrado em `main` (as-built) — PR [#7](https://github.com/brgt/sgcf/pull/7).
 **Data de entrega:** 2026-06-06
 **Contato backend:** Equipe SGCF
 **Spec de referência:** `docs/specs/cotacoes/SPEC_S40_TENOR_DOMINIO_PTAX.md`
+
+> **As-built (confirmado contra o código mergeado):**
+> - Respostas JSON em **camelCase**; enums serializados como **string** (ex.: `prazoMaximoUnidade: "Meses"`, `severidade: "Aviso"`).
+> - `alertas` está **sempre presente** nas respostas (vazio `[]` em leituras; preenchido em POST/PATCH).
+> - Em modalidades FX (Finimp/Lei4131), **omitir `moedaAlvo` assume `Usd`** (retrocompatível); envie `moedaAlvo` explicitamente para EUR/JPY/CNY.
+> - Suíte completa verde (1697 testes); CET inalterado (GoldenDataset intacto).
 
 ---
 
