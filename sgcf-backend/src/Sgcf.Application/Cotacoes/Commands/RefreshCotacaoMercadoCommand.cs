@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using NodaTime;
 using Sgcf.Application.Cambio;
+using Sgcf.Application.Cotacoes.Exceptions;
 using Sgcf.Domain.Cambio;
 using Sgcf.Domain.Common;
 using Sgcf.Domain.Cotacoes;
@@ -42,8 +43,11 @@ public sealed class RefreshCotacaoMercadoCommandHandler(
         // `PtaxUsadaUsdBrl` guarda a "taxa de mercado efetivamente usada", não estritamente a
         // venda PTAX: o spot intraday é uma taxa única (sem spread compra/venda), então usamos
         // seu valor direto; o fallback PtaxD0 usa a venda, mantendo a convenção de CriarCotacao.
+        // S40 §6: a moeda de mercado é a moeda alvo persistida da cotação (multimoeda).
+        Moeda moeda = cotacao.MoedaAlvo;
+
         decimal novoPtax;
-        Money? spot = await spotCache.GetSpotAsync(Moeda.Usd, cancellationToken);
+        Money? spot = await spotCache.GetSpotAsync(moeda, cancellationToken);
         if (spot is not null)
         {
             novoPtax = spot.Value.Valor;
@@ -51,13 +55,15 @@ public sealed class RefreshCotacaoMercadoCommandHandler(
         else
         {
             CotacaoFx d0 = await cotacaoResolver.ResolverFxAsync(
-                Moeda.Usd,
+                moeda,
                 TipoCotacao.PtaxD0,
                 hoje,
                 cancellationToken)
-                ?? throw new InvalidOperationException(
-                    "Cotação USD/BRL atual não disponível (sem spot intraday nem fechamento PtaxD0 do dia). " +
-                    "Cadastre a cotação USD/BRL antes de fazer o refresh.");
+                ?? throw new PtaxIndisponivelException(
+                    moeda.ToString(),
+                    new DateOnly(hoje.Year, hoje.Month, hoje.Day),
+                    $"Cotação {moeda}/BRL atual não disponível (sem spot intraday nem fechamento PtaxD0 do dia). " +
+                    $"Cadastre a cotação {moeda}/BRL antes de fazer o refresh.");
 
             novoPtax = d0.ValorVenda.Valor;
         }
